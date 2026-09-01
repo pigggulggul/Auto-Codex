@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityTimeline } from "./components/ActivityTimeline";
 import { ApprovalDialog } from "./components/ApprovalDialog";
 import { PetStage } from "./components/PetStage";
+import { PixelOffice } from "./components/PixelOffice";
 import { ProjectPanel } from "./components/ProjectPanel";
 import { ResponsePanel } from "./components/ResponsePanel";
 import { SkillPicker } from "./components/SkillPicker";
+import { TaskBoard } from "./components/TaskBoard";
 import { useBridge } from "./hooks/useBridge";
-import type { SkillRole } from "../shared/protocol";
+import type { ExecutionMode, SkillRole } from "../shared/protocol";
 import {
   characterForSelection,
   emptyCharacterAssignments,
@@ -21,9 +23,12 @@ export default function App() {
   const [prompt, setPrompt] = useState("");
   const [skillMode, setSkillMode] = useState<"auto" | "manual">("auto");
   const [skillPath, setSkillPath] = useState("");
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>("team");
   const [characterAssignments, setCharacterAssignments] = useState<CharacterAssignments>(emptyCharacterAssignments);
   const projectPath = bridge.snapshot.projectPath;
-  const busy = Boolean(bridge.snapshot.turnId) || bridge.turnStatus === "inProgress";
+  const activeRun = bridge.snapshot.activeRun;
+  const teamBusy = Boolean(activeRun && ["planning", "running", "verifying"].includes(activeRun.status));
+  const busy = teamBusy || Boolean(bridge.snapshot.turnId) || bridge.turnStatus === "inProgress";
   const ready = bridge.snapshot.connected && bridge.snapshot.appServerReady && Boolean(projectPath);
   const connectionLabel = !bridge.snapshot.connected
     ? "bridge offline"
@@ -59,7 +64,7 @@ export default function App() {
   );
 
   const start = () => {
-    if (bridge.startTurn(prompt, skillMode, skillMode === "manual" ? skillPath : undefined)) setPrompt("");
+    if (bridge.startTurn(prompt, skillMode, skillMode === "manual" ? skillPath : undefined, executionMode)) setPrompt("");
   };
 
   return (
@@ -91,15 +96,23 @@ export default function App() {
       )}
 
       <div className="dashboard-grid">
-        <PetStage
-          state={bridge.snapshot.petState}
-          skill={bridge.snapshot.selectedSkill}
-          role={bridge.snapshot.activeRole}
-          characterId={activeCharacter}
-          bridgeConnected={bridge.snapshot.connected}
-          appServerReady={bridge.snapshot.appServerReady}
-          latestDetail={latestDetail}
-        />
+        {executionMode === "team" || activeRun ? (
+          <PixelOffice
+            run={activeRun}
+            bridgeConnected={bridge.snapshot.connected}
+            appServerReady={bridge.snapshot.appServerReady}
+          />
+        ) : (
+          <PetStage
+            state={bridge.snapshot.petState}
+            skill={bridge.snapshot.selectedSkill}
+            role={bridge.snapshot.activeRole}
+            characterId={activeCharacter}
+            bridgeConnected={bridge.snapshot.connected}
+            appServerReady={bridge.snapshot.appServerReady}
+            latestDetail={latestDetail}
+          />
+        )}
 
         <aside className="control-card">
           <ProjectPanel
@@ -128,6 +141,14 @@ export default function App() {
           />
           <div className="control-section prompt-section">
             <div className="section-heading"><div><span className="eyebrow">03 · ASSIGNMENT</span><h2>업무 지시</h2></div></div>
+            <div className="execution-mode" aria-label="실행 모드">
+              <button type="button" className={executionMode === "team" ? "active" : ""} onClick={() => setExecutionMode("team")} disabled={busy}>
+                <strong>TEAM AUTO</strong><span>역할 분배 · 안전한 병렬</span>
+              </button>
+              <button type="button" className={executionMode === "solo" ? "active" : ""} onClick={() => setExecutionMode("solo")} disabled={busy}>
+                <strong>SOLO</strong><span>하나의 Codex 작업</span>
+              </button>
+            </div>
             <label className="prompt-field">
               <textarea
                 value={prompt}
@@ -145,12 +166,14 @@ export default function App() {
               <button className="stop-button" type="button" onClick={bridge.interruptTurn}><span>■</span> 작업 중단</button>
             ) : (
               <button className="run-button" type="button" onClick={start} disabled={!ready || !prompt.trim()}>
-                <span>▶</span> Codex에게 맡기기
+                <span>▶</span> {executionMode === "team" ? "팀에게 맡기기" : "Codex에게 맡기기"}
               </button>
             )}
             {bridge.skillErrors.length > 0 && <p className="inline-warning">스킬 {bridge.skillErrors.length}개를 불러오지 못했습니다.</p>}
           </div>
         </aside>
+
+        {activeRun && <TaskBoard run={activeRun} />}
 
         <ResponsePanel text={bridge.assistantText} streaming={busy} />
         <ActivityTimeline activities={bridge.activities} />

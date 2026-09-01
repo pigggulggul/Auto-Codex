@@ -6,6 +6,7 @@ import type {
   ClientMessage,
   ServerMessage,
   SkillInfo,
+  ExecutionMode,
 } from "../../shared/protocol";
 
 const EMPTY_SNAPSHOT: BridgeSnapshot = {
@@ -18,6 +19,7 @@ const EMPTY_SNAPSHOT: BridgeSnapshot = {
   selectedSkill: null,
   activeRole: "general",
   projectTrust: "untrusted",
+  activeRun: null,
 };
 
 function bridgeUrl(): string {
@@ -42,6 +44,7 @@ export function useBridge() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [skillRationale, setSkillRationale] = useState<string>("");
   const [assistantText, setAssistantText] = useState("");
+  const [taskOutputs, setTaskOutputs] = useState<Record<string, string>>({});
   const [turnStatus, setTurnStatus] = useState("idle");
   const [isPickingProject, setIsPickingProject] = useState(false);
   const [isTrustingProject, setIsTrustingProject] = useState(false);
@@ -69,6 +72,9 @@ export function useBridge() {
           case "bridge.state":
             setSnapshot(message.snapshot);
             break;
+          case "run.state":
+            setSnapshot((current) => ({ ...current, activeRun: message.run }));
+            break;
           case "project.selected":
             window.localStorage.setItem("auto-codex.project", message.path);
             setIsPickingProject(false);
@@ -90,7 +96,11 @@ export function useBridge() {
             setTurnStatus(message.status);
             break;
           case "assistant.text":
-            setAssistantText(message.text);
+            if (message.taskId) {
+              setTaskOutputs((current) => ({ ...current, [message.taskId!]: message.text }));
+            } else {
+              setAssistantText(message.text);
+            }
             break;
           case "activity.event":
             setActivities((current) => [message.event, ...current].slice(0, 40));
@@ -169,9 +179,13 @@ export function useBridge() {
     },
     refreshSkills: () => send({ type: "skills.refresh" }),
     assistantText,
-    startTurn: (prompt: string, skillMode: "auto" | "manual", skillPath?: string) => {
-      const sent = send({ type: "turn.start", prompt, skillMode, skillPath });
-      if (sent) setAssistantText("");
+    taskOutputs,
+    startTurn: (prompt: string, skillMode: "auto" | "manual", skillPath: string | undefined, executionMode: ExecutionMode) => {
+      const sent = send({ type: "turn.start", prompt, skillMode, skillPath, executionMode });
+      if (sent) {
+        setAssistantText("");
+        setTaskOutputs({});
+      }
       return sent;
     },
     interruptTurn: () => send({ type: "turn.interrupt" }),

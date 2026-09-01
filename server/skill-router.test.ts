@@ -62,4 +62,10 @@ describe("routeSkill", () => {
     ]);
     expect(result.skill).toBeNull();
   });
+
+  it("does not treat an explicit no-write request as implementation", () => {
+    const result = routeSkill("구조를 분석해서 요약해줘. 파일은 수정하지 마.", skills);
+    expect(result.role).toBe("researcher");
+    expect(result.skill).toBeNull();
+  });
 });

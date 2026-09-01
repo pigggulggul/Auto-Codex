@@ -1,6 +1,6 @@
-# Auto Codex
+# Auto Codex Agent Town
 
-Codex Local 작업을 시각화하는 개인용 로컬 웹 앱입니다. 브라우저에서 프로젝트와 스킬을 고르고 작업을 시작하면, Node 브리지가 `codex app-server`와 JSONL로 통신하면서 실제 turn, tool, 파일 변경, 명령 실행, 승인 요청을 펫 상태로 변환합니다.
+Codex Local 작업을 역할별 에이전트에게 자동 분배하고, 픽셀 아트 사무실에서 실행 상태를 보여주는 로컬 웹 앱입니다. Node Bridge가 `codex app-server`와 JSONL로 통신하면서 실제 thread, turn, 도구, 파일 변경, 명령 실행, 승인 요청만 화면 상태로 변환합니다.
 
 ## 현재 범위
 
@@ -8,10 +8,13 @@ Codex Local 작업을 시각화하는 개인용 로컬 웹 앱입니다. 브라�
 - `codex app-server` 자동 실행 및 재연결
 - 로컬 프로젝트 경로 선택
 - 프로젝트 스킬 조회 및 수동/자동 라우팅
-- Auto 역할별 라우팅과 Manual 스킬별 캐릭터 배정
-- thread/turn 시작과 실시간 이벤트 타임라인
-- 명령·파일 변경 승인/거부
-- 실제 codex-pet 스프라이트를 나중에 교체할 수 있는 렌더러
+- Coordinator의 요청 분해와 역할·의존성·실행순서 결정
+- 독립적인 읽기 작업 최대 3개 병렬 실행
+- 같은 작업공간을 건드리는 쓰기·검증 작업 단독 실행
+- 작업별 독립 App Server thread/turn과 이벤트·응답·승인 상관관계
+- 성공·실패·차단 결과 수집, 검증, 최종 Coordinator 보고
+- Team Auto 픽셀 사무실과 Solo 단일 에이전트 모드
+- 명령·파일·추가 권한 승인/거부
 
 Supabase, 원격 데이터베이스, 사용자 계정, 클라우드 배포는 사용하지 않습니다.
 
@@ -19,7 +22,9 @@ Supabase, 원격 데이터베이스, 사용자 계정, 클라우드 배포는 �
 
 Manual 모드는 프로젝트의 `.agents/skills`에 있는 스킬을 기본 목록으로 보여줍니다. 프로젝트 스킬이 없거나 Codex의 전역·시스템 스킬까지 선택하려면 `Codex 스킬 전체 보기 <`를 누릅니다.
 
-Auto 모드는 요청을 `Coordinator`, `Builder`, `Researcher`, `Documenter`, `Visual Designer`, `QA Inspector`, `Integrator` 역할로 분류합니다. 역할에 맞는 전용 스킬이 있으면 선택하고, 없으면 해당 역할의 기본 캐릭터로 진행합니다. 스킬 생성·설치 스킬은 Auto에서 자동 호출하지 않습니다.
+Team Auto는 먼저 `Coordinator`가 요청을 구체적인 Task로 나눕니다. 각 Task는 `Builder`, `Researcher`, `Documenter`, `Visual Designer`, `QA Inspector`, `Integrator` 역할 중 하나에 배정됩니다. 역할에 맞는 전용 Skill이 있으면 해당 Task에만 붙이고, 없으면 일반 Codex 에이전트가 역할 지시를 수행합니다. Pixel은 이 실행 구조의 명칭이 아니라 Cyworld·ZEP처럼 보이는 화면 테마입니다.
+
+계획은 Bridge에서 다시 검증합니다. 알 수 없는 의존성, 순환 의존성, 8개 초과 작업은 거부하며 Coordinator 계획을 사용할 수 없으면 안전한 기본 계획으로 전환합니다. 읽기 전용 Task끼리만 병렬로 시작하고, `workspaceWrite` Task는 다른 작업과 겹치지 않습니다. 변경 작업 뒤에는 QA 검증을 추가하고, 일부 작업이 실패해도 최종 보고 Task는 모든 작업이 끝난 뒤 실행됩니다.
 
 Manual에서 지정한 캐릭터는 선택한 프로젝트 경로별로 브라우저 로컬 저장소에 보관됩니다. 현재 캐릭터 화면은 CSS 펫을 사용하며, 실제 codex-pet 스프라이트는 [docs/PET_SPRITES.md](docs/PET_SPRITES.md)의 규격에 맞춰 나중에 연결할 수 있습니다.
 
@@ -90,6 +95,6 @@ npm run build
 - bridge와 dev server는 `127.0.0.1`에만 바인딩합니다.
 - `thread/shellCommand`처럼 샌드박스를 우회하는 API는 사용하지 않습니다.
 
-현재 설치된 Codex CLI가 보내는 명령 실행 및 파일 변경 승인 요청을 지원합니다. 이후 CLI에서 별도 권한 승인 이벤트가 추가되면 브리지의 승인 어댑터에 해당 응답 스키마를 추가해야 합니다.
+현재 설치된 Codex CLI가 보내는 명령 실행, 파일 변경, 추가 권한 승인 요청을 지원합니다. 추가 권한 승인 시 브라우저가 권한 내용을 만들지 못하며 App Server가 요청한 권한 집합만 그대로 승인합니다.
 
-자세한 흐름은 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), 스프라이트 규격은 [docs/PET_SPRITES.md](docs/PET_SPRITES.md)를 참고하세요.
+개념 학습과 Notion 정리용 문서는 [docs/MULTI_AGENT_GUIDE.md](docs/MULTI_AGENT_GUIDE.md), 자세한 흐름은 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), 운영 방법은 [docs/OPERATIONS.md](docs/OPERATIONS.md)를 참고하세요.

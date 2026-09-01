@@ -28,7 +28,7 @@ export function ActivityTimeline({ activities }: { activities: ActivityEvent[] }
             <div className="event-copy">
               <div><strong>{activity.title}</strong><time>{new Date(activity.timestamp).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</time></div>
               {activity.detail && <p>{activity.detail}</p>}
-              <small>{activity.source}</small>
+              <small>{activity.taskId ? `${activity.taskId} · ` : ""}{activity.source}</small>
             </div>
             {index === 0 && <span className="latest-marker">LIVE</span>}
           </article>
