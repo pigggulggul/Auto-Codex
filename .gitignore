@@ -1,0 +1,53 @@
+# Dependencies and package-manager caches
+node_modules/
+.npm-cache/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/install-state.gz
+.yarn/build-state.yml
+
+# Build and test output
+dist/
+build-server/
+out/
+.vite/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# Local runtime files
+*.log
+*.pid
+tmp/
+temp/
+*.tmp
+*.temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Keep project instructions, Codex configuration, and project skills tracked.
+# .agents/ and .codex/ are intentionally not ignored.
