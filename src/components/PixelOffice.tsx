@@ -6,10 +6,15 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   CARPET_ASSETS,
+  CHARACTER_DRAW_HEIGHT,
+  CHARACTER_DRAW_WIDTH,
   CHARACTER_ASSETS,
+  CHARACTER_FRAME_HEIGHT,
+  CHARACTER_FRAME_WIDTH,
   FURNITURE,
   FLOOR_ASSETS,
   PET_ASSETS,
+  PET_FRAME_SIZE,
   REST_SPOTS,
   ROOM_LAYOUTS,
   ROLE_COLORS,
@@ -21,17 +26,19 @@ import {
   WORLD_COLS,
   WORLD_ROWS,
   characterFrame,
+  characterStateRow,
   createBlockedTiles,
   directionBetween,
-  directionRow,
   findPath,
   furnitureAssetPath,
+  furnitureVisualRect,
   isRuntimeActive,
   isWalkable,
   pointCenter,
   type Direction,
   type TilePoint,
 } from "../world/pixelWorld";
+import { characterIndexForRole, type WorldCharacterAssignments } from "../lib/worldCharacters";
 
 type Props = {
   run: RunSnapshot | null;
@@ -43,6 +50,8 @@ type Props = {
   activeRole: AgentRole;
   modelLabel: string;
   onAssignPet: (role: AgentRole, petId: string) => void;
+  characterAssignments: WorldCharacterAssignments;
+  onAssignCharacter: (role: AgentRole, index: number) => void;
 };
 
 type WorldAgent = {
@@ -80,8 +89,14 @@ type WorldPet = {
 type Point = { x: number; y: number };
 type Handoff = { from: AgentRole; to: AgentRole; title: string };
 
+declare global {
+  interface Window {
+    render_game_to_text?: () => string;
+    advanceTime?: (ms: number) => void;
+  }
+}
+
 const BLOCKED_TILES = createBlockedTiles();
-const WORLD_STORAGE_KEY = "auto-codex.pixel-world.characters";
 const PC_ON_ASSETS = [1, 2, 3].map((frame) => `${ASSET_ROOT}/furniture/PC/PC_FRONT_ON_${frame}.png`);
 
 const ZONE_RECTS: Array<{ role: AgentRole; col: number; row: number; width: number; height: number }> = ROOM_LAYOUTS
@@ -89,6 +104,7 @@ const ZONE_RECTS: Array<{ role: AgentRole; col: number; row: number; width: numb
   .map((room) => ({ role: room.role as AgentRole, col: room.col, row: room.row, width: room.width, height: room.height }));
 
 const GROUND_OFFSET_Y = 3;
+const CHARACTER_FOOT_SINK = 1;
 const WALL_DEPTH = 6;
 const FLOOR_INDEX_MAP = Array.from({ length: WORLD_ROWS }, (_, row) => Array.from({ length: WORLD_COLS }, (_, col) => (
   ROOM_LAYOUTS.find((room) => col >= room.col && col < room.col + room.width && row >= room.row && row < room.row + room.height)?.floorIndex ?? 4
@@ -106,16 +122,23 @@ function drawHorizontalWallSegment(
   const y = Math.round(offset.y + row * TILE_SIZE * zoom);
   const pixelWidth = width * TILE_SIZE * zoom;
   const depth = WALL_DEPTH * zoom;
-  ctx.fillStyle = "#192e32";
+  ctx.fillStyle = "#3e2418";
   ctx.fillRect(x, y, pixelWidth, depth + zoom);
-  ctx.fillStyle = "#718489";
+  ctx.fillStyle = "#9a572b";
   ctx.fillRect(x, y, pixelWidth, zoom);
-  ctx.fillStyle = "#aebbb4";
+  ctx.fillStyle = "#d08a43";
   ctx.fillRect(x, y + zoom, pixelWidth, zoom);
-  ctx.fillStyle = "#3f585c";
+  ctx.fillStyle = "#7b4223";
   ctx.fillRect(x, y + 2 * zoom, pixelWidth, 2 * zoom);
-  ctx.fillStyle = "#263e42";
+  ctx.fillStyle = "#512d1b";
   ctx.fillRect(x, y + 4 * zoom, pixelWidth, depth - 4 * zoom + zoom);
+  for (let plank = 1; plank < width; plank += 1) {
+    const lineX = x + plank * TILE_SIZE * zoom;
+    ctx.fillStyle = "#3a2117";
+    ctx.fillRect(lineX, y + zoom, zoom, depth);
+    ctx.fillStyle = "rgba(236, 164, 85, .42)";
+    ctx.fillRect(lineX + zoom, y + 2 * zoom, zoom, zoom);
+  }
 }
 
 function drawVerticalWallSegment(
@@ -130,16 +153,23 @@ function drawVerticalWallSegment(
   const y = Math.round(offset.y + row * TILE_SIZE * zoom);
   const pixelHeight = height * TILE_SIZE * zoom;
   const depth = WALL_DEPTH * zoom;
-  ctx.fillStyle = "#192e32";
+  ctx.fillStyle = "#3e2418";
   ctx.fillRect(x, y, depth + zoom, pixelHeight);
-  ctx.fillStyle = "#718489";
+  ctx.fillStyle = "#9a572b";
   ctx.fillRect(x, y, zoom, pixelHeight);
-  ctx.fillStyle = "#aebbb4";
+  ctx.fillStyle = "#d08a43";
   ctx.fillRect(x + zoom, y, zoom, pixelHeight);
-  ctx.fillStyle = "#3f585c";
+  ctx.fillStyle = "#7b4223";
   ctx.fillRect(x + 2 * zoom, y, 2 * zoom, pixelHeight);
-  ctx.fillStyle = "#263e42";
+  ctx.fillStyle = "#512d1b";
   ctx.fillRect(x + 4 * zoom, y, depth - 4 * zoom + zoom, pixelHeight);
+  for (let plank = 1; plank < height; plank += 1) {
+    const lineY = y + plank * TILE_SIZE * zoom;
+    ctx.fillStyle = "#3a2117";
+    ctx.fillRect(x + zoom, lineY, depth, zoom);
+    ctx.fillStyle = "rgba(236, 164, 85, .42)";
+    ctx.fillRect(x + 2 * zoom, lineY + zoom, zoom, zoom);
+  }
 }
 
 function drawHorizontalWall(
@@ -242,15 +272,6 @@ function currentTask(run: RunSnapshot | null, agent: AgentSnapshot): TaskNode | 
     ?? null;
 }
 
-function loadCharacterAssignments(): Partial<Record<AgentRole, number>> {
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(WORLD_STORAGE_KEY) ?? "{}") as Record<string, unknown>;
-    return Object.fromEntries(Object.entries(stored).filter(([, value]) => typeof value === "number")) as Partial<Record<AgentRole, number>>;
-  } catch {
-    return {};
-  }
-}
-
 function initialWorldAgent(snapshot: AgentSnapshot, index: number, assignment: number): WorldAgent {
   const rest = REST_SPOTS[snapshot.role];
   const center = pointCenter(rest);
@@ -317,23 +338,27 @@ function moveEntity(
   dt: number,
   speed: number,
 ): void {
-  const next = entity.path[0];
-  if (!next) return;
-  const from = { col: entity.tileCol, row: entity.tileRow };
-  entity.direction = directionBetween(from, next);
-  entity.moveProgress += (speed / TILE_SIZE) * dt;
-  const start = pointCenter(from);
-  const end = pointCenter(next);
-  const progress = Math.min(entity.moveProgress, 1);
-  entity.x = start.x + (end.x - start.x) * progress;
-  entity.y = start.y + (end.y - start.y) * progress;
-  if (entity.moveProgress >= 1) {
-    entity.tileCol = next.col;
-    entity.tileRow = next.row;
-    entity.x = end.x;
-    entity.y = end.y;
-    entity.path.shift();
-    entity.moveProgress = 0;
+  let remainingDistance = speed * dt;
+  while (remainingDistance > 0 && entity.path.length > 0) {
+    const next = entity.path[0];
+    const from = { col: entity.tileCol, row: entity.tileRow };
+    entity.direction = directionBetween(from, next);
+    const distanceToNextTile = (1 - entity.moveProgress) * TILE_SIZE;
+    const travelled = Math.min(remainingDistance, distanceToNextTile);
+    entity.moveProgress += travelled / TILE_SIZE;
+    remainingDistance -= travelled;
+    const start = pointCenter(from);
+    const end = pointCenter(next);
+    entity.x = start.x + (end.x - start.x) * entity.moveProgress;
+    entity.y = start.y + (end.y - start.y) * entity.moveProgress;
+    if (entity.moveProgress >= 1 - Number.EPSILON) {
+      entity.tileCol = next.col;
+      entity.tileRow = next.row;
+      entity.x = end.x;
+      entity.y = end.y;
+      entity.path.shift();
+      entity.moveProgress = 0;
+    }
   }
 }
 
@@ -366,7 +391,7 @@ function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, wi
 
 function drawBubble(ctx: CanvasRenderingContext2D, agent: WorldAgent, text: string, zoom: number, offset: Point): void {
   const centerX = offset.x + agent.x * zoom;
-  const bottomY = offset.y + (agent.y - 35) * zoom;
+  const bottomY = offset.y + (agent.y - CHARACTER_DRAW_HEIGHT - 3) * zoom;
   const width = Math.max(34, text.length * 5 + 10) * zoom / 2;
   const height = 13 * zoom;
   const x = centerX - width / 2;
@@ -401,7 +426,16 @@ function activityBubble(agent: WorldAgent, handoff: Handoff | null, now: number)
   return null;
 }
 
-export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, activeRole, modelLabel }: Props) {
+export function PixelOffice({
+  run,
+  bridgeConnected,
+  appServerReady,
+  soloState,
+  activeRole,
+  modelLabel,
+  characterAssignments,
+  onAssignCharacter,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const assetsRef = useRef(new Map<string, HTMLImageElement>());
   const agentsRef = useRef(new Map<AgentRole, WorldAgent>());
@@ -411,8 +445,8 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
   const panRef = useRef<Point>({ x: 0, y: 0 });
   const dragRef = useRef<{ pointerId: number; startX: number; startY: number; panX: number; panY: number; moved: boolean } | null>(null);
   const previousRun = useRef<RunSnapshot | null>(null);
+  const timeOffsetRef = useRef(0);
   const [selectedRole, setSelectedRole] = useState<AgentRole | null>(null);
-  const [characterAssignments, setCharacterAssignments] = useState(loadCharacterAssignments);
   const [assetStatus, setAssetStatus] = useState({ loaded: 0, total: assetUrls().length, errors: [] as string[] });
   const [zoom, setZoom] = useState(2);
   const [handoff, setHandoff] = useState<Handoff | null>(null);
@@ -427,6 +461,34 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
   useEffect(() => { selectedRoleRef.current = selectedRole; }, [selectedRole]);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { handoffRef.current = handoff; }, [handoff]);
+
+  useEffect(() => {
+    const renderWorldState = () => JSON.stringify({
+      coordinateSystem: "origin at the top-left; columns increase rightward and rows increase downward",
+      zoom: zoomRef.current,
+      selectedRole: selectedRoleRef.current,
+      agents: Array.from(agentsRef.current.values()).map((agent) => ({
+        role: agent.role,
+        status: agent.snapshot.status,
+        activity: agent.snapshot.activity,
+        tile: { col: agent.tileCol, row: agent.tileRow },
+        moving: agent.path.length > 0 || agent.moveProgress > 0,
+      })),
+      pets: petsRef.current.map((pet) => ({
+        id: pet.id,
+        tile: { col: pet.tileCol, row: pet.tileRow },
+        moving: pet.path.length > 0 || pet.moveProgress > 0,
+      })),
+    });
+    window.render_game_to_text = renderWorldState;
+    window.advanceTime = (ms: number) => {
+      if (Number.isFinite(ms) && ms > 0) timeOffsetRef.current += ms;
+    };
+    return () => {
+      if (window.render_game_to_text === renderWorldState) delete window.render_game_to_text;
+      delete window.advanceTime;
+    };
+  }, []);
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -463,7 +525,7 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
   useEffect(() => {
     const now = performance.now();
     agents.forEach((snapshot, index) => {
-      const assigned = characterAssignments[snapshot.role] ?? index % CHARACTER_ASSETS.length;
+      const assigned = characterIndexForRole(snapshot.role, characterAssignments);
       let worldAgent = agentsRef.current.get(snapshot.role);
       if (!worldAgent) {
         worldAgent = initialWorldAgent(snapshot, index, assigned);
@@ -509,10 +571,15 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
     ctx.imageSmoothingEnabled = false;
     let animationFrame = 0;
     let previousTime = performance.now();
+    let previousOffset = timeOffsetRef.current;
 
     const draw = (time: number) => {
-      const dt = Math.min((time - previousTime) / 1000, 0.05);
+      const simulationTime = time + timeOffsetRef.current;
+      const realDelta = Math.min(Math.max(0, time - previousTime), 50);
+      const forcedDelta = Math.max(0, timeOffsetRef.current - previousOffset);
+      const dt = (realDelta + forcedDelta) / 1000;
       previousTime = time;
+      previousOffset = timeOffsetRef.current;
       const currentZoom = zoomRef.current;
       const worldWidth = WORLD_COLS * TILE_SIZE * currentZoom;
       const worldHeight = WORLD_ROWS * TILE_SIZE * currentZoom;
@@ -532,23 +599,23 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
           agent.path = [];
           agent.moveProgress = 0;
         } else {
-          moveEntity(agent, dt, 52);
+          moveEntity(agent, dt, 34);
         }
-        if (!reducedMotion && !isRuntimeActive(agent.snapshot.status) && agent.path.length === 0 && time > agent.nextWanderAt && time > agent.manualUntil && time > agent.handoffUntil) {
-          routeAgent(agent, randomRestTarget(agent.role), time);
-          agent.nextWanderAt = time + 3200 + Math.random() * 4200;
+        if (!reducedMotion && !isRuntimeActive(agent.snapshot.status) && agent.path.length === 0 && simulationTime > agent.nextWanderAt && simulationTime > agent.manualUntil && simulationTime > agent.handoffUntil) {
+          routeAgent(agent, randomRestTarget(agent.role), simulationTime);
+          agent.nextWanderAt = simulationTime + 3200 + Math.random() * 4200;
         }
       }
 
       for (const pet of petsRef.current) {
         if (reducedMotion && pet.path.length > 0) pet.path = [];
         else moveEntity(pet, dt, 38);
-        if (!reducedMotion && pet.path.length === 0 && time > pet.nextWanderAt) {
+        if (!reducedMotion && pet.path.length === 0 && simulationTime > pet.nextWanderAt) {
           const selected = selectedRoleRef.current ? agentsRef.current.get(selectedRoleRef.current) : null;
           const follow = selected && Math.abs(selected.tileCol - pet.tileCol) + Math.abs(selected.tileRow - pet.tileRow) < 8;
           const target = follow ? randomRestTarget(selected.role) : { col: 3 + Math.floor(Math.random() * 26), row: 7 + Math.floor(Math.random() * 4) };
           if (isWalkable(target, BLOCKED_TILES)) pet.path = findPath({ col: pet.tileCol, row: pet.tileRow }, target, BLOCKED_TILES);
-          pet.nextWanderAt = time + 3500 + Math.random() * 5000;
+          pet.nextWanderAt = simulationTime + 3500 + Math.random() * 5000;
         }
       }
 
@@ -583,13 +650,6 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
           (zone.height - 1) * TILE_SIZE * currentZoom,
         );
         ctx.restore();
-        ctx.fillStyle = "rgba(30, 44, 45, .82)";
-        ctx.fillRect(offset.x + (zone.col + 0.55) * TILE_SIZE * currentZoom, offset.y + (zone.row + 0.34) * TILE_SIZE * currentZoom, Math.min(zone.width - 1.1, 5.8) * TILE_SIZE * currentZoom, 8 * currentZoom);
-        ctx.fillStyle = "#fffbe8";
-        ctx.font = `700 ${4.5 * currentZoom}px monospace`;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(ROLE_LABELS[zone.role].toUpperCase(), offset.x + (zone.col + 0.82) * TILE_SIZE * currentZoom, offset.y + (zone.row + 0.58) * TILE_SIZE * currentZoom);
       }
 
       const carpet = assetsRef.current.get(CARPET_ASSETS[1]);
@@ -605,15 +665,16 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
         let url = furnitureAssetPath(item.asset);
         if (item.ownerRole && item.id.endsWith("-pc")) {
           const owner = agentsRef.current.get(item.ownerRole);
-          if (owner && isRuntimeActive(owner.snapshot.status)) url = PC_ON_ASSETS[Math.floor(time / 250) % PC_ON_ASSETS.length];
+          if (owner && isRuntimeActive(owner.snapshot.status)) url = PC_ON_ASSETS[Math.floor(simulationTime / 250) % PC_ON_ASSETS.length];
         }
         const image = assetsRef.current.get(url);
         if (!image) continue;
-        const x = offset.x + item.col * TILE_SIZE * currentZoom;
-        const y = offset.y + item.row * TILE_SIZE * currentZoom;
+        const rect = furnitureVisualRect(item, image.naturalWidth, image.naturalHeight);
+        const x = offset.x + rect.x * currentZoom;
+        const y = offset.y + rect.y * currentZoom;
         drawables.push({
-          z: item.row * TILE_SIZE + item.height,
-          draw: () => ctx.drawImage(image, x, y, item.width * currentZoom, item.height * currentZoom),
+          z: rect.y + rect.height,
+          draw: () => ctx.drawImage(image, x, y, rect.width * currentZoom, rect.height * currentZoom),
         });
       }
 
@@ -622,11 +683,11 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
         const selected = selectedRoleRef.current === agent.role;
         const sprite = assetsRef.current.get(CHARACTER_ASSETS[agent.spriteIndex % CHARACTER_ASSETS.length]);
         const seated = isRuntimeActive(agent.snapshot.status) && !moving && agent.tileCol === STATIONS[agent.role].col && agent.tileRow === STATIONS[agent.role].row;
-        const bounce = !reducedMotion && agent.snapshot.activity === "success" ? Math.abs(Math.sin(time / 170)) * 4 : 0;
-        const shake = !reducedMotion && agent.snapshot.activity === "error" ? Math.sin(time / 75) * 1.4 : 0;
+        const bounce = !reducedMotion && agent.snapshot.activity === "success" ? Math.abs(Math.sin(simulationTime / 170)) * 4 : 0;
+        const shake = !reducedMotion && agent.snapshot.activity === "error" ? Math.sin(simulationTime / 75) * 1.4 : 0;
         const groundY = agent.y + GROUND_OFFSET_Y + (seated ? 2 : 0);
-        const drawX = offset.x + (agent.x - 8 + shake) * currentZoom;
-        const drawY = offset.y + (groundY - 32 - bounce) * currentZoom;
+        const drawX = offset.x + (agent.x - CHARACTER_DRAW_WIDTH / 2 + shake) * currentZoom;
+        const drawY = offset.y + (groundY - CHARACTER_DRAW_HEIGHT + CHARACTER_FOOT_SINK - bounce) * currentZoom;
         drawables.push({
           z: agent.y + 8,
           draw: () => {
@@ -634,7 +695,7 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
             ctx.globalAlpha = 0.22;
             ctx.fillStyle = "#162326";
             ctx.beginPath();
-            ctx.ellipse(offset.x + agent.x * currentZoom, offset.y + groundY * currentZoom, 7 * currentZoom, 2.5 * currentZoom, 0, 0, Math.PI * 2);
+            ctx.ellipse(offset.x + agent.x * currentZoom, offset.y + groundY * currentZoom, 9 * currentZoom, 2.5 * currentZoom, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
             if (selected) {
@@ -642,20 +703,20 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
               ctx.strokeStyle = "#fff9a8";
               ctx.lineWidth = 1.5 * currentZoom;
               ctx.setLineDash([2 * currentZoom, 2 * currentZoom]);
-              ctx.strokeRect(drawX - 2 * currentZoom, drawY - 2 * currentZoom, 20 * currentZoom, 35 * currentZoom);
+              ctx.strokeRect(drawX - 2 * currentZoom, drawY - 2 * currentZoom, (CHARACTER_DRAW_WIDTH + 4) * currentZoom, (CHARACTER_DRAW_HEIGHT + 4) * currentZoom);
               ctx.restore();
             }
             if (!sprite) return;
-            const frame = reducedMotion ? 0 : characterFrame(agent.snapshot.activity, moving, time / 1000 + agent.spriteIndex * 0.17);
-            const row = directionRow(agent.direction);
+            const frame = reducedMotion ? 0 : characterFrame(agent.snapshot.activity, moving, simulationTime / 1000 + agent.spriteIndex * 0.17);
+            const row = characterStateRow(agent.snapshot.activity, moving);
             if (agent.direction === "left") {
               ctx.save();
-              ctx.translate(drawX + 16 * currentZoom, 0);
+              ctx.translate(drawX + CHARACTER_DRAW_WIDTH * currentZoom, 0);
               ctx.scale(-1, 1);
-              ctx.drawImage(sprite, frame * 16, row * 32, 16, 32, 0, drawY, 16 * currentZoom, 32 * currentZoom);
+              ctx.drawImage(sprite, frame * CHARACTER_FRAME_WIDTH, row * CHARACTER_FRAME_HEIGHT, CHARACTER_FRAME_WIDTH, CHARACTER_FRAME_HEIGHT, 0, drawY, CHARACTER_DRAW_WIDTH * currentZoom, CHARACTER_DRAW_HEIGHT * currentZoom);
               ctx.restore();
             } else {
-              ctx.drawImage(sprite, frame * 16, row * 32, 16, 32, drawX, drawY, 16 * currentZoom, 32 * currentZoom);
+              ctx.drawImage(sprite, frame * CHARACTER_FRAME_WIDTH, row * CHARACTER_FRAME_HEIGHT, CHARACTER_FRAME_WIDTH, CHARACTER_FRAME_HEIGHT, drawX, drawY, CHARACTER_DRAW_WIDTH * currentZoom, CHARACTER_DRAW_HEIGHT * currentZoom);
             }
           },
         });
@@ -665,7 +726,7 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
         const sprite = assetsRef.current.get(PET_ASSETS[pet.spriteIndex]);
         if (!sprite) continue;
         const moving = pet.path.length > 0 || pet.moveProgress > 0;
-        const frame = reducedMotion ? 0 : Math.floor(time / (moving ? 170 : 330)) % 3;
+        const frame = reducedMotion ? 0 : Math.floor(simulationTime / (moving ? 170 : 330)) % 3;
         let sourceRow = 0;
         let sourceCol = moving ? frame : 3 + frame;
         if (pet.direction === "up") sourceRow = 1;
@@ -680,14 +741,14 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
           draw: () => {
             if (pet.direction === "left") {
               ctx.save();
-              ctx.translate(x + 16 * currentZoom, 0);
+              ctx.translate(x + PET_FRAME_SIZE * currentZoom, 0);
               ctx.scale(-1, 1);
-              ctx.drawImage(sprite, sourceCol * 16, sourceRow * 16, 16, 16, 0, y, 16 * currentZoom, 16 * currentZoom);
+              ctx.drawImage(sprite, sourceCol * PET_FRAME_SIZE, sourceRow * PET_FRAME_SIZE, PET_FRAME_SIZE, PET_FRAME_SIZE, 0, y, PET_FRAME_SIZE * currentZoom, PET_FRAME_SIZE * currentZoom);
               ctx.restore();
             } else {
-              ctx.drawImage(sprite, sourceCol * 16, sourceRow * 16, 16, 16, x, y, 16 * currentZoom, 16 * currentZoom);
+              ctx.drawImage(sprite, sourceCol * PET_FRAME_SIZE, sourceRow * PET_FRAME_SIZE, PET_FRAME_SIZE, PET_FRAME_SIZE, x, y, PET_FRAME_SIZE * currentZoom, PET_FRAME_SIZE * currentZoom);
             }
-            if (pet.heartUntil > time) {
+            if (pet.heartUntil > simulationTime) {
               ctx.fillStyle = "#ee6f8f";
               ctx.font = `700 ${8 * currentZoom}px sans-serif`;
               ctx.textAlign = "center";
@@ -701,21 +762,23 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
       drawables.forEach((drawable) => drawable.draw());
 
       for (const agent of agentsRef.current.values()) {
-        const bubble = activityBubble(agent, handoffRef.current, time);
+        const bubble = activityBubble(agent, handoffRef.current, simulationTime);
         if (bubble) drawBubble(ctx, agent, bubble, currentZoom, offset);
-        if (selectedRoleRef.current === agent.role || isRuntimeActive(agent.snapshot.status)) {
-          const label = ROLE_LABELS[agent.role];
-          const x = offset.x + agent.x * currentZoom;
-          const y = offset.y + (agent.y + 8) * currentZoom;
-          const width = Math.max(38, label.length * 4.3) * currentZoom;
-          ctx.fillStyle = "rgba(28, 43, 45, .88)";
-          ctx.fillRect(x - width / 2, y, width, 8 * currentZoom);
-          ctx.fillStyle = selectedRoleRef.current === agent.role ? "#fff6a5" : "#f5f1df";
-          ctx.font = `700 ${4.5 * currentZoom}px monospace`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(label, x, y + 4 * currentZoom, width - 3 * currentZoom);
-        }
+      }
+
+      // Keep room headers above furniture and characters so a large prop can
+      // never visually cut the role label in half.
+      for (const zone of ZONE_RECTS) {
+        const x = offset.x + (zone.col + 0.55) * TILE_SIZE * currentZoom;
+        const y = offset.y + (zone.row + 0.28) * TILE_SIZE * currentZoom;
+        const width = Math.min(zone.width - 1.1, 5.8) * TILE_SIZE * currentZoom;
+        ctx.fillStyle = "rgba(28, 43, 45, .9)";
+        ctx.fillRect(x, y, width, 7 * currentZoom);
+        ctx.fillStyle = "#fffbe8";
+        ctx.font = `700 ${4.5 * currentZoom}px monospace`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(ROLE_LABELS[zone.role].toUpperCase(), x + 4 * currentZoom, y + 3.5 * currentZoom, width - 6 * currentZoom);
       }
 
       animationFrame = window.requestAnimationFrame(draw);
@@ -765,11 +828,7 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
   };
 
   const setCharacter = (role: AgentRole, index: number) => {
-    setCharacterAssignments((current) => {
-      const next = { ...current, [role]: index };
-      window.localStorage.setItem(WORLD_STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
+    onAssignCharacter(role, index);
   };
 
   const setWorldZoom = (next: number) => {
@@ -791,11 +850,17 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
           <span className={`world-live-dot ${appServerReady ? "online" : bridgeConnected ? "bridge" : ""}`} />
           <div><strong>PIXEL AGENT OFFICE</strong><small>{appServerReady ? "LIVE RUNTIME" : bridgeConnected ? "BRIDGE CONNECTING" : "OFFLINE · AMBIENT MODE"}</small></div>
         </div>
-        <div className="world-run-meta">
-          <span>{modelLabel}</span>
-          <span>{run ? `${completed}/${total} QUESTS · ${run.status.toUpperCase()}` : "AGENTS RESTING"}</span>
-        </div>
-      </div>
+         <div className="world-run-meta">
+           <span>{modelLabel}</span>
+           <span>{run ? `${completed}/${total} QUESTS · ${run.status.toUpperCase()}` : "AGENTS RESTING"}</span>
+         </div>
+         <div className="pixel-world-controls" aria-label="월드 화면 제어">
+           <button type="button" onClick={() => setWorldZoom(zoom - 1)} disabled={zoom <= 2} aria-label="축소">−</button>
+           <span>{zoom}×</span>
+           <button type="button" onClick={() => setWorldZoom(zoom + 1)} disabled={zoom >= 4} aria-label="확대">+</button>
+           <button type="button" onClick={() => { panRef.current = { x: 0, y: 0 }; setWorldZoom(2); }}>RESET</button>
+         </div>
+       </div>
 
       <div className="pixel-world-stage">
         <canvas
@@ -823,18 +888,9 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
             dragRef.current = null;
           }}
           onPointerCancel={() => { dragRef.current = null; }}
-          onWheel={(event) => {
-            event.preventDefault();
-            setWorldZoom(zoomRef.current + (event.deltaY < 0 ? 1 : -1));
-          }}
+          // Scrolling over the map must never alter the fixed world zoom.
+          onWheel={() => {}}
         />
-
-        <div className="pixel-world-controls" aria-label="월드 화면 제어">
-          <button type="button" onClick={() => setWorldZoom(zoom - 1)} disabled={zoom <= 2} aria-label="축소">−</button>
-          <span>{zoom}×</span>
-          <button type="button" onClick={() => setWorldZoom(zoom + 1)} disabled={zoom >= 4} aria-label="확대">+</button>
-          <button type="button" onClick={() => { panRef.current = { x: 0, y: 0 }; setWorldZoom(2); }}>RESET</button>
-        </div>
 
         <div className={`pixel-asset-status ${assetStatus.errors.length ? "has-error" : ""}`}>
           {assetStatus.loaded < assetStatus.total ? `ASSETS ${assetStatus.loaded}/${assetStatus.total}` : assetStatus.errors.length ? `${assetStatus.errors.length} ASSET ERRORS` : "PIXEL ASSETS READY"}
@@ -862,7 +918,7 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
                 <button
                   type="button"
                   key={url}
-                  className={(characterAssignments[selectedRole] ?? ROLE_ORDER.indexOf(selectedRole) % CHARACTER_ASSETS.length) === index ? "active" : ""}
+                  className={characterIndexForRole(selectedRole, characterAssignments) === index ? "active" : ""}
                   onClick={() => setCharacter(selectedRole, index)}
                   aria-label={`캐릭터 ${index + 1}`}
                 >
@@ -876,12 +932,19 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
       </div>
 
       <div className="pixel-agent-roster" aria-label="에이전트 상태 목록">
-        {agents.map((agent) => (
-          <button type="button" key={agent.id} className={selectedRole === agent.role ? "selected" : ""} onClick={() => setSelectedRole(agent.role)}>
-            <i style={{ backgroundColor: ROLE_COLORS[agent.role] }} />
-            <span><strong>{ROLE_LABELS[agent.role]}</strong><small>{PET_PRESENTATIONS[agent.activity].label}</small></span>
-          </button>
-        ))}
+        {agents.map((agent, index) => {
+          const spriteIndex = characterIndexForRole(agent.role, characterAssignments);
+          return (
+            <button type="button" key={agent.id} className={selectedRole === agent.role ? "selected" : ""} onClick={() => setSelectedRole(agent.role)}>
+              <span
+                className="pixel-roster-portrait"
+                style={{ backgroundImage: `url(${CHARACTER_ASSETS[spriteIndex % CHARACTER_ASSETS.length]})` }}
+                aria-hidden="true"
+              />
+              <span><strong>{ROLE_LABELS[agent.role]}</strong><small>{PET_PRESENTATIONS[agent.activity].label}</small></span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="world-legend pixel-world-legend">
@@ -889,7 +952,7 @@ export function PixelOffice({ run, bridgeConnected, appServerReady, soloState, a
         <span>캐릭터 클릭: 상세·외형 변경</span>
         <span>대기 캐릭터 선택 후 바닥 클릭: 이동</span>
         <span>펫 클릭: 교감</span>
-        <span>휠·버튼: 확대, 드래그: 이동</span>
+        <span>확대 버튼: 줌, 드래그: 이동 · 휠 줌 비활성</span>
       </div>
     </section>
   );

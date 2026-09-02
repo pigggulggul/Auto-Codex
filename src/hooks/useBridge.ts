@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ActivityEvent,
   ApprovalRequest,
@@ -10,6 +10,7 @@ import type {
   ModelInfo,
   ReasoningEffort,
 } from "../../shared/protocol";
+import { loadTokenUsage, mergeTokenUsage, saveTokenUsage, summarizeTokenUsage } from "../lib/tokenUsage";
 
 const EMPTY_SNAPSHOT: BridgeSnapshot = {
   connected: false,
@@ -54,6 +55,8 @@ export function useBridge() {
   const [turnStatus, setTurnStatus] = useState("idle");
   const [isPickingProject, setIsPickingProject] = useState(false);
   const [isTrustingProject, setIsTrustingProject] = useState(false);
+  const [tokenEntries, setTokenEntries] = useState(loadTokenUsage);
+  const tokenUsage = useMemo(() => summarizeTokenUsage(tokenEntries), [tokenEntries]);
 
   useEffect(() => {
     let disposed = false;
@@ -114,6 +117,13 @@ export function useBridge() {
             break;
           case "activity.event":
             setActivities((current) => [message.event, ...current].slice(0, 40));
+            break;
+          case "token.usage":
+            setTokenEntries((current) => {
+              const next = mergeTokenUsage(current, message.usage);
+              saveTokenUsage(next);
+              return next;
+            });
             break;
           case "approval.request":
             setApprovals((current) =>
@@ -193,6 +203,7 @@ export function useBridge() {
     refreshModels: () => send({ type: "models.refresh" }),
     assistantText,
     taskOutputs,
+    tokenUsage,
     startTurn: (
       prompt: string,
       skillMode: "auto" | "manual",

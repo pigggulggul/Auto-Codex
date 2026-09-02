@@ -15,21 +15,23 @@ type Props = {
 export function ProjectPanel({ currentPath, connected, isPicking, trustStatus, isTrusting, disabled, onSelect, onPick, onTrust }: Props) {
   const [value, setValue] = useState(() => window.localStorage.getItem("auto-codex.project") ?? "");
   const [confirmingTrust, setConfirmingTrust] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
     if (currentPath) setValue(currentPath);
   }, [currentPath]);
 
   return (
-    <div className="control-section project-control">
-      <div className="section-heading">
+    <details className="control-section project-control control-collapsible" open={expanded} onToggle={(event) => setExpanded(event.currentTarget.open)}>
+      <summary className="section-heading">
         <div>
           <span className="eyebrow">01 · WORKSPACE</span>
           <h2>프로젝트 연결</h2>
         </div>
-        {currentPath && <span className="check-mark" title="연결됨">✓</span>}
-      </div>
-      <label className="path-field">
+        <span className="summary-status">{currentPath && <span className="check-mark" title="연결됨">✓</span>}<span className="collapse-glyph" aria-hidden="true">⌄</span></span>
+      </summary>
+      <div className="control-section-body">
+        <label className="path-field">
         <span>LOCAL PATH</span>
         <div>
           <input
@@ -43,12 +45,12 @@ export function ProjectPanel({ currentPath, connected, isPicking, trustStatus, i
             경로 열기
           </button>
         </div>
-      </label>
-      <button className="folder-picker-button" type="button" onClick={onPick} disabled={!connected || disabled || isPicking}>
+        </label>
+        <button className="folder-picker-button" type="button" onClick={onPick} disabled={!connected || disabled || isPicking}>
         <span aria-hidden="true">▱</span>
         {isPicking ? "폴더 선택창을 확인하세요" : "폴더 선택…"}
-      </button>
-      {currentPath && trustStatus === "trusted" ? (
+        </button>
+        {currentPath && trustStatus === "trusted" ? (
         <div className="trust-confirmed"><span>✓</span> 이 프로젝트는 신뢰됨</div>
       ) : currentPath && (
         <div className="trust-box">
@@ -66,14 +68,15 @@ export function ProjectPanel({ currentPath, connected, isPicking, trustStatus, i
             </button>
           )}
         </div>
-      )}
-      {!connected && (
+        )}
+        {!connected && (
         <div className="bridge-offline-help">
           <strong>로컬 브리지가 꺼져 있습니다.</strong>
           <span><code>START_AUTO_CODEX.cmd</code>를 더블클릭해 열린 페이지에서 사용하세요.</span>
         </div>
-      )}
-      {currentPath && <p className="path-caption" title={currentPath}>{currentPath}</p>}
-    </div>
+        )}
+        {currentPath && <p className="path-caption" title={currentPath}>{currentPath}</p>}
+      </div>
+    </details>
   );
 }

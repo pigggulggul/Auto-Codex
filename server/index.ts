@@ -42,6 +42,7 @@ import {
 import { fallbackTaskPlan, parseTaskPlan, TASK_PLAN_OUTPUT_SCHEMA } from "./task-planner.js";
 import { parseClientMessage } from "./client-message.js";
 import { approvalResponse, type ApprovalProtocol } from "./approval-response.js";
+import { parseTokenUsage } from "./token-usage.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.AUTO_CODEX_PORT || 4781);
@@ -968,6 +969,8 @@ appServer.on("notification", (notification: ProtocolNotification) => {
   broadcast({ type: "protocol.event", method: notification.method });
   const params = notification.params;
   const context = runtimeRegistry.resolve(params);
+  const usage = parseTokenUsage(notification, context?.turnId ?? turnId);
+  if (usage) broadcast({ type: "token.usage", usage });
   if (notification.method === "item/agentMessage/delta") {
     const delta = typeof params?.delta === "string" ? params.delta : "";
     if (delta) {

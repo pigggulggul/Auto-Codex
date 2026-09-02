@@ -5,6 +5,17 @@ export const WORLD_COLS = 32;
 export const WORLD_ROWS = 18;
 export const CANVAS_WIDTH = WORLD_COLS * TILE_SIZE * 2;
 export const CANVAS_HEIGHT = WORLD_ROWS * TILE_SIZE * 2;
+// Character art uses square 64px source cells. The service renders those cells
+// in a 3:4 character box: 24x32 logical pixels, or 48x64 at default zoom.
+export const CHARACTER_FRAME_WIDTH = TILE_SIZE * 4;
+export const CHARACTER_FRAME_HEIGHT = TILE_SIZE * 4;
+export const CHARACTER_DRAW_WIDTH = TILE_SIZE * 1.5;
+export const CHARACTER_DRAW_HEIGHT = TILE_SIZE * 2;
+export const CHARACTER_FRAME_COLUMNS = 2;
+export const CHARACTER_SHEET_COLUMNS = 4;
+export const CHARACTER_STATE_ROWS = 4;
+export const ASSET_PIXEL_DENSITY = 2;
+export const PET_FRAME_SIZE = TILE_SIZE * 2;
 
 export type TilePoint = { col: number; row: number };
 export type Direction = "down" | "up" | "right" | "left";
@@ -47,10 +58,10 @@ export const STATIONS: Record<AgentRole, TilePoint> = {
   builder: { col: 10, row: 4 },
   documenter: { col: 17, row: 4 },
   visual: { col: 24, row: 4 },
-  integrator: { col: 3, row: 14 },
-  coordinator: { col: 10, row: 14 },
-  qa: { col: 17, row: 14 },
-  general: { col: 24, row: 14 },
+  integrator: { col: 3, row: 15 },
+  coordinator: { col: 10, row: 15 },
+  qa: { col: 17, row: 15 },
+  general: { col: 24, row: 15 },
 };
 
 export const REST_SPOTS: Record<AgentRole, TilePoint> = {
@@ -77,6 +88,8 @@ export type FurniturePlacement = {
   blocks?: boolean;
   mirrored?: boolean;
 };
+
+export type FurnitureVisualRect = { x: number; y: number; width: number; height: number };
 
 export type RoomLayout = {
   id: string;
@@ -147,39 +160,51 @@ function workstationFurniture(role: AgentRole, deskCol: number, deskRow: number)
 
 export const FURNITURE: FurniturePlacement[] = [
   ...TOP_ROLES.flatMap((role, index) => workstationFurniture(role, 2 + index * 7, 2)),
-  ...BOTTOM_ROLES.flatMap((role, index) => workstationFurniture(role, 2 + index * 7, 12)),
+  ...BOTTOM_ROLES.flatMap((role, index) => workstationFurniture(role, 2 + index * 7, 13)),
   { id: "lounge-sofa-top", asset: "SOFA/SOFA_FRONT.png", col: 15, row: 7, width: 32, height: 16, footprintW: 2, footprintH: 1, blocks: true },
   { id: "lounge-table", asset: "COFFEE_TABLE/COFFEE_TABLE.png", col: 15, row: 9, width: 32, height: 32, footprintW: 2, footprintH: 2, blocks: true },
   { id: "lounge-sofa-bottom", asset: "SOFA/SOFA_BACK.png", col: 15, row: 11, width: 32, height: 16, footprintW: 2, footprintH: 1, blocks: true },
-  { id: "whiteboard", asset: "WHITEBOARD/WHITEBOARD.png", col: 15, row: 1, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "books-left", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 5, row: 1, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "books-right", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 25, row: 1, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "plant-nw", asset: "PLANT/PLANT.png", col: 1, row: 1, width: 16, height: 32, footprintW: 1, footprintH: 2, blocks: true },
-  { id: "plant-ne", asset: "LARGE_PLANT/LARGE_PLANT.png", col: 29, row: 1, width: 32, height: 48, footprintW: 2, footprintH: 3, blocks: true },
-  { id: "plant-sw", asset: "PLANT_2/PLANT_2.png", col: 1, row: 15, width: 16, height: 32, footprintW: 1, footprintH: 2, blocks: true },
-  { id: "plant-se", asset: "FLOWER/FLOWER.png", col: 29, row: 15, width: 16, height: 32, footprintW: 1, footprintH: 2, blocks: true },
-  { id: "coffee", asset: "COFFEE/COFFEE.png", col: 15, row: 9, width: 16, height: 16, footprintW: 1, footprintH: 1 },
-  { id: "clock", asset: "CLOCK/CLOCK.png", col: 20, row: 1, width: 16, height: 32, footprintW: 1, footprintH: 1 },
-  { id: "books-middle-left", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 5, row: 5, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "books-middle-right", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 25, row: 5, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "clock-builder", asset: "CLOCK/CLOCK.png", col: 13, row: 1, width: 16, height: 32, footprintW: 1, footprintH: 1 },
-  { id: "lounge-plant-left", asset: "PLANT_2/PLANT_2.png", col: 14, row: 6, width: 16, height: 32, footprintW: 1, footprintH: 2 },
-  { id: "lounge-plant-right", asset: "PLANT/PLANT.png", col: 18, row: 6, width: 16, height: 32, footprintW: 1, footprintH: 2 },
-  { id: "books-bottom-left", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 5, row: 15, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "books-bottom-right", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 25, row: 15, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "clock-qa", asset: "CLOCK/CLOCK.png", col: 20, row: 15, width: 16, height: 32, footprintW: 1, footprintH: 1 },
-  { id: "whiteboard-qa", asset: "WHITEBOARD/WHITEBOARD.png", col: 15, row: 15, width: 32, height: 32, footprintW: 2, footprintH: 1 },
+  { id: "whiteboard", asset: "WHITEBOARD/WHITEBOARD.png", col: 16, row: 2, width: 32, height: 32, footprintW: 2, footprintH: 1 },
+  { id: "books-left", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 5, row: 2, width: 32, height: 32, footprintW: 2, footprintH: 1 },
+  { id: "books-right", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 25, row: 2, width: 32, height: 32, footprintW: 2, footprintH: 1 },
+  { id: "plant-nw", asset: "PLANT/PLANT.png", col: 1, row: 2, width: 16, height: 32, footprintW: 1, footprintH: 2, blocks: true },
+  { id: "plant-ne", asset: "LARGE_PLANT/LARGE_PLANT.png", col: 28, row: 2, width: 32, height: 48, footprintW: 2, footprintH: 3, blocks: true },
+  { id: "plant-sw", asset: "PLANT_2/PLANT_2.png", col: 1, row: 14, width: 16, height: 32, footprintW: 1, footprintH: 2, blocks: true },
+  { id: "plant-se", asset: "FLOWER/FLOWER.png", col: 29, row: 14, width: 16, height: 32, footprintW: 1, footprintH: 2, blocks: true },
+  { id: "coffee", asset: "COFFEE/COFFEE.png", col: 15, row: 10, width: 16, height: 16, footprintW: 1, footprintH: 1 },
+  { id: "clock", asset: "CLOCK/CLOCK.png", col: 20, row: 2, width: 16, height: 32, footprintW: 1, footprintH: 1 },
+  { id: "clock-builder", asset: "CLOCK/CLOCK.png", col: 13, row: 2, width: 16, height: 32, footprintW: 1, footprintH: 1 },
+  { id: "lounge-plant-left", asset: "PLANT_2/PLANT_2.png", col: 14, row: 7, width: 16, height: 32, footprintW: 1, footprintH: 2 },
+  { id: "lounge-plant-right", asset: "PLANT/PLANT.png", col: 17, row: 7, width: 16, height: 32, footprintW: 1, footprintH: 2 },
+  { id: "clock-qa", asset: "CLOCK/CLOCK.png", col: 20, row: 14, width: 16, height: 32, footprintW: 1, footprintH: 1 },
+  { id: "whiteboard-qa", asset: "WHITEBOARD/WHITEBOARD.png", col: 15, row: 14, width: 32, height: 32, footprintW: 2, footprintH: 1 },
 ];
 
 export const ASSET_ROOT = "/generated-pixel-assets";
 export const FLOOR_ASSETS = Array.from({ length: 9 }, (_, index) => `${ASSET_ROOT}/floors/floor_${index}.png`);
-export const CHARACTER_ASSETS = Array.from({ length: 6 }, (_, index) => `${ASSET_ROOT}/characters/char_${index}.png`);
+export const CHARACTER_ASSETS = Array.from({ length: 5 }, (_, index) => `${ASSET_ROOT}/characters/char_${index}.png`);
 export const PET_ASSETS = [`${ASSET_ROOT}/pets/claudio/pet.png`, `${ASSET_ROOT}/pets/gitcat/pet.png`];
 export const WALL_ASSET = `${ASSET_ROOT}/walls/wall_0.png`;
 export const CARPET_ASSETS = Array.from({ length: 3 }, (_, index) => `${ASSET_ROOT}/carpets/carpet_${index}.png`);
 
 export function furnitureAssetPath(asset: string): string {
   return `${ASSET_ROOT}/furniture/${asset}`;
+}
+
+export function furnitureVisualRect(
+  item: FurniturePlacement,
+  naturalWidth = item.width * ASSET_PIXEL_DENSITY,
+  naturalHeight = item.height * ASSET_PIXEL_DENSITY,
+): FurnitureVisualRect {
+  const width = naturalWidth / ASSET_PIXEL_DENSITY;
+  const height = naturalHeight / ASSET_PIXEL_DENSITY;
+  const footprintWidth = item.footprintW * TILE_SIZE;
+  return {
+    x: item.col * TILE_SIZE + (footprintWidth - width) / 2,
+    y: (item.row + item.footprintH) * TILE_SIZE - height,
+    width,
+    height,
+  };
 }
 
 export function tileKey(point: TilePoint): string {
@@ -259,22 +284,14 @@ export function directionBetween(from: TilePoint, to: TilePoint): Direction {
 }
 
 export function characterFrame(state: PetState, moving: boolean, elapsedSeconds: number): number {
-  const cycle = (frames: number[], duration: number): number => frames[Math.floor(elapsedSeconds / duration) % frames.length];
-  if (moving) return cycle([0, 1, 2, 1], 0.14);
-  if (state === "idle") return cycle([0, 1, 0, 2], 0.72);
-  if (state === "connecting") return cycle([3, 4], 0.32);
-  if (state === "thinking") return cycle([5, 6], 0.42);
-  if (state === "reading") return cycle([5, 6], 0.52);
-  if (state === "editing") return cycle([3, 4, 3], 0.24);
-  if (state === "running") return cycle([3, 4], 0.26);
-  if (state === "waitingApproval") return cycle([3, 4], 0.4);
-  if (state === "success") return cycle([0, 1, 2, 1], 0.16);
-  return cycle([2, 0, 2, 1], 0.2);
+  const duration = moving ? 0.16 : state === "idle" ? 0.68 : state === "thinking" || state === "reading" ? 0.42 : 0.28;
+  return Math.floor(elapsedSeconds / duration) % CHARACTER_FRAME_COLUMNS;
 }
 
-export function directionRow(direction: Direction): number {
-  if (direction === "up") return 1;
-  if (direction === "right" || direction === "left") return 2;
+export function characterStateRow(state: PetState, moving: boolean): number {
+  if (moving) return 1;
+  if (state === "editing" || state === "running" || state === "waitingApproval") return 2;
+  if (state === "thinking" || state === "reading" || state === "connecting") return 3;
   return 0;
 }
 

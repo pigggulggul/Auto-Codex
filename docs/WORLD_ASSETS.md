@@ -14,7 +14,24 @@ Auto Codex의 실제 픽셀 월드 이미지는 `public/world/`에 있습니다.
 | `auto-codex-effects.png` | 1254×1254 RGBA | 3×3 런타임 상태 이펙트 시트 |
 | `assets.json` | JSON | 크기, grid, 상태별 cell 좌표 |
 
-`auto-codex-campus.png`는 `.metaverse-map`의 배경이며, 기존 CSS 방과 가구는 클릭 영역만 남기고 숨깁니다. `auto-codex-effects.png`는 `idle`, `thinking`, `reading`, `editing`, `running`, `waitingApproval`, `success`, `error`, `handoff` 상태에 매핑됩니다.
+`auto-codex-campus.png`는 `.metaverse-map`의 배경이며, 기존 CSS 방과 가구는 클릭 영역만 남기고 숨깁니다. Canvas 픽셀 오피스는 논리 타일 16px을 유지하되 캐릭터·가구·바닥을 2배 픽셀 밀도로 내보내 기본 2× 표시에서 세부가 뭉개지지 않게 합니다. `auto-codex-effects.png`는 `idle`, `thinking`, `reading`, `editing`, `running`, `waitingApproval`, `success`, `error`, `handoff` 상태에 매핑됩니다.
+
+새 캐릭터 시트는 built-in ImageGen으로 생성한 뒤 프로젝트의
+`tools/build-character-sprites.py`로 64×64 셀, 4열×4행, 총 256×256 구조로
+정렬했습니다. 행 순서는 idle, moving, working, thinking이며 각 행의 앞
+2칸에 애니메이션 프레임을 넣고 나머지 2칸은 투명하게 유지합니다.
+제공 이미지는 체형과 픽셀 분위기 참고로만 사용했고, 캐릭터 정체성,
+헤어, 의상, 액세서리, 실루엣과 색 구성은 모두 새로 설계했습니다.
+
+```text
+Use case: stylized-concept
+Asset type: production sprite atlas for a top-down pixel office web game
+Input images: Image 1 guides only compact chibi proportions; Images 2-5 guide only cheerful pastel pixel atmosphere. Do not copy any referenced identity, silhouette, hair, clothing, accessory, or color blocking.
+Primary request: exactly eight full-body frames of one completely original character in a strict 2-column by 4-row source grid.
+Rows: IDLE, MOVING/WALKING, WORKING, THINKING; two readable animation frames per row.
+Style: crisp cozy pixel art, readable face, consistent square framing, original hair and outfit.
+Constraints: equal cells, aligned feet, transparent background, no labels, borders, watermark, scenery, furniture or shadow.
+```
 
 ## Generation prompts
 

@@ -902,3 +902,212 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .world-agent { transition: none; }
 }
+
+/* Pastel pixel-desk pass: compact controls, no nested rail scrollbar. */
+html,
+body {
+  background-color: #f8f2ff;
+  background-image:
+    radial-gradient(circle at 16% 16%, rgba(255, 186, 218, .48) 0 2px, transparent 3px),
+    radial-gradient(circle at 82% 8%, rgba(170, 208, 255, .5) 0 2px, transparent 3px),
+    linear-gradient(145deg, #fff8fc 0%, #f2f1ff 52%, #eef9ff 100%);
+  background-size: 32px 32px, 42px 42px, auto;
+}
+
+.metaverse-app.app-shell { max-width: 1460px; margin-inline: auto; padding-inline: 12px; }
+.metaverse-app .topbar {
+  height: 64px;
+  border-bottom-color: #cda9ca;
+  background: rgba(255, 248, 253, .94);
+  box-shadow: 0 5px 0 rgba(157, 126, 177, .1);
+}
+.metaverse-app .brand-mark {
+  border-color: #8e6d99;
+  color: #fff;
+  background: linear-gradient(145deg, #ff9ec7, #9aaeff);
+  box-shadow: 3px 3px 0 #74577f, inset 0 3px 0 rgba(255,255,255,.36);
+}
+.metaverse-app .topbar-meta { gap: 7px; }
+.top-model,
+.metaverse-app .local-only,
+.metaverse-app .connection-badge {
+  min-height: 32px;
+  border-color: #ddcce2;
+  color: #644f70;
+  background: #fffaff;
+  font-size: 11px;
+}
+
+.token-usage-cluster {
+  display: flex;
+  overflow: hidden;
+  border: 2px solid #c6b6dc;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 2px 2px 0 rgba(113, 85, 139, .12);
+}
+.token-usage-cluster > span {
+  min-width: 76px;
+  display: grid;
+  gap: 2px;
+  padding: 5px 9px;
+}
+.token-usage-cluster > span + span { border-left: 2px dashed #e4cfe2; }
+.token-usage-cluster small { color: #a37899; font-size: 9px; line-height: 1; }
+.token-usage-cluster strong { color: #5f4b76; font: 800 13px/1.1 monospace; }
+
+.metaverse-layout {
+  min-height: calc(100vh - 98px);
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 10px;
+  padding-block: 10px;
+}
+.left-rail { min-height: 0; gap: 8px; }
+.left-rail-switch {
+  padding: 5px;
+  border-color: #c29abf;
+  border-radius: 13px;
+  background: #fff9fc;
+  box-shadow: 4px 4px 0 rgba(128, 96, 145, .12);
+}
+.left-rail-switch button { min-height: 52px; padding: 7px 9px; }
+.left-rail-switch button > span { font-size: 16px; }
+.left-rail-switch button strong { font-size: 11px; }
+.left-rail-switch button small { font-size: 9px; }
+.left-rail-switch button.active,
+.left-rail-switch button.active:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f49bc0, #a9b5ff);
+  box-shadow: 3px 3px 0 #866f9b;
+}
+
+.metaverse-layout .control-card,
+.operations-panel,
+.world-shell {
+  border-color: #c29abf;
+  border-radius: 13px;
+  background: #fffaff;
+  box-shadow: 5px 5px 0 rgba(114, 84, 132, .13), inset 0 2px 0 #fff;
+}
+.metaverse-layout .control-card {
+  max-height: none;
+  overflow: clip;
+  scrollbar-width: none;
+}
+.metaverse-layout .control-section {
+  padding: 0;
+  border-bottom-color: #ead4e7;
+  background: rgba(255, 253, 255, .92);
+}
+.control-collapsible > summary {
+  min-height: 55px;
+  margin: 0 !important;
+  padding: 11px 13px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.control-collapsible > summary::-webkit-details-marker { display: none; }
+.control-collapsible > summary:hover { background: #fff1f8; }
+.control-collapsible > .control-section-body { padding: 0 13px 13px; }
+.control-collapsible:not([open]) > summary { background: #fbf4ff; }
+.control-collapsible .section-heading h2 { margin-top: 3px; font-size: 15px; }
+.control-collapsible .eyebrow { color: #b0759f; font-size: 9px; }
+.summary-status { display: flex; align-items: center; gap: 8px; }
+.collapse-glyph {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #dfbfda;
+  border-radius: 7px;
+  color: #8c6289;
+  background: #fff5fa;
+  font: 900 15px/1 monospace;
+  transition: transform .18s ease;
+}
+.control-collapsible[open] > summary .collapse-glyph { transform: rotate(180deg); }
+.section-refresh-button {
+  width: 100%;
+  margin-bottom: 7px;
+  padding: 6px 8px;
+  border: 2px dashed #d9bfd8;
+  border-radius: 7px;
+  color: #85637f;
+  background: #fff8fc;
+  cursor: pointer;
+  font-size: 10px;
+}
+.model-grid { grid-template-columns: 1fr 1fr; gap: 5px; }
+.model-option { min-height: 46px; grid-template-columns: 26px minmax(0, 1fr); gap: 6px; padding: 6px; border-color: #e6d5e5; background: #fff; }
+.model-option > em { display: none; }
+.model-orb { width: 25px; height: 25px; font-size: 12px; }
+.model-option strong { font-size: 11px; }
+.model-option small { display: none; }
+.effort-field { margin-top: 7px; }
+.effort-field > span { font-size: 9px; }
+.effort-field select { height: 34px; font-size: 11px; }
+.metaverse-layout .segmented button { height: 34px; font-size: 11px; }
+.metaverse-layout .helper-copy { margin-block: 7px 0; font-size: 10px; line-height: 1.5; }
+.metaverse-layout .skill-count { margin-top: 6px; font-size: 9px; }
+.metaverse-layout .execution-mode button { min-height: 44px; padding: 7px; }
+.metaverse-layout .execution-mode strong { font-size: 10px; }
+.metaverse-layout .execution-mode span { font-size: 9px; }
+.metaverse-layout .prompt-field textarea { min-height: 88px; padding: 10px 10px 24px; font-size: 12px; line-height: 1.5; }
+.metaverse-layout .run-button,
+.metaverse-layout .stop-button { height: 39px; font-size: 12px; }
+
+.operations-heading { min-height: 64px; background: linear-gradient(90deg, #fff0f7, #f3efff); }
+.operations-tabs button.active { color: #6c4c78; background: #ffe7f2; }
+.left-rail > .operations-panel {
+  flex: 0 0 auto;
+  width: 100%;
+  height: clamp(420px, calc(100vh - 166px), 820px);
+  min-height: 0;
+  max-height: none;
+}
+.operations-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-color: #cf9fbe #fff0f7;
+  background: #fffaff;
+}
+.operations-content::-webkit-scrollbar { width: 10px; }
+.operations-content::-webkit-scrollbar-track { background: #fff0f7; }
+.operations-content::-webkit-scrollbar-thumb { border: 2px solid #fff0f7; border-radius: 8px; background: #cf9fbe; }
+.activity-card { grid-template-columns: 64px minmax(0, 1fr); border-color: #e5d2e3; border-radius: 10px; background: #fff; box-shadow: 2px 2px 0 rgba(122, 92, 132, .08); }
+.activity-face { width: 60px; height: 72px; border-color: #d59cc1; border-radius: 13px; background: linear-gradient(#fff0f7, #eef4ff); }
+.world-character { display: block; flex: none; background-repeat: no-repeat; image-rendering: pixelated; }
+.world-character.is-animated { animation: character-frame-swap .72s steps(1, end) infinite, character-soft-bob 1.4s steps(2, end) infinite; }
+
+@keyframes character-frame-swap {
+  0%, 49% { background-position-x: 0; }
+  50%, 100% { background-position-x: calc(-1 * var(--character-width)); }
+}
+@keyframes character-soft-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+
+@media (max-width: 1280px) {
+  .metaverse-layout { grid-template-columns: 320px minmax(0, 1fr); }
+  .metaverse-app .local-only { display: none; }
+  .token-usage-cluster > span { min-width: 68px; padding-inline: 7px; }
+}
+
+@media (max-width: 1080px) {
+  .metaverse-layout { grid-template-columns: 1fr; }
+  .metaverse-layout .control-card { display: block; }
+  .metaverse-layout .control-section { border-right: 0; }
+  .left-rail > .operations-panel { height: min(650px, 70vh); max-height: 650px; }
+}
+
+@media (max-width: 720px) {
+  .token-usage-cluster { order: -1; }
+  .token-usage-cluster > span { min-width: 60px; }
+  .token-usage-cluster small { font-size: 8px; }
+  .topbar-meta { flex-wrap: wrap; justify-content: flex-end; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-character.is-animated,
+  .collapse-glyph { animation: none; transition: none; }
+}

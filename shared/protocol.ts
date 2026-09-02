@@ -101,6 +101,18 @@ export type ActivityEvent = {
   turnId?: string;
 };
 
+export type TokenUsageEntry = {
+  turnId: string;
+  totalTokens: number;
+  timestamp: string;
+};
+
+export type TokenUsageSummary = {
+  today: number;
+  week: number;
+  lastTurn: number;
+};
+
 export type ApprovalKind = "command" | "file" | "permission";
 
 export type ApprovalRequest = {
@@ -243,6 +255,7 @@ export type ServerMessage =
       turnId?: string;
     }
   | { type: "activity.event"; event: ActivityEvent }
+  | { type: "token.usage"; usage: TokenUsageEntry }
   | { type: "approval.request"; approval: ApprovalRequest }
   | { type: "approval.resolved"; approvalId: string }
   | { type: "protocol.event"; method: string }

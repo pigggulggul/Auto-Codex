@@ -14,10 +14,21 @@ import {
   type LoadedPet,
   type PetAssignments,
 } from "./lib/petCatalog";
+import {
+  loadWorldCharacterAssignments,
+  saveWorldCharacterAssignments,
+  type WorldCharacterAssignments,
+} from "./lib/worldCharacters";
 
 const MODEL_KEY = "auto-codex.model";
 const EFFORT_KEY = "auto-codex.reasoning-effort";
 type LeftPanel = "workspace" | "operations";
+
+function formatTokenCount(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}K`;
+  return value.toLocaleString("ko-KR");
+}
 
 export default function App() {
   const bridge = useBridge();
@@ -29,6 +40,8 @@ export default function App() {
   const [pets, setPets] = useState<LoadedPet[]>([]);
   const [petErrors, setPetErrors] = useState<string[]>([]);
   const [petAssignments, setPetAssignments] = useState<PetAssignments>({});
+  const [worldCharacterAssignments, setWorldCharacterAssignments] = useState<WorldCharacterAssignments>(loadWorldCharacterAssignments);
+  const [promptExpanded, setPromptExpanded] = useState(true);
   const [selectedModel, setSelectedModel] = useState(() => window.localStorage.getItem(MODEL_KEY) || "");
   const [selectedEffort, setSelectedEffort] = useState<ReasoningEffort | "">(
     () => (window.localStorage.getItem(EFFORT_KEY) as ReasoningEffort | null) || "",
@@ -89,6 +102,14 @@ export default function App() {
     });
   };
 
+  const assignWorldCharacter = (role: AgentRole, index: number) => {
+    setWorldCharacterAssignments((current) => {
+      const next = { ...current, [role]: index };
+      saveWorldCharacterAssignments(next);
+      return next;
+    });
+  };
+
   const changeModel = (model: string) => {
     setSelectedModel(model);
     window.localStorage.setItem(MODEL_KEY, model);
@@ -125,6 +146,10 @@ export default function App() {
         </a>
         <div className="topbar-meta">
           <span className="top-model">{selectedModelInfo?.displayName || selectedModel || "Codex model"}{selectedEffort ? ` · ${selectedEffort}` : ""}</span>
+          <div className="token-usage-cluster" aria-label="로컬에서 집계한 토큰 사용량">
+            <span><small>오늘 토큰</small><strong>{formatTokenCount(bridge.tokenUsage.today)}</strong></span>
+            <span><small>7일 토큰</small><strong>{formatTokenCount(bridge.tokenUsage.week)}</strong></span>
+          </div>
           <span className={`connection-badge ${bridge.snapshot.appServerReady ? "online" : bridge.snapshot.connected ? "bridge-only" : ""}`}>
             <i /> {connectionLabel}
           </span>
@@ -205,17 +230,18 @@ export default function App() {
                 onSkillChange={setSkillPath}
                 onRefresh={bridge.refreshSkills}
               />
-              <div className="control-section prompt-section">
-                <div className="section-heading"><div><span className="eyebrow">04 · QUEST</span><h2>업무 지시</h2></div></div>
-                <div className="execution-mode" aria-label="실행 모드">
+              <details className="control-section prompt-section control-collapsible" open={promptExpanded} onToggle={(event) => setPromptExpanded(event.currentTarget.open)}>
+                <summary className="section-heading"><div><span className="eyebrow">04 · QUEST</span><h2>업무 지시</h2></div><span className="collapse-glyph" aria-hidden="true">⌄</span></summary>
+                <div className="control-section-body">
+                  <div className="execution-mode" aria-label="실행 모드">
                   <button type="button" className={executionMode === "team" ? "active" : ""} onClick={() => setExecutionMode("team")} disabled={busy}>
                     <strong>TEAM AUTO</strong><span>역할 분배 · 안전한 병렬</span>
                   </button>
                   <button type="button" className={executionMode === "solo" ? "active" : ""} onClick={() => setExecutionMode("solo")} disabled={busy}>
                     <strong>SOLO</strong><span>하나의 Codex 작업</span>
                   </button>
-                </div>
-                <label className="prompt-field">
+                  </div>
+                  <label className="prompt-field">
                   <textarea
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
@@ -227,17 +253,18 @@ export default function App() {
                     rows={5}
                   />
                   <span>Ctrl + Enter</span>
-                </label>
-                {busy ? (
+                  </label>
+                  {busy ? (
                   <button className="stop-button" type="button" onClick={bridge.interruptTurn}><span>■</span> 작업 중단</button>
                 ) : (
                   <button className="run-button" type="button" onClick={start} disabled={!ready || !prompt.trim()}>
                     <span>▶</span> {executionMode === "team" ? "팀에게 맡기기" : "Codex에게 맡기기"}
                   </button>
-                )}
-                {bridge.skillErrors.length > 0 && <p className="inline-warning">스킬 {bridge.skillErrors.length}개를 불러오지 못했습니다.</p>}
-                {petErrors.length > 0 && <p className="inline-warning">펫 {petErrors.length}개를 불러오지 못했습니다.</p>}
-              </div>
+                  )}
+                  {bridge.skillErrors.length > 0 && <p className="inline-warning">스킬 {bridge.skillErrors.length}개를 불러오지 못했습니다.</p>}
+                  {petErrors.length > 0 && <p className="inline-warning">펫 {petErrors.length}개를 불러오지 못했습니다.</p>}
+                </div>
+              </details>
             </aside>
           ) : (
             <OperationsPanel
@@ -245,8 +272,7 @@ export default function App() {
               run={activeRun}
               assistantText={bridge.assistantText}
               taskOutputs={bridge.taskOutputs}
-              pets={pets}
-              petAssignments={petAssignments}
+              characterAssignments={worldCharacterAssignments}
               streaming={busy}
             />
           )}
@@ -263,6 +289,8 @@ export default function App() {
             activeRole={bridge.snapshot.activeRole}
             modelLabel={selectedModelInfo?.displayName || selectedModel || "App Server default"}
             onAssignPet={assignPet}
+            characterAssignments={worldCharacterAssignments}
+            onAssignCharacter={assignWorldCharacter}
           />
         </div>
 

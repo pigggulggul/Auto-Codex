@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
+  CHARACTER_DRAW_HEIGHT,
+  CHARACTER_DRAW_WIDTH,
+  CHARACTER_FRAME_HEIGHT,
+  CHARACTER_FRAME_WIDTH,
+  CHARACTER_SHEET_COLUMNS,
+  CHARACTER_STATE_ROWS,
   REST_SPOTS,
   ROLE_ORDER,
+  FURNITURE,
+  ROOM_LAYOUTS,
   STATIONS,
   characterFrame,
+  characterStateRow,
   createBlockedTiles,
   directionBetween,
   findPath,
+  furnitureVisualRect,
   isWalkable,
   tileKey,
 } from "./pixelWorld";
@@ -37,10 +47,20 @@ describe("pixel world navigation", () => {
 });
 
 describe("pixel character animation", () => {
-  it("uses the authored typing and reading frame ranges", () => {
-    expect([3, 4]).toContain(characterFrame("editing", false, 0.5));
-    expect([5, 6]).toContain(characterFrame("reading", false, 0.5));
-    expect([0, 1, 2]).toContain(characterFrame("idle", true, 0.5));
+  it("uses a 256px square atlas and a 3:4 service character box", () => {
+    expect(CHARACTER_FRAME_WIDTH).toBe(64);
+    expect(CHARACTER_FRAME_HEIGHT).toBe(64);
+    expect(CHARACTER_FRAME_WIDTH * CHARACTER_SHEET_COLUMNS).toBe(256);
+    expect(CHARACTER_FRAME_HEIGHT * CHARACTER_STATE_ROWS).toBe(256);
+    expect(CHARACTER_DRAW_WIDTH / CHARACTER_DRAW_HEIGHT).toBe(3 / 4);
+  });
+
+  it("maps runtime activity onto the four authored state rows", () => {
+    expect(characterStateRow("idle", false)).toBe(0);
+    expect(characterStateRow("idle", true)).toBe(1);
+    expect(characterStateRow("editing", false)).toBe(2);
+    expect(characterStateRow("reading", false)).toBe(3);
+    expect([0, 1]).toContain(characterFrame("idle", true, 0.5));
   });
 
   it("resolves four-connected movement direction", () => {
@@ -53,6 +73,28 @@ describe("pixel character animation", () => {
     for (const state of states) {
       const frames = new Set([0, 0.33, 0.73, 1.31].map((time) => characterFrame(state, false, time)));
       expect(frames.size, state).toBeGreaterThan(1);
+    }
+  });
+});
+
+describe("furniture visuals", () => {
+  it("uses intrinsic two-times-density sizes and bottom-aligns each footprint", () => {
+    for (const item of FURNITURE) {
+      const rect = furnitureVisualRect(item);
+      expect(rect.width, item.id).toBe(item.width);
+      expect(rect.height, item.id).toBe(item.height);
+      expect(rect.y + rect.height, item.id).toBe((item.row + item.footprintH) * 16);
+    }
+  });
+
+  it("keeps every workstation visual inside its assigned room", () => {
+    for (const item of FURNITURE.filter((candidate) => candidate.ownerRole)) {
+      const room = ROOM_LAYOUTS.find((candidate) => candidate.role === item.ownerRole)!;
+      const rect = furnitureVisualRect(item);
+      expect(rect.x, item.id).toBeGreaterThanOrEqual(room.col * 16);
+      expect(rect.y, item.id).toBeGreaterThanOrEqual(room.row * 16);
+      expect(rect.x + rect.width, item.id).toBeLessThanOrEqual((room.col + room.width) * 16);
+      expect(rect.y + rect.height, item.id).toBeLessThanOrEqual((room.row + room.height) * 16);
     }
   });
 });

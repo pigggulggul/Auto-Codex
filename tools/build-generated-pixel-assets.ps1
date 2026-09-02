@@ -146,19 +146,21 @@ function Render-Shifted {
   return $result
 }
 
-if (Test-Path -LiteralPath $outputRoot) {
-  Remove-Item -LiteralPath $outputRoot -Recurse -Force
-}
+# Runtime files are overwritten in place so project-owned references under
+# characters/ref are never erased by an asset rebuild.
 New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
 
 $tileAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "tile-atlas.png"))
 $furnitureAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "furniture-atlas.png"))
-$characterAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "character-family.png"))
 $decorAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "decor-atlas.png"))
 $petAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "pet-atlas.png"))
 
 try {
-  # Floors: nine 16x16 variants sampled from the generated 8x8 tile atlas.
+  # Runtime images use a 2x pixel density. The world still consumes 16px
+  # logical tiles, but at the default 2x world zoom each source pixel maps to
+  # one screen pixel instead of being enlarged and losing facial/furniture
+  # detail.
+  # Floors: nine 32x32 variants sampled from the generated 8x8 tile atlas.
   $floorCells = @(
     @(0, 0), @(1, 0), @(2, 0),
     @(0, 1), @(2, 1), @(0, 2),
@@ -168,21 +170,21 @@ try {
     $cell = Get-GridCell $tileAtlas 8 8 $floorCells[$index][0] $floorCells[$index][1]
     # Crop the atlas divider before scaling so adjacent runtime tiles touch
     # with no transparent margin or visible source-cell gutter.
-    $floor = Render-Texture $cell 16 16 4
+    $floor = Render-Texture $cell 32 32 4
     Save-Png $floor (Join-Path $outputRoot "floors\floor_$index.png")
     $cell.Dispose()
   }
 
   # A small wall atlas assembled from the generated slate and brick tiles.
-  $wall = New-TransparentBitmap 64 128
+  $wall = New-TransparentBitmap 128 256
   $wallGraphics = New-PixelGraphics $wall
   try {
     for ($row = 0; $row -lt 8; $row += 1) {
       for ($column = 0; $column -lt 4; $column += 1) {
         $sourceRow = if ($row -lt 4) { 6 } else { 5 }
         $cell = Get-GridCell $tileAtlas 8 8 (($column + $row) % 8) $sourceRow
-        $texture = Render-Texture $cell 16 16 4
-        Draw-Into $wallGraphics $texture ($column * 16) ($row * 16) 16 16
+        $texture = Render-Texture $cell 32 32 4
+        Draw-Into $wallGraphics $texture ($column * 32) ($row * 32) 32 32
         $texture.Dispose()
         $cell.Dispose()
       }
@@ -192,16 +194,16 @@ try {
   }
   Save-Png $wall (Join-Path $outputRoot "walls\wall_0.png")
 
-  # Three 64x64 carpet swatches, each repeated from a generated teal tile.
+  # Three 128x128 carpet swatches, each repeated from a generated teal tile.
   for ($index = 0; $index -lt 3; $index += 1) {
-    $carpet = New-TransparentBitmap 64 64
+    $carpet = New-TransparentBitmap 128 128
     $carpetGraphics = New-PixelGraphics $carpet
     try {
       for ($row = 0; $row -lt 4; $row += 1) {
         for ($column = 0; $column -lt 4; $column += 1) {
           $cell = Get-GridCell $tileAtlas 8 8 (($index + $column + $row) % 8) 4
-          $texture = Render-Texture $cell 16 16 4
-          Draw-Into $carpetGraphics $texture ($column * 16) ($row * 16) 16 16
+          $texture = Render-Texture $cell 32 32 4
+          Draw-Into $carpetGraphics $texture ($column * 32) ($row * 32) 32 32
           $texture.Dispose()
           $cell.Dispose()
         }
@@ -212,52 +214,35 @@ try {
     Save-Png $carpet (Join-Path $outputRoot "carpets\carpet_$index.png")
   }
 
-  # Characters: one shared 16x32 body template, six color/style variants, and
-  # a stable 7x3 runtime sheet contract. The generated top row is the front
-  # template and the bottom row is the three-quarter template.
-  $frameOffsets = @(
-    @(0, 0), @(0, -1), @(0, 0), @(1, 0), @(0, 1), @(0, 0), @(-1, 0)
-  )
-  for ($character = 0; $character -lt 6; $character += 1) {
-    $sheet = New-TransparentBitmap 112 96
-    $sheetGraphics = New-PixelGraphics $sheet
-    try {
-      for ($row = 0; $row -lt 3; $row += 1) {
-        $sourceRow = if ($row -eq 2) { 1 } else { 0 }
-        $templateCell = Get-GridCell $characterAtlas 6 2 $character $sourceRow
-        $template = Render-Fit $templateCell 16 32 -Trim
-        for ($frame = 0; $frame -lt 7; $frame += 1) {
-          $variant = Render-Shifted $template 16 32 $frameOffsets[$frame][0] $frameOffsets[$frame][1]
-          Draw-Into $sheetGraphics $variant ($frame * 16) ($row * 32) 16 32
-          $variant.Dispose()
-        }
-        $template.Dispose()
-        $templateCell.Dispose()
-      }
-    } finally {
-      $sheetGraphics.Dispose()
-    }
-    Save-Png $sheet (Join-Path $outputRoot "characters\char_$character.png")
+  # Characters are the reviewed 2-frame x 4-state sheets produced by
+  # build-character-sprites.py from the user's references.
+  $characterOutput = Join-Path $outputRoot "characters"
+  $characterSource = Join-Path $inputRoot "characters"
+  New-Item -ItemType Directory -Force -Path $characterOutput | Out-Null
+  Get-ChildItem -LiteralPath $characterOutput -Filter "char_*.png" -File | Remove-Item -Force
+  for ($character = 0; $character -lt 5; $character += 1) {
+    Copy-Item -LiteralPath (Join-Path $characterSource "char_$character.png") -Destination (Join-Path $characterOutput "char_$character.png") -Force
   }
 
-  # Furniture and decor are exported at the exact dimensions consumed by the
-  # world manifest. The cactus slot intentionally receives the generated
-  # flowering plant so no original cactus artwork remains.
+  # Furniture and decor keep their logical footprints, but are exported at
+  # twice the pixel density so Canvas can draw them 1:1 at the default zoom.
+  # The cactus slot intentionally receives the generated flowering plant so no
+  # original cactus artwork remains.
   $furnitureMappings = @(
-    @{ Path = "DESK\DESK_FRONT.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 0; Row = 0; Width = 48; Height = 32 },
-    @{ Path = "PC\PC_FRONT_OFF.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 2; Row = 1; Width = 16; Height = 32 },
-    @{ Path = "CUSHIONED_CHAIR\CUSHIONED_CHAIR_FRONT.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 2; Row = 0; Width = 16; Height = 16 },
-    @{ Path = "SOFA\SOFA_FRONT.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 0; Row = 1; Width = 32; Height = 16 },
-    @{ Path = "SOFA\SOFA_BACK.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 0; Row = 1; Width = 32; Height = 16 },
-    @{ Path = "COFFEE_TABLE\COFFEE_TABLE.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 1; Row = 1; Width = 32; Height = 32 },
-    @{ Path = "WHITEBOARD\WHITEBOARD.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 0; Row = 0; Width = 32; Height = 32 },
-    @{ Path = "DOUBLE_BOOKSHELF\DOUBLE_BOOKSHELF.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 1; Row = 0; Width = 32; Height = 32 },
-    @{ Path = "PLANT\PLANT.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 2; Row = 0; Width = 16; Height = 32 },
-    @{ Path = "LARGE_PLANT\LARGE_PLANT.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 3; Row = 0; Width = 32; Height = 48 },
-    @{ Path = "PLANT_2\PLANT_2.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 0; Row = 1; Width = 16; Height = 32 },
-    @{ Path = "FLOWER\FLOWER.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 3; Row = 1; Width = 16; Height = 32 },
-    @{ Path = "COFFEE\COFFEE.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 2; Row = 1; Width = 16; Height = 16 },
-    @{ Path = "CLOCK\CLOCK.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 1; Row = 1; Width = 16; Height = 32 }
+    @{ Path = "DESK\DESK_FRONT.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 0; Row = 0; Width = 96; Height = 64 },
+    @{ Path = "PC\PC_FRONT_OFF.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 2; Row = 1; Width = 32; Height = 64 },
+    @{ Path = "CUSHIONED_CHAIR\CUSHIONED_CHAIR_FRONT.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 2; Row = 0; Width = 32; Height = 32 },
+    @{ Path = "SOFA\SOFA_FRONT.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 0; Row = 1; Width = 64; Height = 32 },
+    @{ Path = "SOFA\SOFA_BACK.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 0; Row = 1; Width = 64; Height = 32 },
+    @{ Path = "COFFEE_TABLE\COFFEE_TABLE.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 1; Row = 1; Width = 64; Height = 64 },
+    @{ Path = "WHITEBOARD\WHITEBOARD.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 0; Row = 0; Width = 64; Height = 64 },
+    @{ Path = "DOUBLE_BOOKSHELF\DOUBLE_BOOKSHELF.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 1; Row = 0; Width = 64; Height = 64 },
+    @{ Path = "PLANT\PLANT.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 2; Row = 0; Width = 32; Height = 64 },
+    @{ Path = "LARGE_PLANT\LARGE_PLANT.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 3; Row = 0; Width = 64; Height = 96 },
+    @{ Path = "PLANT_2\PLANT_2.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 0; Row = 1; Width = 32; Height = 64 },
+    @{ Path = "FLOWER\FLOWER.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 3; Row = 1; Width = 32; Height = 64 },
+    @{ Path = "COFFEE\COFFEE.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 2; Row = 1; Width = 32; Height = 32 },
+    @{ Path = "CLOCK\CLOCK.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 1; Row = 1; Width = 32; Height = 64 }
   )
   foreach ($mapping in $furnitureMappings) {
     $cell = Get-GridCell $mapping.Source $mapping.Columns $mapping.Rows $mapping.Column $mapping.Row
@@ -267,7 +252,7 @@ try {
   }
   for ($frame = 1; $frame -le 3; $frame += 1) {
     $cell = Get-GridCell $furnitureAtlas 4 4 2 1
-    $asset = Render-Fit $cell 16 32 -Trim
+    $asset = Render-Fit $cell 32 64 -Trim
     Save-Png $asset (Join-Path $outputRoot ("furniture\PC\PC_FRONT_ON_$frame.png"))
     $cell.Dispose()
   }
@@ -277,15 +262,15 @@ try {
   # into column six to keep all runtime states addressable.
   $petRegionWidth = [Math]::Floor($petAtlas.Width / 2)
   for ($petIndex = 0; $petIndex -lt 2; $petIndex += 1) {
-    $sheet = New-TransparentBitmap 96 96
+    $sheet = New-TransparentBitmap 192 192
     $sheetGraphics = New-PixelGraphics $sheet
     try {
       for ($row = 0; $row -lt 6; $row += 1) {
         for ($frame = 0; $frame -lt 6; $frame += 1) {
           $sourceColumn = [Math]::Min($frame, 4)
           $cell = Get-GridCell $petAtlas 5 6 $sourceColumn $row ($petIndex * $petRegionWidth) 0 $petRegionWidth $petAtlas.Height
-          $sprite = Render-Fit $cell 16 16 -Trim
-          Draw-Into $sheetGraphics $sprite ($frame * 16) ($row * 16) 16 16
+          $sprite = Render-Fit $cell 32 32 -Trim
+          Draw-Into $sheetGraphics $sprite ($frame * 32) ($row * 32) 32 32
           $sprite.Dispose()
           $cell.Dispose()
         }
@@ -298,12 +283,12 @@ try {
   }
 
   $manifest = [ordered]@{
-    version = 1
+    version = 2
     source = "Original assets generated for Auto Codex"
     generatedAt = "2026-09-02"
     tileSize = 16
-    characterSheet = "112x96; 7 columns x 3 rows; 16x32 frames"
-    petSheet = "96x96; 6 columns x 6 rows; 16x16 frames"
+    characterSheet = "256x256; 4 columns x 4 rows; first 2 columns authored per state (idle, moving, working, thinking); 64x64 frames; 2x display density"
+    petSheet = "192x192; 6 columns x 6 rows; 32x32 frames; 2x runtime pixel density"
     replacements = [ordered]@{
       cactus = "flower"
       pixelAgentsRuntimeAssets = $false
@@ -313,7 +298,6 @@ try {
 } finally {
   $tileAtlas.Dispose()
   $furnitureAtlas.Dispose()
-  $characterAtlas.Dispose()
   $decorAtlas.Dispose()
   $petAtlas.Dispose()
 }

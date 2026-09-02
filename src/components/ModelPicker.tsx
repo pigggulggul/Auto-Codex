@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ModelInfo, ReasoningEffort } from "../../shared/protocol";
 
 type Props = {
@@ -28,15 +29,18 @@ export function ModelPicker({
   onEffortChange,
   onRefresh,
 }: Props) {
+  const [expanded, setExpanded] = useState(false);
   const selected = models.find((model) => model.model === selectedModel) ?? models[0];
   const efforts = selected?.supportedReasoningEfforts ?? [];
   return (
-    <div className="control-section model-control">
-      <div className="section-heading">
+    <details className="control-section model-control control-collapsible" open={expanded} onToggle={(event) => setExpanded(event.currentTarget.open)}>
+      <summary className="section-heading">
         <div><span className="eyebrow">02 · ENGINE</span><h2>Codex 모델</h2></div>
-        <button className="icon-button" type="button" onClick={onRefresh} disabled={disabled} title="모델 목록 새로고침">↻</button>
-      </div>
-      {models.length > 0 ? (
+        <span className="collapse-glyph" aria-hidden="true">⌄</span>
+      </summary>
+      <div className="control-section-body">
+        <button className="section-refresh-button" type="button" onClick={onRefresh} disabled={disabled}>↻ 모델 목록 새로고침</button>
+        {models.length > 0 ? (
         <>
           <div className="model-grid" role="radiogroup" aria-label="Codex 모델 선택">
             {models.map((model) => (
@@ -73,8 +77,9 @@ export function ModelPicker({
         </>
       ) : (
         <div className="model-empty">App Server의 모델 목록을 기다리는 중입니다.</div>
-      )}
-      {errors.length > 0 && <p className="inline-warning">{errors[0]}</p>}
-    </div>
+        )}
+        {errors.length > 0 && <p className="inline-warning">{errors[0]}</p>}
+      </div>
+    </details>
   );
 }

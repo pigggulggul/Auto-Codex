@@ -19,32 +19,43 @@ Codex and then rasterized into the exact runtime dimensions used by the world.
 - Clicking an idle agent and then a walkable tile issues a visual-only movement.
 - Clicking Claudio or Gitcat displays a short heart interaction.
 - Character choices are saved locally in `localStorage` per browser profile.
+- The activity center reads that same assignment map, so its portrait and the
+  on-canvas agent always refer to the same character.
 
 ## Asset contract
 
-- Character sheets: 112 by 96 pixels, seven 16 by 32 frames across three rows.
-- Floors: 16 by 16 pixels.
-- Furniture: the existing manifest dimensions and 16-pixel footprints, with
-  original replacement art. The old cactus placement is now an explicitly
-  named flower asset with the same 16 by 32 footprint.
-- Pets: 96 by 96 pixels, decoded as 16-pixel frames.
+- Character sheets: 256 by 256 pixels with a regular 4 by 4 grid of 64-pixel
+  square cells. The first two cells of each `idle`, `moving`, `working`, and
+  `thinking` row contain authored frames; the remaining cells are transparent.
+  Characters render in a 3:4 box at 24 by 32 logical pixels (48 by 64 screen
+  pixels at the default world zoom).
+- Floors: 32 by 32 source pixels rendered into 16 by 16 logical tiles.
+- Furniture: each image is drawn from its intrinsic 2x-density dimensions,
+  centered horizontally and bottom-aligned to its 16-pixel floor footprint.
+  Duplicate shelves were removed so decor does not bleed into adjacent rooms.
+- Furniture and decor use 2x source density; pets are 192 by 192 pixels,
+  decoded as 32-pixel source frames and drawn into 16-pixel logical footprints.
 - Rendering disables image smoothing and draws at integer zoom levels.
 - Floor source-atlas gutters are cropped during export; adjacent floor tiles
   are drawn edge-to-edge without transparent margins.
 
 ## Character family
 
-All six character files are derived from one generated base model. They share
-the same 16 by 32 frame box, body height, head-to-body ratio, and 7 by 3 sheet
-layout; only palette, hair, clothing, and small accessories vary. This keeps
-the roster visually coherent while preserving per-role selection.
+Five selectable characters are original designs. The supplied images guided
+only compact proportions, crisp pixel clusters, and the cheerful pastel mood;
+their identities, silhouettes, hair, clothing, accessories, and color blocking
+were not copied. Every state has two authored frames, so walking, working,
+thinking, and ambient idle movement are visible without synthetic frame
+shifting.
 
 ## Source and regeneration
 
-`tools/generated-inputs/` stores the generated source atlases and
+`tools/generated-inputs/` stores the reviewed runtime-ready source sheets and
 `tools/build-generated-pixel-assets.ps1` deterministically exports the runtime
-files. Generated source images are original and do not include Pixel Agents or
-MetroCity files.
+files. `tools/build-character-sprites.py` removes connected generated
+backgrounds, aligns feet, and exports 4x4 square sheets with eight active
+frames. The QA contact sheet is
+`docs/character-sprites-preview.jpg`.
 
 The bridge and approval boundaries are unchanged. The Canvas renderer receives
 only normalized snapshots and never executes commands.

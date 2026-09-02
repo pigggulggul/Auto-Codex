@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import type { ActivityEvent, AgentRole, RunSnapshot } from "../../shared/protocol";
-import { PET_PRESENTATIONS, petForRole, type LoadedPet, type PetAssignments } from "../lib/petCatalog";
-import { SpritePet } from "./SpritePet";
+import { PET_PRESENTATIONS } from "../lib/petCatalog";
+import { characterIndexForRole, type WorldCharacterAssignments } from "../lib/worldCharacters";
+import { WorldCharacter } from "./WorldCharacter";
 
 type PanelTab = "activity" | "results" | "quests";
 
@@ -10,8 +11,7 @@ type Props = {
   run: RunSnapshot | null;
   assistantText: string;
   taskOutputs: Record<string, string>;
-  pets: LoadedPet[];
-  petAssignments: PetAssignments;
+  characterAssignments: WorldCharacterAssignments;
   streaming: boolean;
 };
 
@@ -39,7 +39,7 @@ function timeLabel(timestamp: string): string {
     : parsed.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-export function OperationsPanel({ activities, run, assistantText, taskOutputs, pets, petAssignments, streaming }: Props) {
+export function OperationsPanel({ activities, run, assistantText, taskOutputs, characterAssignments, streaming }: Props) {
   const [tab, setTab] = useState<PanelTab>("activity");
   const outputs = useMemo(() => run?.tasks.map((task) => ({
     task,
@@ -67,10 +67,10 @@ export function OperationsPanel({ activities, run, assistantText, taskOutputs, p
               <div className="panel-empty"><span>☕</span><strong>모두 쉬는 중이에요</strong><small>실제 App Server 이벤트가 오면 이곳에 표시됩니다.</small></div>
             ) : activities.map((activity) => {
               const role = roleForActivity(activity, run);
-              const pet = petForRole(role, pets, petAssignments);
+              const spriteIndex = characterIndexForRole(role, characterAssignments);
               return (
                 <article className={`activity-card state-${activity.state}`} key={activity.id}>
-                  <div className="activity-face"><SpritePet pet={pet} state={activity.state} size={50} /></div>
+                  <div className="activity-face"><WorldCharacter spriteIndex={spriteIndex} state={activity.state} size={64} /></div>
                   <div className="activity-copy">
                     <div><strong>{ROLE_LABELS[role]}</strong><time>{timeLabel(activity.timestamp)}</time></div>
                     <h3>{activity.title}</h3>
