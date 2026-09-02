@@ -10,7 +10,9 @@ import type {
   ApprovalRequest,
   BridgeSnapshot,
   ClientMessage,
+  ModelInfo,
   PetState,
+  ReasoningEffort,
   RunSnapshot,
   ServerMessage,
   SkillInfo,
@@ -78,6 +80,23 @@ type SkillsListResponse = {
 type ThreadStartResponse = { thread?: { id?: string } };
 type TurnStartResponse = { turn?: { id?: string } };
 
+type ModelListResponse = {
+  data?: Array<{
+    id?: string;
+    model?: string;
+    displayName?: string;
+    hidden?: boolean;
+    isDefault?: boolean;
+    defaultReasoningEffort?: string;
+    supportedReasoningEfforts?: Array<{
+      reasoningEffort?: string;
+      description?: string;
+    }>;
+    inputModalities?: string[];
+    supportsPersonality?: boolean;
+  }>;
+};
+
 const appServer = new CodexAppServer();
 const sockets = new Set<WebSocket>();
 const pendingApprovals = new Map<string, PendingApproval>();
@@ -87,6 +106,7 @@ const taskAssistantText = new Map<string, string>();
 let appServerReady = false;
 let projectPath: string | null = null;
 let skills: SkillInfo[] = [];
+let models: ModelInfo[] = [];
 let threadId: string | null = null;
 let turnId: string | null = null;
 let assistantText = "";
@@ -94,11 +114,16 @@ let projectTrust: ProjectTrust = "untrusted";
 let petState: PetState = "connecting";
 let selectedSkill: SkillInfo | null = null;
 let activeRole: NonNullable<BridgeSnapshot["activeRole"]> = "general";
+let activeModel: string | null = null;
+let activeEffort: ReasoningEffort | null = null;
 let lastActivity: ActivityEvent | null = null;
 let activeRun: RunSnapshot | null = null;
 let teamSchedulerBusy = false;
 
 const ACTIVE_RUN_STATUSES = new Set(["planning", "running", "verifying"]);
+const REASONING_EFFORTS = new Set<ReasoningEffort>([
+  "none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra",
+]);
 
 function snapshot(connected = true): BridgeSnapshot {
   return {
@@ -110,6 +135,8 @@ function snapshot(connected = true): BridgeSnapshot {
     petState,
     selectedSkill,
     activeRole,
+    activeModel,
+    activeEffort,
     projectTrust,
     activeRun,
   };
@@ -232,6 +259,39 @@ function normalizeSkill(raw: NonNullable<NonNullable<SkillsListResponse["data"]>
   };
 }
 
+function normalizeModel(raw: NonNullable<ModelListResponse["data"]>[number]): ModelInfo | null {
+  const model = raw.model?.trim() || raw.id?.trim();
+  if (!model) return null;
+  const supportedReasoningEfforts = (raw.supportedReasoningEfforts ?? [])
+    .filter((entry): entry is { reasoningEffort: ReasoningEffort; description?: string } =>
+      typeof entry.reasoningEffort === "string" && REASONING_EFFORTS.has(entry.reasoningEffort as ReasoningEffort))
+    .map((entry) => ({ reasoningEffort: entry.reasoningEffort, description: entry.description }));
+  const defaultReasoningEffort = typeof raw.defaultReasoningEffort === "string"
+    && REASONING_EFFORTS.has(raw.defaultReasoningEffort as ReasoningEffort)
+    ? raw.defaultReasoningEffort as ReasoningEffort
+    : undefined;
+  return {
+    id: raw.id?.trim() || model,
+    model,
+    displayName: raw.displayName?.trim() || model,
+    hidden: raw.hidden === true,
+    isDefault: raw.isDefault === true,
+    defaultReasoningEffort,
+    supportedReasoningEfforts,
+    inputModalities: Array.isArray(raw.inputModalities) ? raw.inputModalities.filter((value): value is string => typeof value === "string") : ["text", "image"],
+    supportsPersonality: raw.supportsPersonality === true,
+  };
+}
+
+async function loadModels(): Promise<void> {
+  await ensureAppServer();
+  const response = await appServer.request<ModelListResponse>("model/list", { limit: 50, includeHidden: false });
+  models = (response.data ?? [])
+    .map(normalizeModel)
+    .filter((model): model is ModelInfo => model !== null && !model.hidden);
+  broadcast({ type: "models.list", models, errors: [] });
+}
+
 function describeSkillError(value: unknown): string {
   if (typeof value === "string") return value;
   if (value && typeof value === "object") {
@@ -294,6 +354,7 @@ async function trustCurrentProject(): Promise<void> {
   broadcastState();
   appServer.stop();
   await ensureAppServer();
+  await loadModels();
 }
 
 async function pickAndSelectProject(socket: WebSocket): Promise<void> {
@@ -490,6 +551,8 @@ async function launchTeamTask(runId: string, taskId: string): Promise<void> {
       threadId: taskThreadId,
       input: taskInput(task, taskPrompt(activeRun, task)),
       sandboxPolicy: taskSandboxPolicy(task),
+      ...(activeModel ? { model: activeModel } : {}),
+      ...(activeEffort ? { effort: activeEffort } : {}),
       ...(task.id === "plan" ? { outputSchema: TASK_PLAN_OUTPUT_SCHEMA } : {}),
     });
     const taskTurnId = response.turn?.id;
@@ -579,8 +642,24 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
   const prompt = message.prompt.trim();
   if (!prompt) throw new Error("Codex에 전달할 업무를 입력하세요.");
   await ensureAppServer();
+  if (message.model && models.length > 0 && !models.some((candidate) => candidate.model === message.model)) {
+    throw new Error("선택한 모델을 현재 Codex App Server에서 사용할 수 없습니다.");
+  }
+  const selectedModelInfo = message.model
+    ? models.find((candidate) => candidate.model === message.model)
+    : models.find((candidate) => candidate.isDefault);
+  if (
+    message.effort
+    && selectedModelInfo
+    && !selectedModelInfo.supportedReasoningEfforts.some((candidate) => candidate.reasoningEffort === message.effort)
+  ) {
+    throw new Error("선택한 모델이 이 추론 강도를 지원하지 않습니다.");
+  }
+  activeModel = message.model ?? selectedModelInfo?.model ?? null;
+  activeEffort = message.effort ?? selectedModelInfo?.defaultReasoningEffort ?? null;
   assistantText = "";
   broadcast({ type: "assistant.text", text: assistantText });
+  broadcastState();
 
   let rationale: string;
   if (message.skillMode === "manual") {
@@ -623,6 +702,8 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
       excludeTmpdirEnvVar: false,
       excludeSlashTmp: false,
     },
+    ...(activeModel ? { model: activeModel } : {}),
+    ...(activeEffort ? { effort: activeEffort } : {}),
   });
   const id = response.turn?.id;
   if (!id) throw new Error("Codex가 작업 ID를 반환하지 않았습니다.");
@@ -842,6 +923,9 @@ async function handleClientMessage(socket: WebSocket, raw: string): Promise<void
     case "skills.refresh":
       await loadSkills(true);
       break;
+    case "models.refresh":
+      await loadModels();
+      break;
     case "turn.start":
       await startTurn(message);
       break;
@@ -1038,6 +1122,7 @@ wsServer.on("connection", (socket) => {
     });
   }
   send(socket, { type: "skills.list", skills, errors: [] });
+  send(socket, { type: "models.list", models, errors: [] });
   for (const pending of pendingApprovals.values()) send(socket, { type: "approval.request", approval: pending.approval });
   socket.on("message", (data) => {
     void handleClientMessage(socket, data.toString()).catch((error) => {
@@ -1057,12 +1142,22 @@ httpServer.listen(PORT, HOST, () => {
       : spawn(process.platform === "darwin" ? "open" : "xdg-open", [appUrl], { detached: true, stdio: "ignore" });
     opener.unref();
   }
-  void ensureAppServer().catch((error) => {
-    appServerReady = false;
-    petState = "error";
-    broadcastError(error, false);
-    broadcastState();
-  });
+  void (async () => {
+    try {
+      await ensureAppServer();
+    } catch (error) {
+      appServerReady = false;
+      petState = "error";
+      broadcastError(error, false);
+      broadcastState();
+      return;
+    }
+    try {
+      await loadModels();
+    } catch (error) {
+      broadcast({ type: "models.list", models: [], errors: [errorMessage(error)] });
+    }
+  })();
 });
 
 function shutdown(): void {

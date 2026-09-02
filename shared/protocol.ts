@@ -22,6 +22,31 @@ export type AgentRole = "coordinator" | SkillRole;
 
 export type ExecutionMode = "solo" | "team";
 
+export type ReasoningEffort =
+  | "none"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max"
+  | "ultra";
+
+export type ModelInfo = {
+  id: string;
+  model: string;
+  displayName: string;
+  hidden: boolean;
+  isDefault: boolean;
+  defaultReasoningEffort?: ReasoningEffort;
+  supportedReasoningEfforts: Array<{
+    reasoningEffort: ReasoningEffort;
+    description?: string;
+  }>;
+  inputModalities: string[];
+  supportsPersonality: boolean;
+};
+
 export type RunStatus =
   | "planning"
   | "running"
@@ -156,6 +181,8 @@ export type BridgeSnapshot = {
   petState: PetState;
   selectedSkill: SkillInfo | null;
   activeRole: SkillRole;
+  activeModel: string | null;
+  activeEffort: ReasoningEffort | null;
   projectTrust: "trusted" | "untrusted";
   activeRun: RunSnapshot | null;
 };
@@ -165,12 +192,15 @@ export type ClientMessage =
   | { type: "project.pick" }
   | { type: "project.trust" }
   | { type: "skills.refresh" }
+  | { type: "models.refresh" }
   | {
       type: "turn.start";
       prompt: string;
       skillMode: "auto" | "manual";
       skillPath?: string;
       executionMode?: ExecutionMode;
+      model?: string;
+      effort?: ReasoningEffort;
     }
   | { type: "turn.interrupt" }
   | {
@@ -185,6 +215,7 @@ export type ServerMessage =
   | { type: "project.selected"; path: string }
   | { type: "project.trust"; path: string; status: "trusted" | "untrusted" }
   | { type: "skills.list"; skills: SkillInfo[]; errors: string[] }
+  | { type: "models.list"; models: ModelInfo[]; errors: string[] }
   | {
       type: "skill.selected";
       skill: SkillInfo | null;

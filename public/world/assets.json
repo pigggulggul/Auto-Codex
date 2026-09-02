@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "style": "bright-top-down-pixel-campus",
+  "campus": {
+    "path": "/world/auto-codex-campus.png",
+    "width": 1536,
+    "height": 1024
+  },
+  "tileset": {
+    "path": "/world/auto-codex-tileset.png",
+    "width": 1254,
+    "height": 1254,
+    "columns": 4,
+    "rows": 4
+  },
+  "props": {
+    "path": "/world/auto-codex-props.png",
+    "width": 1254,
+    "height": 1254,
+    "columns": 4,
+    "rows": 4
+  },
+  "effects": {
+    "path": "/world/auto-codex-effects.png",
+    "width": 1254,
+    "height": 1254,
+    "columns": 3,
+    "rows": 3,
+    "cells": {
+      "idle": [0, 0],
+      "thinking": [1, 0],
+      "reading": [2, 0],
+      "editing": [0, 1],
+      "running": [1, 1],
+      "waitingApproval": [2, 1],
+      "success": [0, 2],
+      "error": [1, 2],
+      "handoff": [2, 2]
+    }
+  }
+}

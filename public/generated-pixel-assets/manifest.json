@@ -1,0 +1,12 @@
+﻿{
+    "version":  1,
+    "source":  "Original assets generated for Auto Codex",
+    "generatedAt":  "2026-09-02",
+    "tileSize":  16,
+    "characterSheet":  "112x96; 7 columns x 3 rows; 16x32 frames",
+    "petSheet":  "96x96; 6 columns x 6 rows; 16x16 frames",
+    "replacements":  {
+                         "cactus":  "flower",
+                         "pixelAgentsRuntimeAssets":  false
+                     }
+}

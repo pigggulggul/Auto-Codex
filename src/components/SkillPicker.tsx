@@ -1,13 +1,6 @@
 import { useState } from "react";
 import type { SkillInfo } from "../../shared/protocol";
-import { classifySkill, SKILL_ROLE_DESCRIPTIONS } from "../../shared/skill-catalog";
-import {
-  CHARACTER_OPTIONS,
-  characterForSelection,
-  roleLabel,
-  type CharacterAssignments,
-  type CharacterId,
-} from "../lib/characterCatalog";
+import { classifySkill, SKILL_ROLE_DESCRIPTIONS, SKILL_ROLE_LABELS } from "../../shared/skill-catalog";
 import { shortSkillName } from "../lib/petCatalog";
 
 type Props = {
@@ -18,9 +11,6 @@ type Props = {
   disabled: boolean;
   onModeChange: (mode: "auto" | "manual") => void;
   onSkillChange: (path: string) => void;
-  characterAssignments: CharacterAssignments;
-  onSkillCharacterChange: (path: string, character: CharacterId) => void;
-  onRoleCharacterChange: (role: ReturnType<typeof classifySkill>, character: CharacterId) => void;
   onRefresh: () => void;
 };
 
@@ -28,131 +18,50 @@ function isProjectSkill(skill: SkillInfo, projectPath: string | null): boolean {
   const scope = skill.scope?.toLowerCase();
   if (scope) return scope === "repo" || scope === "repository" || scope === "project";
   if (!projectPath) return false;
-
   const normalize = (value: string) => value.replaceAll("/", "\\").replace(/[\\]+$/, "").toLowerCase();
-  const skillPath = normalize(skill.path);
-  const rootPath = normalize(projectPath);
-  return skillPath.startsWith(`${rootPath}\\`);
+  return normalize(skill.path).startsWith(`${normalize(projectPath)}\\`);
 }
 
-function skillScopeLabel(scope?: string): string {
-  switch (scope?.toLowerCase()) {
-    case "repo":
-    case "repository":
-    case "project":
-      return "Project";
-    case "user":
-      return "User";
-    case "system":
-      return "System";
-    case "admin":
-      return "Admin";
-    default:
-      return "Codex";
-  }
-}
-
-export function SkillPicker({
-  skills,
-  projectPath,
-  mode,
-  selectedPath,
-  disabled,
-  onModeChange,
-  onSkillChange,
-  characterAssignments,
-  onSkillCharacterChange,
-  onRoleCharacterChange,
-  onRefresh,
-}: Props) {
-  const [showAllCodexSkills, setShowAllCodexSkills] = useState(false);
-  const enabledSkills = skills.filter((skill) => skill.enabled);
-  const projectSkills = enabledSkills.filter((skill) => isProjectSkill(skill, projectPath));
-  const visibleSkills = showAllCodexSkills ? enabledSkills : projectSkills;
-  const shownSkillCount = mode === "auto" || showAllCodexSkills ? enabledSkills.length : projectSkills.length;
-  const shownSkillLabel = mode === "auto" || showAllCodexSkills ? " Codex skills" : " project skills";
-
+export function SkillPicker({ skills, projectPath, mode, selectedPath, disabled, onModeChange, onSkillChange, onRefresh }: Props) {
+  const [showAll, setShowAll] = useState(false);
+  const enabled = skills.filter((skill) => skill.enabled);
+  const projectSkills = enabled.filter((skill) => isProjectSkill(skill, projectPath));
+  const visible = showAll ? enabled : projectSkills;
   return (
-    <div className="control-section">
+    <div className="control-section skill-control">
       <div className="section-heading">
-        <div>
-          <span className="eyebrow">02 · ROUTING</span>
-          <h2>스킬 배정</h2>
-        </div>
+        <div><span className="eyebrow">03 · ROUTING</span><h2>스킬 배정</h2></div>
         <button className="icon-button" type="button" onClick={onRefresh} disabled={disabled} title="스킬 다시 읽기">↻</button>
       </div>
       <div className="segmented" role="group" aria-label="스킬 선택 방식">
-        <button className={mode === "auto" ? "active" : ""} onClick={() => onModeChange("auto")} type="button">
-          <span>✦</span> Auto
-        </button>
-        <button className={mode === "manual" ? "active" : ""} onClick={() => onModeChange("manual")} type="button">
-          Manual
-        </button>
+        <button className={mode === "auto" ? "active" : ""} onClick={() => onModeChange("auto")} type="button">✦ Auto</button>
+        <button className={mode === "manual" ? "active" : ""} onClick={() => onModeChange("manual")} type="button">Manual</button>
       </div>
       {mode === "auto" ? (
-        <p className="helper-copy">요청과 스킬 설명을 비교해 가장 관련 있는 캐릭터를 배정합니다. 애매하면 기본 Codex가 맡아요.</p>
+        <p className="helper-copy">업무와 설치된 스킬 설명을 비교해 Task마다 적합한 스킬을 배정합니다.</p>
       ) : (
         <>
-          <div className="skill-list">
-            <div className="skill-option-row">
-              <button
-                type="button"
-                className={`skill-option ${selectedPath === "" ? "selected" : ""}`}
-                onClick={() => onSkillChange("")}
-              >
-                <span className="skill-avatar base">C</span>
-                <span><strong>General agent</strong><small>스킬 없이 Codex에 맡기기 · {SKILL_ROLE_DESCRIPTIONS.general}</small></span>
-              </button>
-              <select
-                className="character-select"
-                value={characterForSelection(null, "general", characterAssignments)}
-                onChange={(event) => onRoleCharacterChange("general", event.target.value as CharacterId)}
-                disabled={disabled}
-                aria-label="General agent 캐릭터 배정"
-              >
-                {CHARACTER_OPTIONS.map((character) => <option key={character.id} value={character.id}>{character.label}</option>)}
-              </select>
-            </div>
-            {visibleSkills.map((skill) => (
-              <div className="skill-option-row" key={skill.path}>
-                <button
-                  type="button"
-                  className={`skill-option ${selectedPath === skill.path ? "selected" : ""}`}
-                  onClick={() => onSkillChange(skill.path)}
-                >
+          <div className="skill-list compact">
+            <button type="button" className={`skill-option ${selectedPath === "" ? "selected" : ""}`} onClick={() => onSkillChange("")}>
+              <span className="skill-avatar base">C</span>
+              <span><strong>General agent</strong><small>{SKILL_ROLE_DESCRIPTIONS.general}</small></span>
+            </button>
+            {visible.map((skill) => {
+              const role = classifySkill(skill);
+              return (
+                <button type="button" className={`skill-option ${selectedPath === skill.path ? "selected" : ""}`} onClick={() => onSkillChange(skill.path)} key={skill.path}>
                   <span className="skill-avatar">{skill.name.slice(0, 1).toUpperCase()}</span>
-                  <span>
-                    <strong>{shortSkillName(skill.name)}</strong>
-                    <small>{skill.shortDescription || skill.description} · {roleLabel(classifySkill(skill))}{showAllCodexSkills ? ` · ${skillScopeLabel(skill.scope)}` : ""}</small>
-                  </span>
+                  <span><strong>{shortSkillName(skill.name)}</strong><small>{SKILL_ROLE_LABELS[role]} · {skill.shortDescription || skill.description}</small></span>
                 </button>
-                <select
-                  className="character-select"
-                  value={characterForSelection(skill, classifySkill(skill), characterAssignments)}
-                  onChange={(event) => onSkillCharacterChange(skill.path, event.target.value as CharacterId)}
-                  disabled={disabled}
-                  aria-label={`${shortSkillName(skill.name)} 캐릭터 배정`}
-                >
-                  {CHARACTER_OPTIONS.map((character) => <option key={character.id} value={character.id}>{character.label}</option>)}
-                </select>
-              </div>
-            ))}
+              );
+            })}
           </div>
-          {projectSkills.length === 0 && !showAllCodexSkills && (
-            <p className="skill-empty">이 프로젝트에 등록된 스킬이 없습니다.</p>
-          )}
-          <button
-            type="button"
-            className="skill-scope-toggle"
-            aria-expanded={showAllCodexSkills}
-            onClick={() => setShowAllCodexSkills((current) => !current)}
-          >
-            <span>{showAllCodexSkills ? "프로젝트 스킬만 보기" : "Codex 스킬 전체 보기"}</span>
-            <span aria-hidden="true">{showAllCodexSkills ? ">" : "<"}</span>
+          <button type="button" className="skill-scope-toggle" onClick={() => setShowAll((value) => !value)}>
+            <span>{showAll ? "프로젝트 스킬만 보기" : "Codex 스킬 전체 보기"}</span><span>{showAll ? ">" : "<"}</span>
           </button>
         </>
       )}
-      <div className="skill-count"><span>{shownSkillCount}</span>{shownSkillLabel}</div>
+      <div className="skill-count"><span>{enabled.length}</span> enabled skills</div>
     </div>
   );
 }

@@ -1,0 +1,12 @@
+{
+  "pets": [
+    "agumon/pet.json",
+    "anya.codex-pet/pet.json",
+    "frieren.codex-pet/pet.json",
+    "jiji.codex-pet/pet.json",
+    "nao/pet.json",
+    "nezu.codex-pet/pet.json",
+    "pika.codex-pet/pet.json",
+    "xiaoba.codex-pet/pet.json"
+  ]
+}

@@ -120,34 +120,40 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .pixel-signal { width: 9px; height: 9px; border: 2px solid #463849; background: #7d7482; box-shadow: 2px 2px 0 rgba(0,0,0,.18); }
 .pixel-signal.online { background: #8ed8a5; }
 .pixel-signal.bridge { background: #f2c66d; }
-.pixel-room { position: relative; min-height: 570px; flex: 1; overflow: hidden; background: #efdba9; }
+.pixel-room {
+  position: relative; min-height: 570px; flex: 1; overflow: hidden;
+  background: #efdba9 url("./assets/pixel-classroom-bg.png") center / cover no-repeat;
+}
 .pixel-wall-grid {
   position: absolute; inset: 0 0 42%; opacity: .45;
   background-image: linear-gradient(#e1c790 2px, transparent 2px), linear-gradient(90deg, #e1c790 2px, transparent 2px);
   background-size: 32px 32px;
+  display: none;
 }
-.pixel-room::before { content: ""; position: absolute; inset: 58% 0 0; border-top: 6px solid #8d6966; background: #c79570; }
+.pixel-room::before { display: none; }
 .pixel-floor {
   position: absolute; inset: 60% 0 0; opacity: .52;
   background-image: linear-gradient(45deg, #b77f65 25%, transparent 25%), linear-gradient(-45deg, #b77f65 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #b77f65 75%), linear-gradient(-45deg, transparent 75%, #b77f65 75%);
   background-size: 44px 44px; background-position: 0 0, 0 22px, 22px -22px, -22px 0;
+  display: none;
 }
 .pixel-window {
   position: absolute; left: 6%; top: 39px; width: 126px; height: 92px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 8px;
   border: 6px solid #805f60; background: #f7edc6; box-shadow: 6px 7px 0 rgba(105,71,63,.18);
+  display: none;
 }
 .pixel-window i { background: linear-gradient(#8ac5d5 0 62%, #afd38f 62%); border: 2px solid #5f7b86; }
 .pixel-board {
-  position: absolute; top: 31px; left: 50%; width: min(390px, 48%); min-height: 90px; transform: translateX(-50%);
+  position: absolute; top: 15%; left: 50%; width: min(390px, 48%); min-height: 90px; transform: translateX(-50%);
   padding: 14px 17px; display: flex; flex-direction: column; gap: 7px;
   border: 7px solid #966e4f; background: #4f8878; color: #fff7cf; box-shadow: 6px 7px 0 rgba(105,71,63,.17), inset 0 0 0 3px rgba(255,255,255,.09);
 }
 .pixel-board strong { font-size: 12px; letter-spacing: .07em; }
 .pixel-board span { max-height: 38px; overflow: hidden; color: #e8f0c9; font: 10px/1.45 "Pretendard Variable", sans-serif; }
-.pixel-clock { position: absolute; right: 7%; top: 45px; width: 52px; height: 52px; border: 6px solid #835e62; border-radius: 50%; background: #fff7d9; box-shadow: 4px 5px 0 rgba(0,0,0,.14); }
+.pixel-clock { position: absolute; right: 7%; top: 45px; width: 52px; height: 52px; border: 6px solid #835e62; border-radius: 50%; background: #fff7d9; box-shadow: 4px 5px 0 rgba(0,0,0,.14); display: none; }
 .pixel-clock::before, .pixel-clock::after { content: ""; position: absolute; left: 20px; top: 8px; width: 3px; height: 16px; transform-origin: bottom; background: #5d4853; }
 .pixel-clock::after { transform: rotate(115deg); height: 13px; top: 11px; }
-.pixel-plant { position: absolute; right: 4%; bottom: 38%; width: 54px; height: 74px; }
+.pixel-plant { position: absolute; right: 4%; bottom: 38%; width: 54px; height: 74px; display: none; }
 .pixel-plant i { position: absolute; left: 18px; bottom: 29px; width: 18px; height: 38px; background: #57936c; box-shadow: -15px 8px 0 #6aa779, 15px 5px 0 #3f7d5c, -9px -9px 0 #77b57c, 10px -12px 0 #69aa73; }
 .pixel-plant b { position: absolute; left: 9px; bottom: 0; width: 38px; height: 32px; border: 4px solid #815b52; background: #d3795f; }
 .pixel-stations {

@@ -9,6 +9,7 @@
     "dev:compile": "tsc -p tsconfig.server-build.json --watch --preserveWatchOutput",
     "dev:bridge": "node --watch build-server/server/index.js",
     "dev:web": "vite --host 127.0.0.1 --port 4780",
+    "assets:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\tools\\build-generated-pixel-assets.ps1",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
     "build:server": "tsc -p tsconfig.server-build.json",

@@ -7,6 +7,8 @@ import type {
   ServerMessage,
   SkillInfo,
   ExecutionMode,
+  ModelInfo,
+  ReasoningEffort,
 } from "../../shared/protocol";
 
 const EMPTY_SNAPSHOT: BridgeSnapshot = {
@@ -18,6 +20,8 @@ const EMPTY_SNAPSHOT: BridgeSnapshot = {
   petState: "connecting",
   selectedSkill: null,
   activeRole: "general",
+  activeModel: null,
+  activeEffort: null,
   projectTrust: "untrusted",
   activeRun: null,
 };
@@ -39,6 +43,8 @@ export function useBridge() {
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [skillErrors, setSkillErrors] = useState<string[]>([]);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [modelErrors, setModelErrors] = useState<string[]>([]);
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -88,6 +94,10 @@ export function useBridge() {
           case "skills.list":
             setSkills(message.skills);
             setSkillErrors(message.errors);
+            break;
+          case "models.list":
+            setModels(message.models);
+            setModelErrors(message.errors);
             break;
           case "skill.selected":
             setSkillRationale(message.rationale);
@@ -158,6 +168,8 @@ export function useBridge() {
     snapshot,
     skills,
     skillErrors,
+    models,
+    modelErrors,
     activities,
     approvals,
     lastError,
@@ -178,10 +190,18 @@ export function useBridge() {
       return sent;
     },
     refreshSkills: () => send({ type: "skills.refresh" }),
+    refreshModels: () => send({ type: "models.refresh" }),
     assistantText,
     taskOutputs,
-    startTurn: (prompt: string, skillMode: "auto" | "manual", skillPath: string | undefined, executionMode: ExecutionMode) => {
-      const sent = send({ type: "turn.start", prompt, skillMode, skillPath, executionMode });
+    startTurn: (
+      prompt: string,
+      skillMode: "auto" | "manual",
+      skillPath: string | undefined,
+      executionMode: ExecutionMode,
+      model?: string,
+      effort?: ReasoningEffort,
+    ) => {
+      const sent = send({ type: "turn.start", prompt, skillMode, skillPath, executionMode, model, effort });
       if (sent) {
         setAssistantText("");
         setTaskOutputs({});

@@ -13,6 +13,7 @@ codex app-server
            |
            +-- selected local project cwd
            +-- skills/list
+           +-- model/list
            +-- task별 thread/start, turn/start, turn/interrupt
            +-- item and approval events
 ```
@@ -47,8 +48,9 @@ Renderer의 Pixel 테마와 Coordinator 역할은 별개입니다. 캐릭터는 
 
 Renderer:
 
-- collects project path, prompt, routing mode, and approval decision
-- renders connection, pet state, selected skill, timeline, and errors
+- collects project path, prompt, routing mode, model/reasoning effort, and approval decision
+- renders the pixel world, role pets, connection, normalized activity, task graph, outputs, and errors
+- uses the generated campus and state sheets under `public/world/`; generated decoration never changes execution truth
 - never executes commands or decides which permission details are valid
 
 Bridge:
@@ -72,6 +74,7 @@ Renderer to bridge:
 
 - `project.select`
 - `skills.refresh`
+- `models.refresh`
 - `turn.start`
 - `turn.interrupt`
 - `approval.resolve`
@@ -82,7 +85,9 @@ Bridge to renderer:
 - `run.state`
 - `project.selected`
 - `skills.list`
+- `models.list`
 - `turn.state`
+- `assistant.text`
 - `activity.event`
 - `approval.request`
 - `protocol.event`

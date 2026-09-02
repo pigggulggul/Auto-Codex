@@ -4,8 +4,23 @@ import { parseClientMessage } from "./client-message.js";
 describe("parseClientMessage", () => {
   it("accepts a valid team turn", () => {
     expect(parseClientMessage(JSON.stringify({
-      type: "turn.start", prompt: "작업", skillMode: "auto", executionMode: "team",
-    }))).toMatchObject({ type: "turn.start", executionMode: "team" });
+      type: "turn.start",
+      prompt: "작업",
+      skillMode: "auto",
+      executionMode: "team",
+      model: "gpt-5.6-sol",
+      effort: "high",
+    }))).toMatchObject({ type: "turn.start", executionMode: "team", model: "gpt-5.6-sol", effort: "high" });
+  });
+
+  it("accepts a model refresh request", () => {
+    expect(parseClientMessage('{"type":"models.refresh"}')).toEqual({ type: "models.refresh" });
+  });
+
+  it("rejects an unsupported reasoning effort", () => {
+    expect(() => parseClientMessage(JSON.stringify({
+      type: "turn.start", prompt: "작업", skillMode: "auto", effort: "maximum-ish",
+    }))).toThrow("추론 강도가 올바르지 않습니다");
   });
 
   it("rejects forged approval decisions", () => {

@@ -1,7 +1,8 @@
 import type { ClientMessage } from "../shared/protocol.js";
 
-const SIMPLE_MESSAGES = new Set(["project.pick", "project.trust", "skills.refresh", "turn.interrupt"]);
+const SIMPLE_MESSAGES = new Set(["project.pick", "project.trust", "skills.refresh", "models.refresh", "turn.interrupt"]);
 const APPROVAL_DECISIONS = new Set(["accept", "acceptForSession", "decline", "cancel"]);
+const REASONING_EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]);
 
 export function parseClientMessage(raw: string): ClientMessage {
   let value: unknown;
@@ -25,6 +26,12 @@ export function parseClientMessage(raw: string): ClientMessage {
     if (message.skillPath !== undefined && typeof message.skillPath !== "string") throw new Error("스킬 경로가 올바르지 않습니다.");
     if (message.executionMode !== undefined && message.executionMode !== "solo" && message.executionMode !== "team") {
       throw new Error("실행 모드가 올바르지 않습니다.");
+    }
+    if (message.model !== undefined && (typeof message.model !== "string" || !message.model.trim())) {
+      throw new Error("모델 ID가 올바르지 않습니다.");
+    }
+    if (message.effort !== undefined && (typeof message.effort !== "string" || !REASONING_EFFORTS.has(message.effort))) {
+      throw new Error("추론 강도가 올바르지 않습니다.");
     }
     return message as ClientMessage;
   }

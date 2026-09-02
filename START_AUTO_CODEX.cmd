@@ -6,17 +6,12 @@ title Auto Codex Local
 if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
 if exist "%APPDATA%\npm" set "PATH=%APPDATA%\npm;%PATH%"
 
-powershell.exe -NoLogo -NoProfile -NonInteractive -Command "try { $health = Invoke-RestMethod 'http://127.0.0.1:4781/healthz' -TimeoutSec 1 } catch { exit 1 }; try { $page = Invoke-WebRequest 'http://127.0.0.1:4781/' -UseBasicParsing -TimeoutSec 1; if ($page.Content -match 'id=[\"'']root[\"'']') { exit 0 } } catch {}; exit 2"
-set "AUTO_CODEX_SERVER_STATE=%ERRORLEVEL%"
-if "%AUTO_CODEX_SERVER_STATE%"=="0" (
-  echo [Auto Codex] The production server is already running. Opening it now.
-  explorer.exe "http://127.0.0.1:4781/"
-  exit /b 0
-)
-if "%AUTO_CODEX_SERVER_STATE%"=="2" (
-  echo [Auto Codex] The development server is already running. Opening it now.
-  explorer.exe "http://127.0.0.1:4780/"
-  exit /b 0
+echo [Auto Codex] Releasing any previous local bridge or Vite process...
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0tools\release-local-ports.ps1"
+if errorlevel 1 (
+  echo [Auto Codex] Could not release local ports 4780/4781.
+  pause
+  exit /b 1
 )
 
 where node >nul 2>&1
