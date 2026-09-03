@@ -28,8 +28,11 @@ foreach ($listener in $listeners) {
   $ownerId = [int]$listener.OwningProcess
   try {
     $process = Get-Process -Id $ownerId -ErrorAction Stop
-    Write-Host ("[Auto Codex] Stopping PID {0} ({1}) on local port {2}." -f $ownerId, $process.ProcessName, $listener.LocalPort)
-    Stop-Process -Id $ownerId -Force -ErrorAction Stop
+    Write-Host ("[Auto Codex] Stopping PID tree {0} ({1}) on local port {2}." -f $ownerId, $process.ProcessName, $listener.LocalPort)
+    # The bridge owns a codex app-server child that does not listen on a
+    # local port. Kill the exact listener tree so that child cannot survive a
+    # restart and keep stale App Server state alive.
+    $null = & taskkill.exe /PID $ownerId /T /F 2>&1
   } catch {
     throw ("Could not stop PID {0} listening on port {1}: {2}" -f $ownerId, $listener.LocalPort, $_.Exception.Message)
   }

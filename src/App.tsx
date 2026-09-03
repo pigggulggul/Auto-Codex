@@ -4,6 +4,8 @@ import { ModelPicker } from "./components/ModelPicker";
 import { OperationsPanel } from "./components/OperationsPanel";
 import { PixelOffice } from "./components/PixelOffice";
 import { ProjectPanel } from "./components/ProjectPanel";
+import { ConversationPicker } from "./components/ConversationPicker";
+import { ResultView } from "./components/ResultView";
 import { SkillPicker } from "./components/SkillPicker";
 import { useBridge } from "./hooks/useBridge";
 import type { AgentRole, ExecutionMode, ReasoningEffort } from "../shared/protocol";
@@ -23,6 +25,7 @@ import {
 const MODEL_KEY = "auto-codex.model";
 const EFFORT_KEY = "auto-codex.reasoning-effort";
 type LeftPanel = "workspace" | "operations";
+type MainView = "pixel" | "results";
 
 function formatTokenCount(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
@@ -34,6 +37,7 @@ export default function App() {
   const bridge = useBridge();
   const [prompt, setPrompt] = useState("");
   const [leftPanel, setLeftPanel] = useState<LeftPanel>("workspace");
+  const [mainView, setMainView] = useState<MainView>("pixel");
   const [skillMode, setSkillMode] = useState<"auto" | "manual">("auto");
   const [skillPath, setSkillPath] = useState("");
   const [executionMode, setExecutionMode] = useState<ExecutionMode>("team");
@@ -47,10 +51,11 @@ export default function App() {
     () => (window.localStorage.getItem(EFFORT_KEY) as ReasoningEffort | null) || "",
   );
   const projectPath = bridge.snapshot.projectPath;
+  const workspaceMode = bridge.snapshot.workspaceMode;
   const activeRun = bridge.snapshot.activeRun;
   const teamBusy = Boolean(activeRun && ["planning", "running", "verifying"].includes(activeRun.status));
   const busy = teamBusy || Boolean(bridge.snapshot.turnId) || bridge.turnStatus === "inProgress";
-  const ready = bridge.snapshot.connected && bridge.snapshot.appServerReady && Boolean(projectPath);
+  const ready = bridge.snapshot.connected && bridge.snapshot.appServerReady && (workspaceMode === "research" || Boolean(projectPath));
   const connectionLabel = !bridge.snapshot.connected
     ? "bridge offline"
     : bridge.snapshot.appServerReady
@@ -199,8 +204,17 @@ export default function App() {
 
           {leftPanel === "workspace" ? (
             <aside className="control-card">
+              <ConversationPicker
+                conversations={bridge.conversations}
+                activeConversationId={bridge.snapshot.activeConversationId}
+                disabled={busy}
+                onNew={bridge.newConversation}
+                onSelect={bridge.selectConversation}
+              />
               <ProjectPanel
                 currentPath={projectPath}
+                workspaceMode={workspaceMode}
+                researchNetworkAccess={bridge.snapshot.researchNetworkAccess}
                 connected={bridge.snapshot.connected}
                 isPicking={bridge.isPickingProject}
                 trustStatus={bridge.snapshot.projectTrust}
@@ -209,6 +223,8 @@ export default function App() {
                 onSelect={bridge.selectProject}
                 onPick={bridge.pickProject}
                 onTrust={bridge.trustProject}
+                onModeChange={bridge.setWorkspaceMode}
+                onNetworkChange={bridge.setResearchNetworkAccess}
               />
               <ModelPicker
                 models={bridge.models}
@@ -220,16 +236,18 @@ export default function App() {
                 onEffortChange={changeEffort}
                 onRefresh={bridge.refreshModels}
               />
-              <SkillPicker
-                skills={bridge.skills}
-                projectPath={projectPath}
-                mode={skillMode}
-                selectedPath={skillPath}
-                disabled={!projectPath || busy}
-                onModeChange={setSkillMode}
-                onSkillChange={setSkillPath}
-                onRefresh={bridge.refreshSkills}
-              />
+              {workspaceMode === "project" && (
+                <SkillPicker
+                  skills={bridge.skills}
+                  projectPath={projectPath}
+                  mode={skillMode}
+                  selectedPath={skillPath}
+                  disabled={!projectPath || busy}
+                  onModeChange={setSkillMode}
+                  onSkillChange={setSkillPath}
+                  onRefresh={bridge.refreshSkills}
+                />
+              )}
               <details className="control-section prompt-section control-collapsible" open={promptExpanded} onToggle={(event) => setPromptExpanded(event.currentTarget.open)}>
                 <summary className="section-heading"><div><span className="eyebrow">04 · QUEST</span><h2>업무 지시</h2></div><span className="collapse-glyph" aria-hidden="true">⌄</span></summary>
                 <div className="control-section-body">
@@ -248,7 +266,7 @@ export default function App() {
                     onKeyDown={(event) => {
                       if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && ready && !busy) start();
                     }}
-                    placeholder="예: 로그인 화면을 만들고 테스트까지 실행해줘"
+                    placeholder={workspaceMode === "research" ? "예: 오늘 미국 증시와 주요 종목 흐름을 출처와 함께 정리해줘" : "예: 로그인 화면을 만들고 테스트까지 실행해줘"}
                     disabled={busy}
                     rows={5}
                   />
@@ -274,24 +292,40 @@ export default function App() {
               taskOutputs={bridge.taskOutputs}
               characterAssignments={worldCharacterAssignments}
               streaming={busy}
+              onOpenResults={() => setMainView("results")}
             />
           )}
         </div>
 
         <div className="world-column">
-          <PixelOffice
-            run={activeRun}
-            bridgeConnected={bridge.snapshot.connected}
-            appServerReady={bridge.snapshot.appServerReady}
-            pets={pets}
-            petAssignments={petAssignments}
-            soloState={bridge.snapshot.petState}
-            activeRole={bridge.snapshot.activeRole}
-            modelLabel={selectedModelInfo?.displayName || selectedModel || "App Server default"}
-            onAssignPet={assignPet}
-            characterAssignments={worldCharacterAssignments}
-            onAssignCharacter={assignWorldCharacter}
-          />
+          <div className="main-view-switch" role="tablist" aria-label="메인 화면 선택">
+            <button type="button" role="tab" aria-selected={mainView === "pixel"} className={mainView === "pixel" ? "active" : ""} onClick={() => setMainView("pixel")}>▦ 픽셀 화면</button>
+            <button type="button" role="tab" aria-selected={mainView === "results"} className={mainView === "results" ? "active" : ""} onClick={() => setMainView("results")}>▤ 결과 화면</button>
+          </div>
+          {mainView === "pixel" ? (
+            <PixelOffice
+              run={activeRun}
+              bridgeConnected={bridge.snapshot.connected}
+              appServerReady={bridge.snapshot.appServerReady}
+              pets={pets}
+              petAssignments={petAssignments}
+              soloState={bridge.snapshot.petState}
+              activeRole={bridge.snapshot.activeRole}
+              modelLabel={selectedModelInfo?.displayName || selectedModel || "App Server default"}
+              onAssignPet={assignPet}
+              characterAssignments={worldCharacterAssignments}
+              onAssignCharacter={assignWorldCharacter}
+              onOpenResults={() => setMainView("results")}
+            />
+          ) : (
+            <ResultView
+              conversationTitle={bridge.conversations.find((conversation) => conversation.id === bridge.snapshot.activeConversationId)?.title || "새 대화"}
+              conversationId={bridge.snapshot.activeConversationId}
+              run={activeRun}
+              assistantText={bridge.assistantText}
+              taskOutputs={bridge.taskOutputs}
+            />
+          )}
         </div>
 
       </div>

@@ -16,6 +16,22 @@ export function parseClientMessage(raw: string): ClientMessage {
   if (typeof message.type !== "string") throw new Error("메시지 형식이 올바르지 않습니다.");
   if (SIMPLE_MESSAGES.has(message.type)) return message as ClientMessage;
 
+  if (message.type === "workspace.mode") {
+    if (message.mode !== "project" && message.mode !== "research") throw new Error("사용 모드가 올바르지 않습니다.");
+    return message as ClientMessage;
+  }
+  if (message.type === "workspace.network") {
+    if (typeof message.enabled !== "boolean") throw new Error("웹 접근 설정이 올바르지 않습니다.");
+    return message as ClientMessage;
+  }
+  if (message.type === "conversation.new") return message as ClientMessage;
+  if (message.type === "conversation.select") {
+    if (typeof message.conversationId !== "string" || !message.conversationId.trim()) {
+      throw new Error("대화 ID가 올바르지 않습니다.");
+    }
+    return message as ClientMessage;
+  }
+
   if (message.type === "project.select") {
     if (typeof message.path !== "string" || !message.path.trim()) throw new Error("프로젝트 경로를 입력하세요.");
     return message as ClientMessage;

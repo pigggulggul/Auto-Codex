@@ -19,6 +19,10 @@ Codex and then rasterized into the exact runtime dimensions used by the world.
 - Clicking an idle agent and then a walkable tile issues a visual-only movement.
 - Clicking Claudio or Gitcat displays a short heart interaction.
 - Character choices are saved locally in `localStorage` per browser profile.
+- Runtime speech bubbles are positioned over the Canvas as regular HTML text,
+  so Korean and longer status labels remain readable while the art stays
+  pixelated. Full assistant and task output is shown in the separate large
+  result view.
 - The activity center reads that same assignment map, so its portrait and the
   on-canvas agent always refer to the same character.
 

@@ -899,6 +899,105 @@ body {
   .pet-picker-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* Conversation, workspace-mode, and large-result controls. */
+.conversation-picker {
+  flex: none;
+  padding: 14px 16px;
+  border: 3px solid #80aaa4;
+  border-radius: 11px;
+  color: #29494f;
+  background: #fffdf5;
+  box-shadow: 5px 5px 0 rgba(61, 101, 99, .12);
+}
+.conversation-picker-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.conversation-picker-heading > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.conversation-picker-heading strong { overflow: hidden; color: #29494f; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+.conversation-picker-heading small { color: #779093; font: 11px/1 monospace; }
+.conversation-picker-heading button {
+  flex: none; min-height: 34px; padding: 0 9px; border: 2px solid #a798dd; border-radius: 7px;
+  color: #5d4d99; background: #f0edff; cursor: pointer; font-size: 11px; font-weight: 800;
+}
+.conversation-select-label { display: block; margin-top: 12px; }
+.conversation-select-label span { display: block; margin-bottom: 6px; color: #718d8c; font: 700 10px/1 monospace; }
+.conversation-select-label select {
+  width: 100%; height: 38px; padding: 0 9px; border: 2px solid #bfd7d1; border-radius: 8px;
+  color: #36575d; background: #f7fff8; font-size: 12px;
+}
+.conversation-picker > p { margin: 9px 0 0; color: #789093; font-size: 10px; line-height: 1.5; }
+.workspace-mode-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+.workspace-mode-picker button {
+  min-width: 0; min-height: 54px; display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+  padding: 9px; border: 2px solid #c6ddd5; border-radius: 8px; color: #6d8586; background: #f7fff8; cursor: pointer; text-align: left;
+}
+.workspace-mode-picker button strong { color: #385b61; font-size: 12px; }
+.workspace-mode-picker button small { color: #7d9393; font-size: 10px; }
+.workspace-mode-picker button.active { border-color: #5fb494; color: #285e53; background: #e8f9ee; box-shadow: 2px 2px 0 #b5ddcc; }
+.workspace-mode-picker button.active strong { color: #285e53; }
+.research-mode-card { padding: 12px; border: 2px solid #9acbb9; border-radius: 8px; background: #effbf2; }
+.research-mode-card > strong { display: block; color: #2c6b5b; font-size: 13px; }
+.research-mode-card p { margin: 7px 0 10px; color: #5f7d7d; font-size: 11px; line-height: 1.55; }
+.research-mode-card label { display: flex; align-items: center; gap: 7px; color: #38675f; font-size: 11px; font-weight: 800; }
+.research-mode-card input { accent-color: #4fa98b; }
+.research-mode-card > small { display: block; margin-top: 8px; color: #789090; font-size: 10px; line-height: 1.4; }
+.main-view-switch {
+  display: flex; gap: 7px; margin-bottom: 10px; padding: 6px; border: 3px solid #9abeb8; border-radius: 10px;
+  background: #fffdf5; box-shadow: 4px 4px 0 rgba(61, 101, 99, .12);
+}
+.main-view-switch button {
+  flex: 1; min-height: 38px; border: 2px solid transparent; border-radius: 7px; color: #617f80; background: transparent; cursor: pointer; font-size: 12px; font-weight: 800;
+}
+.main-view-switch button.active { border-color: #8b7bd6; color: #fff; background: #6b8bcd; box-shadow: 2px 2px 0 #49639d; }
+.pixel-results-button {
+  min-height: 30px; padding: 0 8px; border: 2px solid #9a8bd9; border-radius: 6px; color: #624f9d; background: #f2efff; cursor: pointer; font-size: 11px; font-weight: 800;
+}
+.pixel-results-button:hover, .large-result-copy:hover, .result-expand-button:hover { filter: brightness(.97); }
+.pixel-world-bubble-layer { position: absolute; inset: 0; z-index: 6; overflow: hidden; pointer-events: none; }
+.pixel-world-bubble {
+  position: absolute; max-width: 190px; min-width: 72px; padding: 7px 9px; border: 2px solid #40535a; border-radius: 8px;
+  color: #24383c; background: rgba(255, 253, 239, .98); box-shadow: 3px 3px 0 rgba(50, 73, 76, .2);
+  transform: translate(-50%, -100%); font: 800 12px/1.15 "Segoe UI", "Malgun Gothic", sans-serif; text-align: center; text-overflow: ellipsis; white-space: nowrap;
+}
+.pixel-world-bubble::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 9px; height: 9px; border-right: 2px solid #40535a; border-bottom: 2px solid #40535a; background: rgba(255, 253, 239, .98); transform: translateX(-50%) rotate(45deg); }
+.pixel-world-bubble.is-warning { border-color: #d79a3b; color: #77521c; }
+.pixel-world-bubble.is-warning::after { border-color: #d79a3b; }
+.pixel-world-bubble.is-error { border-color: #c96e63; color: #87463f; }
+.pixel-world-bubble.is-error::after { border-color: #c96e63; }
+.large-result-view {
+  min-height: 0; height: calc(100vh - 137px); display: flex; flex-direction: column; overflow: hidden;
+  border: 3px solid #80aaa4; border-radius: 11px; color: #29494f; background: #fffdf5; box-shadow: 5px 5px 0 rgba(61, 101, 99, .15);
+}
+.large-result-heading { flex: none; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 22px 24px; border-bottom: 3px solid #bfd8d1; background: linear-gradient(90deg, #fff0f7, #f3efff); }
+.large-result-heading h2 { margin: 6px 0 5px; color: #28454e; font-size: 25px; line-height: 1.2; }
+.large-result-heading p { margin: 0; color: #688187; font-size: 12px; }
+.large-result-copy { flex: none; min-height: 38px; padding: 0 12px; border: 2px solid #9a8bd9; border-radius: 7px; color: #624f9d; background: #fff; cursor: pointer; font-size: 12px; font-weight: 800; }
+.large-result-content { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 12px; padding: 18px; }
+.large-result-card { overflow: hidden; border: 2px solid #c6dbd4; border-radius: 7px; background: #fff; box-shadow: 3px 3px 0 rgba(64,98,95,.1); }
+.large-result-card.primary-result { border-color: #9a8bd9; }
+.large-result-card header { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-bottom: 2px solid #d4e3de; background: #f4fbf5; }
+.large-result-card header > span { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: 2px solid #517c71; color: #fff; background: #64b992; font-size: 16px; font-weight: 900; }
+.large-result-card header > div { min-width: 0; }
+.large-result-card header strong, .large-result-card header small { display: block; }
+.large-result-card header strong { color: #36545a; font-size: 16px; }
+.large-result-card header small { margin-top: 4px; color: #819392; font-size: 12px; }
+.large-result-card pre { margin: 0; max-height: 450px; overflow: auto; padding: 20px; color: #294950; background: #fffef9; font: 15px/1.8 "Pretendard Variable", Pretendard, Inter, "Segoe UI", sans-serif; white-space: pre-wrap; word-break: break-word; }
+.large-result-empty { min-height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; border: 3px dashed #c4dad3; color: #829494; text-align: center; }
+.large-result-empty span { color: #8975df; font-size: 42px; }
+.large-result-empty strong { color: #4b6b6b; font-size: 18px; }
+.large-result-empty p { margin: 0; color: #6f8588; font-size: 13px; }
+.result-card header { align-items: center; }
+.result-expand-button { margin-left: auto; padding: 6px 8px; border: 2px solid #9a8bd9; border-radius: 5px; color: #624f9d; background: #fff; cursor: pointer; font-size: 10px; font-weight: 800; }
+
+@media (max-width: 720px) {
+  .conversation-picker { border-width: 2px; padding: 11px; }
+  .large-result-view { height: 680px; }
+  .large-result-heading { padding: 16px; }
+  .large-result-heading h2 { font-size: 20px; }
+  .large-result-heading p { font-size: 11px; }
+  .large-result-content { padding: 11px; }
+  .large-result-card pre { padding: 14px; font-size: 13px; }
+  .pixel-results-button { font-size: 10px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .world-agent { transition: none; }
 }

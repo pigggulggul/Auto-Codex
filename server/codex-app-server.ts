@@ -157,7 +157,21 @@ export class CodexAppServer extends EventEmitter {
     this.startPromise = null;
     // Clear the reference before killing so the old child's asynchronous
     // exit event cannot tear down a new server started immediately after it.
-    child?.kill();
+    if (!child) return;
+    if (process.platform === "win32" && child.pid) {
+      // Windows runs the default Codex launch through cmd.exe. Killing only
+      // that wrapper can orphan codex app-server, so terminate the exact
+      // process tree rooted at the child we spawned.
+      const killer = spawn("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+      killer.once("error", () => {
+        if (!child.killed) child.kill();
+      });
+      return;
+    }
+    child.kill();
   }
 
   private write(message: unknown): void {

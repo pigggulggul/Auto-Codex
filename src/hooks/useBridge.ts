@@ -9,6 +9,7 @@ import type {
   ExecutionMode,
   ModelInfo,
   ReasoningEffort,
+  WorkspaceMode,
 } from "../../shared/protocol";
 import { loadTokenUsage, mergeTokenUsage, saveTokenUsage, summarizeTokenUsage } from "../lib/tokenUsage";
 
@@ -16,6 +17,8 @@ const EMPTY_SNAPSHOT: BridgeSnapshot = {
   connected: false,
   appServerReady: false,
   projectPath: null,
+  workspaceMode: "project",
+  researchNetworkAccess: false,
   threadId: null,
   turnId: null,
   petState: "connecting",
@@ -25,6 +28,8 @@ const EMPTY_SNAPSHOT: BridgeSnapshot = {
   activeEffort: null,
   projectTrust: "untrusted",
   activeRun: null,
+  activeConversationId: "",
+  conversations: [],
 };
 
 function bridgeUrl(): string {
@@ -80,6 +85,12 @@ export function useBridge() {
         switch (message.type) {
           case "bridge.state":
             setSnapshot(message.snapshot);
+            break;
+          case "conversation.state":
+            setAssistantText(message.state.assistantText);
+            setTaskOutputs(message.state.taskOutputs);
+            setActivities(message.state.activities);
+            setSnapshot((current) => ({ ...current, activeRun: message.state.activeRun }));
             break;
           case "run.state":
             setSnapshot((current) => ({ ...current, activeRun: message.run }));
@@ -145,6 +156,7 @@ export function useBridge() {
         }
       });
       socket.addEventListener("close", () => {
+        if (socketRef.current !== socket) return;
         socketRef.current = null;
         setSnapshot((current) => ({ ...current, connected: false, appServerReady: false, petState: "connecting" }));
         if (!disposed) {
@@ -152,7 +164,9 @@ export function useBridge() {
           retryRef.current = window.setTimeout(connect, delay);
         }
       });
-      socket.addEventListener("error", () => socket.close());
+      socket.addEventListener("error", () => {
+        if (socketRef.current === socket) socket.close();
+      });
     };
 
     connect();
@@ -189,6 +203,10 @@ export function useBridge() {
     isTrustingProject,
     clearError: () => setLastError(null),
     selectProject: (projectPath: string) => send({ type: "project.select", path: projectPath }),
+    setWorkspaceMode: (mode: WorkspaceMode) => send({ type: "workspace.mode", mode }),
+    setResearchNetworkAccess: (enabled: boolean) => send({ type: "workspace.network", enabled }),
+    newConversation: () => send({ type: "conversation.new" }),
+    selectConversation: (conversationId: string) => send({ type: "conversation.select", conversationId }),
     pickProject: () => {
       if (!send({ type: "project.pick" })) return false;
       setIsPickingProject(true);
@@ -203,6 +221,7 @@ export function useBridge() {
     refreshModels: () => send({ type: "models.refresh" }),
     assistantText,
     taskOutputs,
+    conversations: snapshot.conversations,
     tokenUsage,
     startTurn: (
       prompt: string,

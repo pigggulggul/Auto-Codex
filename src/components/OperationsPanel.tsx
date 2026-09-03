@@ -13,6 +13,7 @@ type Props = {
   taskOutputs: Record<string, string>;
   characterAssignments: WorldCharacterAssignments;
   streaming: boolean;
+  onOpenResults?: () => void;
 };
 
 const ROLE_LABELS: Record<AgentRole, string> = {
@@ -39,7 +40,7 @@ function timeLabel(timestamp: string): string {
     : parsed.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-export function OperationsPanel({ activities, run, assistantText, taskOutputs, characterAssignments, streaming }: Props) {
+export function OperationsPanel({ activities, run, assistantText, taskOutputs, characterAssignments, streaming, onOpenResults }: Props) {
   const [tab, setTab] = useState<PanelTab>("activity");
   const outputs = useMemo(() => run?.tasks.map((task) => ({
     task,
@@ -87,7 +88,7 @@ export function OperationsPanel({ activities, run, assistantText, taskOutputs, c
           <div className="result-feed">
             {assistantText && (
               <article className="result-card primary-result">
-                <header><span>★</span><div><strong>최종 응답</strong><small>{streaming ? "Codex가 작성 중" : "Codex 결과"}</small></div></header>
+                <header><span>★</span><div><strong>최종 응답</strong><small>{streaming ? "Codex가 작성 중" : "Codex 결과"}</small></div>{onOpenResults && <button type="button" className="result-expand-button" onClick={onOpenResults}>크게 보기</button>}</header>
                 <pre>{assistantText}</pre>
               </article>
             )}

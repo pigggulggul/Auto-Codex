@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import type { WorkspaceMode } from "../../shared/protocol";
 
 type Props = {
   currentPath: string | null;
+  workspaceMode: WorkspaceMode;
+  researchNetworkAccess: boolean;
   connected: boolean;
   isPicking: boolean;
   trustStatus: "trusted" | "untrusted";
@@ -10,9 +13,11 @@ type Props = {
   onSelect: (path: string) => void;
   onPick: () => void;
   onTrust: () => void;
+  onModeChange: (mode: WorkspaceMode) => void;
+  onNetworkChange: (enabled: boolean) => void;
 };
 
-export function ProjectPanel({ currentPath, connected, isPicking, trustStatus, isTrusting, disabled, onSelect, onPick, onTrust }: Props) {
+export function ProjectPanel({ currentPath, workspaceMode, researchNetworkAccess, connected, isPicking, trustStatus, isTrusting, disabled, onSelect, onPick, onTrust, onModeChange, onNetworkChange }: Props) {
   const [value, setValue] = useState(() => window.localStorage.getItem("auto-codex.project") ?? "");
   const [confirmingTrust, setConfirmingTrust] = useState(false);
   const [expanded, setExpanded] = useState(true);
@@ -31,6 +36,23 @@ export function ProjectPanel({ currentPath, connected, isPicking, trustStatus, i
         <span className="summary-status">{currentPath && <span className="check-mark" title="연결됨">✓</span>}<span className="collapse-glyph" aria-hidden="true">⌄</span></span>
       </summary>
       <div className="control-section-body">
+        <div className="workspace-mode-picker" role="group" aria-label="사용 모드">
+          <button type="button" className={workspaceMode === "project" ? "active" : ""} onClick={() => onModeChange("project")} disabled={disabled}>
+            <strong>프로젝트 작업</strong><small>폴더·파일 수정</small>
+          </button>
+          <button type="button" className={workspaceMode === "research" ? "active" : ""} onClick={() => onModeChange("research")} disabled={disabled}>
+            <strong>조사 모드</strong><small>폴더 없이 웹 조회</small>
+          </button>
+        </div>
+        {workspaceMode === "research" ? (
+          <div className="research-mode-card">
+            <strong>폴더 연결 없이 조사합니다</strong>
+            <p>미국 증시·뉴스·웹 자료를 확인할 때 사용합니다. 파일을 읽거나 수정하지 않습니다.</p>
+            <label><input type="checkbox" checked={researchNetworkAccess} onChange={(event) => onNetworkChange(event.target.checked)} disabled={disabled} /> 웹 접근 허용</label>
+            <small>{researchNetworkAccess ? "이번 조사에서 네트워크 사용이 허용됩니다." : "안전하게 네트워크가 차단되어 있습니다."}</small>
+          </div>
+        ) : (
+          <>
         <label className="path-field">
         <span>LOCAL PATH</span>
         <div>
@@ -76,6 +98,8 @@ export function ProjectPanel({ currentPath, connected, isPicking, trustStatus, i
         </div>
         )}
         {currentPath && <p className="path-caption" title={currentPath}>{currentPath}</p>}
+          </>
+        )}
       </div>
     </details>
   );

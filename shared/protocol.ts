@@ -22,6 +22,8 @@ export type AgentRole = "coordinator" | SkillRole;
 
 export type ExecutionMode = "solo" | "team";
 
+export type WorkspaceMode = "project" | "research";
+
 export type ReasoningEffort =
   | "none"
   | "minimal"
@@ -184,10 +186,29 @@ export type RunSnapshot = {
   summary?: string;
 };
 
+export type ConversationSummary = {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  preview: string;
+  messageCount: number;
+};
+
+export type ConversationState = {
+  id: string;
+  assistantText: string;
+  taskOutputs: Record<string, string>;
+  activities: ActivityEvent[];
+  activeRun: RunSnapshot | null;
+};
+
 export type BridgeSnapshot = {
   connected: boolean;
   appServerReady: boolean;
   projectPath: string | null;
+  workspaceMode: WorkspaceMode;
+  researchNetworkAccess: boolean;
   threadId: string | null;
   turnId: string | null;
   petState: PetState;
@@ -197,12 +218,18 @@ export type BridgeSnapshot = {
   activeEffort: ReasoningEffort | null;
   projectTrust: "trusted" | "untrusted";
   activeRun: RunSnapshot | null;
+  activeConversationId: string;
+  conversations: ConversationSummary[];
 };
 
 export type ClientMessage =
+  | { type: "workspace.mode"; mode: WorkspaceMode }
+  | { type: "workspace.network"; enabled: boolean }
   | { type: "project.select"; path: string }
   | { type: "project.pick" }
   | { type: "project.trust" }
+  | { type: "conversation.new" }
+  | { type: "conversation.select"; conversationId: string }
   | { type: "skills.refresh" }
   | { type: "models.refresh" }
   | {
@@ -223,6 +250,7 @@ export type ClientMessage =
 
 export type ServerMessage =
   | { type: "bridge.state"; snapshot: BridgeSnapshot }
+  | { type: "conversation.state"; state: ConversationState }
   | { type: "project.picker"; status: "opened" | "cancelled" }
   | { type: "project.selected"; path: string }
   | { type: "project.trust"; path: string; status: "trusted" | "untrusted" }

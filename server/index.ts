@@ -18,6 +18,9 @@ import type {
   SkillInfo,
   TaskDefinition,
   TaskNode,
+  WorkspaceMode,
+  ConversationState,
+  ConversationSummary,
 } from "../shared/protocol.js";
 import { mapNotification } from "./activity-mapper.js";
 import {
@@ -81,6 +84,15 @@ type SkillsListResponse = {
 type ThreadStartResponse = { thread?: { id?: string } };
 type TurnStartResponse = { turn?: { id?: string } };
 
+type ConversationRecord = ConversationSummary & {
+  threadId: string | null;
+  assistantText: string;
+  taskOutputs: Record<string, string>;
+  activities: ActivityEvent[];
+  activeRun: RunSnapshot | null;
+  contextSummary: string;
+};
+
 type ModelListResponse = {
   data?: Array<{
     id?: string;
@@ -106,6 +118,8 @@ const taskAssistantText = new Map<string, string>();
 
 let appServerReady = false;
 let projectPath: string | null = null;
+let workspaceMode: WorkspaceMode = "project";
+let researchNetworkAccess = false;
 let skills: SkillInfo[] = [];
 let models: ModelInfo[] = [];
 let threadId: string | null = null;
@@ -118,8 +132,32 @@ let activeRole: NonNullable<BridgeSnapshot["activeRole"]> = "general";
 let activeModel: string | null = null;
 let activeEffort: ReasoningEffort | null = null;
 let lastActivity: ActivityEvent | null = null;
+let activities: ActivityEvent[] = [];
 let activeRun: RunSnapshot | null = null;
 let teamSchedulerBusy = false;
+
+function createConversation(title = "새 대화"): ConversationRecord {
+  const now = new Date().toISOString();
+  return {
+    id: randomUUID(),
+    title,
+    createdAt: now,
+    updatedAt: now,
+    preview: "",
+    messageCount: 0,
+    threadId: null,
+    assistantText: "",
+    taskOutputs: {},
+    activities: [],
+    activeRun: null,
+    contextSummary: "",
+  };
+}
+
+const conversations = new Map<string, ConversationRecord>();
+const initialConversation = createConversation();
+conversations.set(initialConversation.id, initialConversation);
+let activeConversationId = initialConversation.id;
 
 const ACTIVE_RUN_STATUSES = new Set(["planning", "running", "verifying"]);
 const REASONING_EFFORTS = new Set<ReasoningEffort>([
@@ -127,10 +165,22 @@ const REASONING_EFFORTS = new Set<ReasoningEffort>([
 ]);
 
 function snapshot(connected = true): BridgeSnapshot {
+  const summaries = [...conversations.values()]
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .map(({ id, title, createdAt, updatedAt, preview, messageCount }) => ({
+      id,
+      title,
+      createdAt,
+      updatedAt,
+      preview,
+      messageCount,
+    }));
   return {
     connected,
     appServerReady,
     projectPath,
+    workspaceMode,
+    researchNetworkAccess,
     threadId,
     turnId,
     petState,
@@ -140,6 +190,8 @@ function snapshot(connected = true): BridgeSnapshot {
     activeEffort,
     projectTrust,
     activeRun,
+    activeConversationId,
+    conversations: summaries,
   };
 }
 
@@ -155,12 +207,114 @@ function broadcastState(): void {
   broadcast({ type: "bridge.state", snapshot: snapshot() });
 }
 
+function activeConversation(): ConversationRecord {
+  const conversation = conversations.get(activeConversationId);
+  if (!conversation) throw new Error("현재 대화를 찾을 수 없습니다.");
+  return conversation;
+}
+
+function syncActiveConversation(): void {
+  const conversation = activeConversation();
+  conversation.threadId = threadId;
+  conversation.assistantText = assistantText;
+  conversation.taskOutputs = Object.fromEntries(taskAssistantText.entries());
+  conversation.activities = activities;
+  conversation.activeRun = activeRun;
+}
+
+function conversationState(): ConversationState {
+  const conversation = activeConversation();
+  syncActiveConversation();
+  return {
+    id: conversation.id,
+    assistantText: conversation.assistantText,
+    taskOutputs: conversation.taskOutputs,
+    activities: conversation.activities,
+    activeRun: conversation.activeRun,
+  };
+}
+
+function broadcastConversationState(): void {
+  broadcast({ type: "conversation.state", state: conversationState() });
+  broadcastState();
+}
+
+function conversationTitle(prompt: string): string {
+  const firstLine = prompt.split(/\r?\n/, 1)[0]?.trim() || "새 대화";
+  return firstLine.length > 48 ? `${firstLine.slice(0, 48)}…` : firstLine;
+}
+
+function updateConversationPreview(value: string): void {
+  const conversation = activeConversation();
+  const preview = value.replace(/\s+/g, " ").trim();
+  if (preview) conversation.preview = preview.slice(0, 140);
+  conversation.updatedAt = new Date().toISOString();
+}
+
+function resetActiveConversationRuntime(): void {
+  threadId = null;
+  turnId = null;
+  assistantText = "";
+  activities = [];
+  lastActivity = null;
+  activeRun = null;
+  petState = "idle";
+  runtimeRegistry.clear();
+  taskAssistantText.clear();
+}
+
+function resetConversationCollection(): void {
+  conversations.clear();
+  const conversation = createConversation();
+  conversations.set(conversation.id, conversation);
+  activeConversationId = conversation.id;
+  resetActiveConversationRuntime();
+}
+
+function startConversationPrompt(prompt: string): void {
+  const conversation = activeConversation();
+  if (conversation.title === "새 대화") conversation.title = conversationTitle(prompt);
+  conversation.preview = prompt.replace(/\s+/g, " ").trim().slice(0, 140);
+  conversation.messageCount += 1;
+  conversation.updatedAt = new Date().toISOString();
+}
+
+function newConversation(): void {
+  if (turnId || runIsActive()) throw new Error("진행 중인 작업을 마친 뒤 새 대화를 만들 수 있습니다.");
+  syncActiveConversation();
+  const conversation = createConversation();
+  conversations.set(conversation.id, conversation);
+  activeConversationId = conversation.id;
+  resetActiveConversationRuntime();
+  broadcastConversationState();
+}
+
+function selectConversation(conversationId: string): void {
+  if (turnId || runIsActive()) throw new Error("진행 중인 작업을 마친 뒤 대화를 바꿀 수 있습니다.");
+  const conversation = conversations.get(conversationId);
+  if (!conversation) throw new Error("선택한 대화를 찾을 수 없습니다.");
+  if (conversationId === activeConversationId) return;
+  syncActiveConversation();
+  activeConversationId = conversationId;
+  threadId = conversation.threadId;
+  turnId = null;
+  assistantText = conversation.assistantText;
+  activeRun = conversation.activeRun;
+  activities = conversation.activities;
+  lastActivity = activities[0] ?? null;
+  runtimeRegistry.clear();
+  taskAssistantText.clear();
+  for (const [taskId, text] of Object.entries(conversation.taskOutputs)) taskAssistantText.set(taskId, text);
+  broadcastConversationState();
+}
+
 function runIsActive(): boolean {
   return activeRun !== null && ACTIVE_RUN_STATUSES.has(activeRun.status);
 }
 
 function publishRun(run: RunSnapshot | null): void {
   activeRun = run;
+  syncActiveConversation();
   broadcast({ type: "run.state", run });
   broadcastState();
 }
@@ -201,6 +355,8 @@ function publishActivity(activity: ActivityEvent): void {
   petState = activity.state;
   if (!duplicate) {
     lastActivity = activity;
+    activities = [activity, ...activities].slice(0, 40);
+    syncActiveConversation();
     broadcast({ type: "activity.event", event: activity });
   }
   broadcastState();
@@ -304,7 +460,11 @@ function describeSkillError(value: unknown): string {
 }
 
 async function loadSkills(forceReload = true): Promise<void> {
-  if (!projectPath) throw new Error("먼저 프로젝트 폴더를 선택하세요.");
+  if (!projectPath || workspaceMode === "research") {
+    skills = [];
+    broadcast({ type: "skills.list", skills, errors: [] });
+    return;
+  }
   await ensureAppServer();
   const response = await appServer.request<SkillsListResponse>("skills/list", {
     cwds: [projectPath],
@@ -323,18 +483,44 @@ async function selectProject(inputPath: string): Promise<void> {
   const info = await stat(resolved);
   if (!info.isDirectory()) throw new Error("프로젝트 경로는 폴더여야 합니다.");
   projectPath = resolved;
+  workspaceMode = "project";
   projectTrust = await readProjectTrust(resolved);
-  threadId = null;
+  resetConversationCollection();
   selectedSkill = null;
   activeRole = "general";
   skills = [];
-  activeRun = null;
-  runtimeRegistry.clear();
-  taskAssistantText.clear();
   broadcast({ type: "project.selected", path: resolved });
-  broadcastState();
+  broadcastConversationState();
   await loadSkills(true);
   publishActivity(localActivity("idle", "프로젝트를 불러왔습니다", path.basename(resolved)));
+}
+
+async function setWorkspaceMode(mode: WorkspaceMode): Promise<void> {
+  if (turnId || runIsActive()) throw new Error("진행 중인 작업을 중단한 뒤 사용 모드를 바꿔주세요.");
+  if (mode === workspaceMode) return;
+  workspaceMode = mode;
+  if (mode === "research") {
+    projectPath = null;
+    projectTrust = "untrusted";
+    researchNetworkAccess = false;
+    skills = [];
+    resetConversationCollection();
+    await ensureAppServer();
+    broadcast({ type: "skills.list", skills, errors: [] });
+    broadcastConversationState();
+    publishActivity(localActivity("idle", "조사 모드로 전환했습니다", "폴더 연결 없이 웹·시장 정보를 확인할 수 있습니다."));
+    return;
+  }
+  resetConversationCollection();
+  broadcastConversationState();
+  broadcast({ type: "skills.list", skills, errors: [] });
+  publishActivity(localActivity("idle", "프로젝트 모드로 전환했습니다", "폴더를 연결하면 파일 작업을 사용할 수 있습니다."));
+}
+
+function setResearchNetworkAccess(enabled: boolean): void {
+  if (workspaceMode !== "research") throw new Error("웹 접근 설정은 조사 모드에서만 사용할 수 있습니다.");
+  researchNetworkAccess = enabled;
+  broadcastState();
 }
 
 async function trustCurrentProject(): Promise<void> {
@@ -342,13 +528,10 @@ async function trustCurrentProject(): Promise<void> {
   if (turnId || runIsActive()) throw new Error("진행 중인 작업을 중단한 뒤 프로젝트를 신뢰하세요.");
   await trustProject(projectPath);
   projectTrust = "trusted";
-  threadId = null;
-  turnId = null;
+  resetActiveConversationRuntime();
+  syncActiveConversation();
   selectedSkill = null;
   activeRole = "general";
-  activeRun = null;
-  runtimeRegistry.clear();
-  taskAssistantText.clear();
   appServerReady = false;
   petState = "connecting";
   broadcast({ type: "project.trust", path: projectPath, status: projectTrust });
@@ -370,23 +553,25 @@ async function pickAndSelectProject(socket: WebSocket): Promise<void> {
 }
 
 async function ensureThread(): Promise<string> {
-  if (!projectPath) throw new Error("먼저 프로젝트 폴더를 선택하세요.");
   if (threadId) return threadId;
-  const response = await appServer.request<ThreadStartResponse>("thread/start", {
-    cwd: projectPath,
+  if (workspaceMode === "project" && !projectPath) throw new Error("먼저 프로젝트 폴더를 선택하세요.");
+  const params: JsonObject = {
     approvalPolicy: "on-request",
-    sandbox: "workspace-write",
+    sandbox: workspaceMode === "research" ? "read-only" : "workspace-write",
     experimentalRawEvents: false,
-  });
+  };
+  if (projectPath) params.cwd = projectPath;
+  const response = await appServer.request<ThreadStartResponse>("thread/start", params);
   const id = response.thread?.id;
   if (!id) throw new Error("Codex가 작업 스레드 ID를 반환하지 않았습니다.");
   threadId = id;
+  syncActiveConversation();
   broadcastState();
   return id;
 }
 
 function coordinatorPrompt(prompt: string): string {
-  return [
+  const lines = [
     "당신은 여러 전문 에이전트의 Coordinator입니다.",
     "사용자 요청을 최대 5개의 구체적인 업무 단위로 나누고, 각 업무의 역할과 의존성을 정하세요.",
     "서로 독립적인 조사·분석은 의존성을 두지 않아 병렬 실행할 수 있게 하세요.",
@@ -395,7 +580,13 @@ function coordinatorPrompt(prompt: string): string {
     "코드를 직접 수정하지 말고 JSON 계획만 반환하세요.",
     "",
     `사용자 요청: ${prompt}`,
-  ].join("\n");
+  ];
+  if (workspaceMode === "research") {
+    lines.splice(4, 0, "현재는 폴더 없는 조사 모드입니다. 파일을 읽거나 수정하는 작업은 계획에 넣지 말고 웹·시장 정보 조사만 하세요.");
+  }
+  const previous = activeConversation().contextSummary;
+  if (previous) lines.push("", "이 대화의 이전 결과 참고:", previous.slice(0, 8_000));
+  return lines.join("\n");
 }
 
 function assignTaskSkills(definitions: TaskDefinition[]): TaskDefinition[] {
@@ -431,13 +622,15 @@ function dependencyContext(run: RunSnapshot, task: TaskNode): string {
 
 function taskPrompt(run: RunSnapshot, task: TaskNode): string {
   if (task.id === "plan") return coordinatorPrompt(run.prompt);
-  const accessRule = task.access === "read"
+  const accessRule = workspaceMode === "research"
+    ? "이 작업은 폴더 없는 조사 모드의 읽기 전용 웹 조사입니다. 파일을 읽거나 수정하지 말고, 확인한 자료와 출처를 정리하세요."
+    : task.access === "read"
     ? "이 작업은 읽기 전용입니다. 파일을 수정하지 마세요."
     : "이 작업은 작업공간 쓰기가 허용됩니다. 배정된 범위만 수정하고 관련 없는 변경은 건드리지 마세요.";
   const reportRule = task.kind === "report"
     ? "성공한 작업뿐 아니라 실패·차단·중단된 작업과 검증 결과도 빠짐없이 포함해 한국어로 최종 보고하세요."
     : "배정된 업무만 수행하고, 완료 결과와 확인 방법을 간결하게 남기세요.";
-  return [
+  const lines = [
     `당신의 역할: ${task.agentRole}`,
     `배정 업무: ${task.title}`,
     task.description,
@@ -449,7 +642,10 @@ function taskPrompt(run: RunSnapshot, task: TaskNode): string {
     "",
     "선행 작업 결과:",
     dependencyContext(run, task),
-  ].join("\n");
+  ];
+  const previous = activeConversation().contextSummary;
+  if (previous && task.id !== "report") lines.push("", "이 대화의 이전 결과 참고:", previous.slice(0, 8_000));
+  return lines.join("\n");
 }
 
 function taskInput(task: TaskNode, text: string): JsonObject[] {
@@ -463,7 +659,9 @@ function taskInput(task: TaskNode, text: string): JsonObject[] {
 }
 
 function taskSandboxPolicy(task: TaskNode): JsonObject {
-  if (task.access === "read") return { type: "readOnly", networkAccess: false };
+  if (workspaceMode === "research" || task.access === "read") {
+    return { type: "readOnly", networkAccess: workspaceMode === "research" && researchNetworkAccess };
+  }
   return {
     type: "workspaceWrite",
     writableRoots: projectPath ? [projectPath] : [],
@@ -484,6 +682,11 @@ function finalizeTeamRunIfDone(): void {
   const summary = reportText?.trim() || fallbackSummary;
   activeRun = { ...activeRun, summary };
   assistantText = summary;
+  const conversation = activeConversation();
+  conversation.contextSummary = summary.slice(0, 10_000);
+  conversation.messageCount += 1;
+  updateConversationPreview(summary);
+  syncActiveConversation();
   broadcast({ type: "assistant.text", text: assistantText });
   petState = activeRun.status === "completed" ? "success" : activeRun.status === "interrupted" ? "idle" : "error";
   publishRun(activeRun);
@@ -502,6 +705,9 @@ function expandedRunFromPlanner(current: RunSnapshot, planner: TaskNode, text: s
     }
   } else {
     definitions = fallbackTaskPlan(current.prompt, activeRole, selectedSkill?.path);
+  }
+  if (workspaceMode === "research") {
+    definitions = definitions.map((definition) => ({ ...definition, access: "read" }));
   }
   definitions = assignTaskSkills(definitions!);
   let expanded = createRunSnapshot({
@@ -529,17 +735,18 @@ function expandedRunFromPlanner(current: RunSnapshot, planner: TaskNode, text: s
 }
 
 async function launchTeamTask(runId: string, taskId: string): Promise<void> {
-  if (!activeRun || activeRun.id !== runId || !projectPath) return;
+  if (!activeRun || activeRun.id !== runId) return;
   let task = activeRun.tasks.find((candidate) => candidate.id === taskId);
   if (!task || task.status !== "running") return;
   try {
-    const threadResponse = await appServer.request<ThreadStartResponse>("thread/start", {
-      cwd: projectPath,
+    const threadParams: JsonObject = {
       approvalPolicy: "on-request",
-      sandbox: task.access === "read" ? "read-only" : "workspace-write",
+      sandbox: workspaceMode === "research" || task.access === "read" ? "read-only" : "workspace-write",
       experimentalRawEvents: false,
       ephemeral: true,
-    });
+    };
+    if (projectPath) threadParams.cwd = projectPath;
+    const threadResponse = await appServer.request<ThreadStartResponse>("thread/start", threadParams);
     const taskThreadId = threadResponse.thread?.id;
     if (!taskThreadId) throw new Error("Codex가 에이전트 스레드 ID를 반환하지 않았습니다.");
     runtimeRegistry.bindThread({ runId, taskId, agentId: task.agentId, threadId: taskThreadId });
@@ -638,10 +845,11 @@ async function startTeamRun(prompt: string): Promise<void> {
 }
 
 async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>): Promise<void> {
-  if (!projectPath) throw new Error("먼저 프로젝트 폴더를 선택하세요.");
+  if (workspaceMode === "project" && !projectPath) throw new Error("프로젝트 모드에서는 먼저 프로젝트 폴더를 선택하세요.");
   if (turnId || runIsActive()) throw new Error("이미 작업이 진행 중입니다.");
   const prompt = message.prompt.trim();
   if (!prompt) throw new Error("Codex에 전달할 업무를 입력하세요.");
+  startConversationPrompt(prompt);
   await ensureAppServer();
   if (message.model && models.length > 0 && !models.some((candidate) => candidate.model === message.model)) {
     throw new Error("선택한 모델을 현재 Codex App Server에서 사용할 수 없습니다.");
@@ -659,6 +867,12 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
   activeModel = message.model ?? selectedModelInfo?.model ?? null;
   activeEffort = message.effort ?? selectedModelInfo?.defaultReasoningEffort ?? null;
   assistantText = "";
+  if ((message.executionMode ?? "team") !== "team") {
+    activeRun = null;
+    taskAssistantText.clear();
+    syncActiveConversation();
+    broadcast({ type: "run.state", run: null });
+  }
   broadcast({ type: "assistant.text", text: assistantText });
   broadcastState();
 
@@ -688,27 +902,36 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
     return;
   }
 
+  const hadThread = Boolean(threadId);
   const activeThreadId = await ensureThread();
-  const text = selectedSkill ? `$${selectedSkill.name}\n\n${prompt}` : prompt;
+  const previous = !hadThread ? activeConversation().contextSummary : "";
+  const contextualPrompt = previous
+    ? `이전 대화의 마지막 결과를 참고하세요:\n${previous.slice(0, 8_000)}\n\n새 요청:\n${prompt}`
+    : prompt;
+  const text = selectedSkill ? `$${selectedSkill.name}\n\n${contextualPrompt}` : contextualPrompt;
   const input: Array<JsonObject> = [{ type: "text", text, text_elements: [] }];
   if (selectedSkill) input.push({ type: "skill", name: selectedSkill.name, path: selectedSkill.path });
 
-  const response = await appServer.request<TurnStartResponse>("turn/start", {
-    threadId: activeThreadId,
-    input,
-    sandboxPolicy: {
+  const sandboxPolicy: JsonObject = workspaceMode === "research"
+    ? { type: "readOnly", networkAccess: researchNetworkAccess }
+    : {
       type: "workspaceWrite",
       writableRoots: [projectPath],
       networkAccess: false,
       excludeTmpdirEnvVar: false,
       excludeSlashTmp: false,
-    },
+    };
+  const response = await appServer.request<TurnStartResponse>("turn/start", {
+    threadId: activeThreadId,
+    input,
+    sandboxPolicy,
     ...(activeModel ? { model: activeModel } : {}),
     ...(activeEffort ? { effort: activeEffort } : {}),
   });
   const id = response.turn?.id;
   if (!id) throw new Error("Codex가 작업 ID를 반환하지 않았습니다.");
   turnId = id;
+  syncActiveConversation();
   broadcast({ type: "turn.state", turnId, status: "inProgress" });
   broadcastState();
 }
@@ -912,6 +1135,12 @@ function cancelPendingApprovals(predicate: (pending: PendingApproval) => boolean
 async function handleClientMessage(socket: WebSocket, raw: string): Promise<void> {
   const message = parseClientMessage(raw);
   switch (message.type) {
+    case "workspace.mode":
+      await setWorkspaceMode(message.mode);
+      break;
+    case "workspace.network":
+      setResearchNetworkAccess(message.enabled);
+      break;
     case "project.pick":
       await pickAndSelectProject(socket);
       break;
@@ -920,6 +1149,12 @@ async function handleClientMessage(socket: WebSocket, raw: string): Promise<void
       break;
     case "project.trust":
       await trustCurrentProject();
+      break;
+    case "conversation.new":
+      newConversation();
+      break;
+    case "conversation.select":
+      selectConversation(message.conversationId);
       break;
     case "skills.refresh":
       await loadSkills(true);
@@ -948,6 +1183,16 @@ appServer.on("ready", () => {
 appServer.on("exit", (error: Error) => {
   appServerReady = false;
   petState = "error";
+  // App Server thread IDs are scoped to the child process. Never reuse an ID
+  // after that process exits, otherwise the next turn can target a missing
+  // thread and surface "no thread with id" from Codex.
+  threadId = null;
+  turnId = null;
+  for (const conversation of conversations.values()) conversation.threadId = null;
+  runtimeRegistry.clear();
+  taskAssistantText.clear();
+  assistantText = "";
+  syncActiveConversation();
   cancelPendingApprovals(() => true);
   if (activeRun && runIsActive()) {
     activeRun = interruptRun(activeRun);
@@ -977,9 +1222,11 @@ appServer.on("notification", (notification: ProtocolNotification) => {
       if (context) {
         const text = `${taskAssistantText.get(context.taskId) ?? ""}${delta}`;
         taskAssistantText.set(context.taskId, text);
+        syncActiveConversation();
         broadcast({ type: "assistant.text", text, ...contextFields(context) });
       } else {
         assistantText += delta;
+        syncActiveConversation();
         broadcast({ type: "assistant.text", text: assistantText });
       }
     }
@@ -989,9 +1236,11 @@ appServer.on("notification", (notification: ProtocolNotification) => {
     if (completedText) {
       if (context) {
         taskAssistantText.set(context.taskId, completedText);
+        syncActiveConversation();
         broadcast({ type: "assistant.text", text: completedText, ...contextFields(context) });
       } else {
         assistantText = completedText;
+        syncActiveConversation();
         broadcast({ type: "assistant.text", text: assistantText });
       }
     }
@@ -1021,7 +1270,17 @@ appServer.on("notification", (notification: ProtocolNotification) => {
     broadcast({ type: "turn.state", turnId: completedId, status, ...contextFields(context) });
     if (context) handleTeamTurnCompleted(context, status, turnErrorMessage);
     if (completedId && context) runtimeRegistry.completeTurn(completedId);
-    else turnId = null;
+    else {
+      turnId = null;
+      if (status === "completed" && assistantText.trim()) {
+        const conversation = activeConversation();
+        conversation.contextSummary = assistantText.slice(0, 10_000);
+        conversation.messageCount += 1;
+        updateConversationPreview(assistantText);
+      }
+      syncActiveConversation();
+      broadcastState();
+    }
   }
   const activity = mapNotification(notification);
   if (activity) {
@@ -1112,6 +1371,7 @@ httpServer.on("upgrade", (request, socket, head) => {
 wsServer.on("connection", (socket) => {
   sockets.add(socket);
   send(socket, { type: "bridge.state", snapshot: snapshot(true) });
+  send(socket, { type: "conversation.state", state: conversationState() });
   send(socket, { type: "assistant.text", text: assistantText });
   for (const [taskId, text] of taskAssistantText) {
     const context = activeRun?.tasks.find((task) => task.id === taskId);

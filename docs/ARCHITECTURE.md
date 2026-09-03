@@ -11,7 +11,7 @@ Node bridge (127.0.0.1:4781)
            v
 codex app-server
            |
-           +-- selected local project cwd
+           +-- optional selected local project cwd
            +-- skills/list
            +-- model/list
            +-- task별 thread/start, turn/start, turn/interrupt
@@ -48,8 +48,10 @@ Renderer의 Pixel 테마와 Coordinator 역할은 별개입니다. 캐릭터는 
 
 Renderer:
 
-- collects project path, prompt, routing mode, model/reasoning effort, and approval decision
+- collects workspace mode (project or folderless research), project path when needed, prompt, routing mode, model/reasoning effort, and approval decision
 - renders the pixel world, role pets, connection, normalized activity, task graph, outputs, and errors
+- lets the user switch between the pixel view and a large readable result view
+- manages user-facing conversation IDs while the bridge maps them to App Server threads
 - uses the generated campus and state sheets under `public/world/`; generated decoration never changes execution truth
 - never executes commands or decides which permission details are valid
 
@@ -73,6 +75,10 @@ App Server:
 Renderer to bridge:
 
 - `project.select`
+- `workspace.mode`
+- `workspace.network`
+- `conversation.new`
+- `conversation.select`
 - `skills.refresh`
 - `models.refresh`
 - `turn.start`
@@ -82,6 +88,7 @@ Renderer to bridge:
 Bridge to renderer:
 
 - `bridge.state`
+- `conversation.state`
 - `run.state`
 - `project.selected`
 - `skills.list`
@@ -105,3 +112,5 @@ Manual routing defaults to repository-scoped skills. The renderer can expand the
 - Coordinator/research/report turns use `readOnly`; implementation/design/integration/verification turns use `workspaceWrite`.
 - Network access is disabled by default for every turn.
 - Each team Task receives an ephemeral App Server thread so outputs and events cannot be confused with another Task.
+- Folderless research mode never supplies a project cwd and forces every task to `readOnly`; network access must be explicitly enabled for that mode.
+- Solo conversations reuse their selected thread; Team Auto tasks remain ephemeral and receive prior conversation context through a bounded summary.

@@ -52,6 +52,7 @@ type Props = {
   onAssignPet: (role: AgentRole, petId: string) => void;
   characterAssignments: WorldCharacterAssignments;
   onAssignCharacter: (role: AgentRole, index: number) => void;
+  onOpenResults: () => void;
 };
 
 type WorldAgent = {
@@ -374,49 +375,6 @@ function assetUrls(): string[] {
   ]));
 }
 
-function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
-  const r = Math.min(radius, width / 2, height / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + width - r, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-  ctx.lineTo(x + width, y + height - r);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-  ctx.lineTo(x + r, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
-function drawBubble(ctx: CanvasRenderingContext2D, agent: WorldAgent, text: string, zoom: number, offset: Point): void {
-  const centerX = offset.x + agent.x * zoom;
-  const bottomY = offset.y + (agent.y - CHARACTER_DRAW_HEIGHT - 3) * zoom;
-  const width = Math.max(34, text.length * 5 + 10) * zoom / 2;
-  const height = 13 * zoom;
-  const x = centerX - width / 2;
-  const y = bottomY - height;
-  ctx.save();
-  ctx.fillStyle = "rgba(255, 253, 239, .96)";
-  ctx.strokeStyle = agent.snapshot.status === "waitingApproval" ? "#d79a3b" : "#40535a";
-  ctx.lineWidth = zoom;
-  drawRoundedRect(ctx, x, y, width, height, 3 * zoom);
-  ctx.fill();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(centerX - 3 * zoom, y + height);
-  ctx.lineTo(centerX, y + height + 4 * zoom);
-  ctx.lineTo(centerX + 3 * zoom, y + height);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = "#24383c";
-  ctx.font = `700 ${5 * zoom}px monospace`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, centerX, y + height / 2, width - 6 * zoom);
-  ctx.restore();
-}
-
 function activityBubble(agent: WorldAgent, handoff: Handoff | null, now: number): string | null {
   if (handoff?.from === agent.role && agent.handoffUntil > now) return `→ ${ROLE_LABELS[handoff.to]}`;
   if (agent.snapshot.status === "waitingApproval") return "승인 필요 !";
@@ -435,8 +393,10 @@ export function PixelOffice({
   modelLabel,
   characterAssignments,
   onAssignCharacter,
+  onOpenResults,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const bubbleRefs = useRef(new Map<AgentRole, HTMLDivElement>());
   const assetsRef = useRef(new Map<string, HTMLImageElement>());
   const agentsRef = useRef(new Map<AgentRole, WorldAgent>());
   const petsRef = useRef<WorldPet[]>(initialPets());
@@ -762,8 +722,21 @@ export function PixelOffice({
       drawables.forEach((drawable) => drawable.draw());
 
       for (const agent of agentsRef.current.values()) {
+        const bubbleNode = bubbleRefs.current.get(agent.role);
         const bubble = activityBubble(agent, handoffRef.current, simulationTime);
-        if (bubble) drawBubble(ctx, agent, bubble, currentZoom, offset);
+        if (!bubbleNode) continue;
+        if (!bubble) {
+          bubbleNode.hidden = true;
+          continue;
+        }
+        const bubbleTop = offset.y + (agent.y - CHARACTER_DRAW_HEIGHT - 3) * currentZoom - 13 * currentZoom;
+        const bubbleCenter = offset.x + agent.x * currentZoom;
+        bubbleNode.textContent = bubble;
+        bubbleNode.hidden = false;
+        bubbleNode.style.left = `${(bubbleCenter / CANVAS_WIDTH) * 100}%`;
+        bubbleNode.style.top = `${(bubbleTop / CANVAS_HEIGHT) * 100}%`;
+        bubbleNode.classList.toggle("is-warning", agent.snapshot.status === "waitingApproval");
+        bubbleNode.classList.toggle("is-error", agent.snapshot.activity === "error");
       }
 
       // Keep room headers above furniture and characters so a large prop can
@@ -853,6 +826,7 @@ export function PixelOffice({
          <div className="world-run-meta">
            <span>{modelLabel}</span>
            <span>{run ? `${completed}/${total} QUESTS · ${run.status.toUpperCase()}` : "AGENTS RESTING"}</span>
+           <button type="button" className="pixel-results-button" onClick={onOpenResults}>▤ 결과 화면</button>
          </div>
          <div className="pixel-world-controls" aria-label="월드 화면 제어">
            <button type="button" onClick={() => setWorldZoom(zoom - 1)} disabled={zoom <= 2} aria-label="축소">−</button>
@@ -894,6 +868,20 @@ export function PixelOffice({
 
         <div className={`pixel-asset-status ${assetStatus.errors.length ? "has-error" : ""}`}>
           {assetStatus.loaded < assetStatus.total ? `ASSETS ${assetStatus.loaded}/${assetStatus.total}` : assetStatus.errors.length ? `${assetStatus.errors.length} ASSET ERRORS` : "PIXEL ASSETS READY"}
+        </div>
+
+        <div className="pixel-world-bubble-layer" aria-hidden="true">
+          {agents.map((agent) => (
+            <div
+              className="pixel-world-bubble"
+              key={agent.role}
+              ref={(node) => {
+                if (node) bubbleRefs.current.set(agent.role, node);
+                else bubbleRefs.current.delete(agent.role);
+              }}
+              hidden
+            />
+          ))}
         </div>
 
         {handoff && (
