@@ -1,6 +1,12 @@
 import type { PetState } from "../../shared/protocol";
 import type { CSSProperties } from "react";
-import { CHARACTER_ASSETS, CHARACTER_SHEET_COLUMNS, CHARACTER_STATE_ROWS, characterStateRow } from "../world/pixelWorld";
+import {
+  CHARACTER_ASSETS,
+  CHARACTER_SHEET_COLUMNS,
+  CHARACTER_STATE_ROWS,
+  characterFrameDuration,
+  characterStateRow,
+} from "../world/pixelWorld";
 
 type Props = {
   spriteIndex: number;
@@ -13,6 +19,7 @@ type Props = {
 type CharacterStyle = CSSProperties & {
   "--character-width": string;
   "--character-height": string;
+  "--character-frame-duration": string;
   "--character-row": number;
 };
 
@@ -24,6 +31,7 @@ export function WorldCharacter({ spriteIndex, state, size = 50, animated = true,
   const style: CharacterStyle = {
     "--character-width": `${width}px`,
     "--character-height": `${height}px`,
+    "--character-frame-duration": `${characterFrameDuration(state, false)}s`,
     "--character-row": row,
     width,
     height,

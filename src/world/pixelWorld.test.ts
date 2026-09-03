@@ -12,6 +12,7 @@ import {
   ROOM_LAYOUTS,
   STATIONS,
   characterFrame,
+  characterFrameDuration,
   characterStateRow,
   createBlockedTiles,
   directionBetween,
@@ -47,11 +48,11 @@ describe("pixel world navigation", () => {
 });
 
 describe("pixel character animation", () => {
-  it("uses a 256px square atlas and a 3:4 service character box", () => {
-    expect(CHARACTER_FRAME_WIDTH).toBe(64);
-    expect(CHARACTER_FRAME_HEIGHT).toBe(64);
-    expect(CHARACTER_FRAME_WIDTH * CHARACTER_SHEET_COLUMNS).toBe(256);
-    expect(CHARACTER_FRAME_HEIGHT * CHARACTER_STATE_ROWS).toBe(256);
+  it("uses a 512x1024 2x4 atlas and a 3:4 service character box", () => {
+    expect(CHARACTER_FRAME_WIDTH).toBe(256);
+    expect(CHARACTER_FRAME_HEIGHT).toBe(256);
+    expect(CHARACTER_FRAME_WIDTH * CHARACTER_SHEET_COLUMNS).toBe(512);
+    expect(CHARACTER_FRAME_HEIGHT * CHARACTER_STATE_ROWS).toBe(1024);
     expect(CHARACTER_DRAW_WIDTH / CHARACTER_DRAW_HEIGHT).toBe(3 / 4);
   });
 
@@ -60,7 +61,16 @@ describe("pixel character animation", () => {
     expect(characterStateRow("idle", true)).toBe(1);
     expect(characterStateRow("editing", false)).toBe(2);
     expect(characterStateRow("reading", false)).toBe(3);
+    expect(characterStateRow("success", false)).toBe(0);
+    expect(characterStateRow("error", false)).toBe(0);
     expect([0, 1]).toContain(characterFrame("idle", true, 0.5));
+  });
+
+  it("uses state-specific frame timing in both canvas and CSS renderers", () => {
+    expect(characterFrameDuration("idle", false)).toBe(0.68);
+    expect(characterFrameDuration("thinking", false)).toBe(0.42);
+    expect(characterFrameDuration("editing", false)).toBe(0.28);
+    expect(characterFrameDuration("idle", true)).toBe(0.16);
   });
 
   it("resolves four-connected movement direction", () => {

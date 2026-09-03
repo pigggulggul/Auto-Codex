@@ -1,4 +1,4 @@
-"""Build 256px square runtime sheets from generated 2x4 character atlases."""
+"""Build 512x1024 runtime sheets from generated 2x4 character atlases."""
 
 from __future__ import annotations
 
@@ -10,11 +10,11 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 
-FRAME_WIDTH = 64
-FRAME_HEIGHT = 64
+FRAME_WIDTH = 256
+FRAME_HEIGHT = 256
 SOURCE_COLUMNS = 2
 STATE_ROWS = 4
-SHEET_COLUMNS = 4
+SHEET_COLUMNS = 2
 
 
 def connected_background(cell: Image.Image, threshold: int = 24) -> Image.Image:
@@ -99,8 +99,8 @@ def split_frames(source: Image.Image) -> list[Image.Image]:
         for column in range(SOURCE_COLUMNS):
             x0 = round(source.width * column / SOURCE_COLUMNS)
             x1 = round(source.width * (column + 1) / SOURCE_COLUMNS)
-            # The generated atlases are much larger than the 64x64 runtime
-            # frames. Segmenting a compact nearest-neighbour copy is faster
+            # The generated atlases are much larger than the runtime frames.
+            # Segmenting a compact nearest-neighbour copy is faster
             # and also keeps the authored pixel clusters crisp.
             cell = source.crop((x0, y0, x1, y1)).resize((128, 96), Image.Resampling.NEAREST)
             frames.append(connected_background(cell))
@@ -122,9 +122,8 @@ def build_sheet(source_path: Path) -> Image.Image:
         width = max(1, round(cropped.width * scale))
         height = max(1, round(cropped.height * scale))
         compact = cropped.resize((width, height), Image.Resampling.NEAREST)
-        # The renderer animates the first two cells of each state row. The
-        # remaining two cells stay transparent so the public contract is a
-        # regular 4x4, 256x256 atlas while retaining eight authored frames.
+        # The renderer animates the two cells of each state row. The public
+        # contract is a regular 2x4, 512x1024 atlas with eight authored frames.
         column = index % SOURCE_COLUMNS
         row = index // SOURCE_COLUMNS
         x = column * FRAME_WIDTH + (FRAME_WIDTH - width) // 2

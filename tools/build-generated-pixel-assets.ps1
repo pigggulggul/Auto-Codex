@@ -287,7 +287,7 @@ try {
     source = "Original assets generated for Auto Codex"
     generatedAt = "2026-09-02"
     tileSize = 16
-    characterSheet = "256x256; 4 columns x 4 rows; first 2 columns authored per state (idle, moving, working, thinking); 64x64 frames; 2x display density"
+    characterSheet = "512x1024; 2 columns x 4 rows; 256x256 frames; states are idle, moving, working, thinking"
     petSheet = "192x192; 6 columns x 6 rows; 32x32 frames; 2x runtime pixel density"
     replacements = [ordered]@{
       cactus = "flower"

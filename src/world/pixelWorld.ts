@@ -5,17 +5,27 @@ export const WORLD_COLS = 32;
 export const WORLD_ROWS = 18;
 export const CANVAS_WIDTH = WORLD_COLS * TILE_SIZE * 2;
 export const CANVAS_HEIGHT = WORLD_ROWS * TILE_SIZE * 2;
-// Character art uses square 64px source cells. The service renders those cells
-// in a 3:4 character box: 24x32 logical pixels, or 48x64 at default zoom.
-export const CHARACTER_FRAME_WIDTH = TILE_SIZE * 4;
-export const CHARACTER_FRAME_HEIGHT = TILE_SIZE * 4;
+// Character art uses square 256px source cells in a 2x4 sheet. The service
+// renders those cells in a 3:4 character box: 24x32 logical pixels, or 48x64
+// at default zoom.
+export const CHARACTER_FRAME_WIDTH = 256;
+export const CHARACTER_FRAME_HEIGHT = 256;
 export const CHARACTER_DRAW_WIDTH = TILE_SIZE * 1.5;
 export const CHARACTER_DRAW_HEIGHT = TILE_SIZE * 2;
 export const CHARACTER_FRAME_COLUMNS = 2;
-export const CHARACTER_SHEET_COLUMNS = 4;
+export const CHARACTER_SHEET_COLUMNS = 2;
 export const CHARACTER_STATE_ROWS = 4;
 export const ASSET_PIXEL_DENSITY = 2;
 export const PET_FRAME_SIZE = TILE_SIZE * 2;
+
+const CHARACTER_ROW_BY_STATE: Partial<Record<PetState, number>> = {
+  editing: 2,
+  running: 2,
+  waitingApproval: 2,
+  connecting: 3,
+  thinking: 3,
+  reading: 3,
+};
 
 export type TilePoint = { col: number; row: number };
 export type Direction = "down" | "up" | "right" | "left";
@@ -284,15 +294,19 @@ export function directionBetween(from: TilePoint, to: TilePoint): Direction {
 }
 
 export function characterFrame(state: PetState, moving: boolean, elapsedSeconds: number): number {
-  const duration = moving ? 0.16 : state === "idle" ? 0.68 : state === "thinking" || state === "reading" ? 0.42 : 0.28;
-  return Math.floor(elapsedSeconds / duration) % CHARACTER_FRAME_COLUMNS;
+  return Math.floor(elapsedSeconds / characterFrameDuration(state, moving)) % CHARACTER_FRAME_COLUMNS;
+}
+
+export function characterFrameDuration(state: PetState, moving: boolean): number {
+  if (moving) return 0.16;
+  if (state === "idle" || state === "success" || state === "error") return 0.68;
+  if (state === "thinking" || state === "reading" || state === "connecting") return 0.42;
+  return 0.28;
 }
 
 export function characterStateRow(state: PetState, moving: boolean): number {
   if (moving) return 1;
-  if (state === "editing" || state === "running" || state === "waitingApproval") return 2;
-  if (state === "thinking" || state === "reading" || state === "connecting") return 3;
-  return 0;
+  return CHARACTER_ROW_BY_STATE[state] ?? 0;
 }
 
 export function pointCenter(point: TilePoint): { x: number; y: number } {

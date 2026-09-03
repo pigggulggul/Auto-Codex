@@ -24,11 +24,15 @@ Codex and then rasterized into the exact runtime dimensions used by the world.
 
 ## Asset contract
 
-- Character sheets: 256 by 256 pixels with a regular 4 by 4 grid of 64-pixel
-  square cells. The first two cells of each `idle`, `moving`, `working`, and
-  `thinking` row contain authored frames; the remaining cells are transparent.
+- Character sheets: 512 by 1024 pixels with a regular 2 by 4 grid of 256-pixel
+  square cells. Each `idle`, `moving`, `working`, and `thinking` row contains
+  two authored frames.
   Characters render in a 3:4 box at 24 by 32 logical pixels (48 by 64 screen
   pixels at the default world zoom).
+- Character animation mapping: row 0 is `idle` plus `success`/`error`, row 1 is
+  movement, row 2 is `editing`/`running`/`waitingApproval`, and row 3 is
+  `connecting`/`thinking`/`reading`. Both Canvas and CSS portraits use the same
+  two-frame timing per mapped state.
 - Floors: 32 by 32 source pixels rendered into 16 by 16 logical tiles.
 - Furniture: each image is drawn from its intrinsic 2x-density dimensions,
   centered horizontally and bottom-aligned to its 16-pixel floor footprint.
@@ -53,8 +57,8 @@ shifting.
 `tools/generated-inputs/` stores the reviewed runtime-ready source sheets and
 `tools/build-generated-pixel-assets.ps1` deterministically exports the runtime
 files. `tools/build-character-sprites.py` removes connected generated
-backgrounds, aligns feet, and exports 4x4 square sheets with eight active
-frames. The QA contact sheet is
+backgrounds, aligns feet, and exports 2x4 sheets with 256px square cells and
+eight active frames. The QA contact sheet is
 `docs/character-sprites-preview.jpg`.
 
 The bridge and approval boundaries are unchanged. The Canvas renderer receives

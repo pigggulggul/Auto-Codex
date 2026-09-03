@@ -242,7 +242,7 @@
   display: block;
   background-repeat: no-repeat;
   background-position: 0 0;
-  background-size: 180px 240px;
+  background-size: 90px 240px;
   image-rendering: pixelated;
 }
 
@@ -328,7 +328,7 @@
   border: 2px solid rgba(255, 255, 255, .45);
   background-repeat: no-repeat;
   background-position: 0 0;
-  background-size: 168px 224px;
+  background-size: 84px 224px;
   image-rendering: pixelated;
 }
 
