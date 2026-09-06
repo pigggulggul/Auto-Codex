@@ -13,6 +13,7 @@ import {
   STATIONS,
   characterFrame,
   characterFrameDuration,
+  characterNeedsHorizontalFlip,
   characterStateRow,
   createBlockedTiles,
   directionBetween,
@@ -76,6 +77,12 @@ describe("pixel character animation", () => {
   it("resolves four-connected movement direction", () => {
     expect(directionBetween({ col: 2, row: 2 }, { col: 3, row: 2 })).toBe("right");
     expect(directionBetween({ col: 2, row: 2 }, { col: 2, row: 1 })).toBe("up");
+  });
+
+  it("mirrors the authored left-facing walk row only while moving right", () => {
+    expect(characterNeedsHorizontalFlip("left", true)).toBe(false);
+    expect(characterNeedsHorizontalFlip("right", true)).toBe(true);
+    expect(characterNeedsHorizontalFlip("right", false)).toBe(false);
   });
 
   it("cycles every authored runtime state through more than one frame", () => {

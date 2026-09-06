@@ -24,6 +24,7 @@ import {
 
 const MODEL_KEY = "auto-codex.model";
 const EFFORT_KEY = "auto-codex.reasoning-effort";
+const MOTION_KEY = "auto-codex.animation-enabled";
 type LeftPanel = "workspace" | "operations";
 type MainView = "pixel" | "results";
 
@@ -50,6 +51,14 @@ export default function App() {
   const [selectedEffort, setSelectedEffort] = useState<ReasoningEffort | "">(
     () => (window.localStorage.getItem(EFFORT_KEY) as ReasoningEffort | null) || "",
   );
+  const [systemReducedMotion, setSystemReducedMotion] = useState(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const [motionOverride, setMotionOverride] = useState<boolean | null>(() => {
+    const stored = window.localStorage.getItem(MOTION_KEY);
+    return stored === "true" ? true : stored === "false" ? false : null;
+  });
+  const animationEnabled = motionOverride ?? !systemReducedMotion;
   const projectPath = bridge.snapshot.projectPath;
   const workspaceMode = bridge.snapshot.workspaceMode;
   const activeRun = bridge.snapshot.activeRun;
@@ -79,6 +88,19 @@ export default function App() {
   useEffect(() => {
     setPetAssignments(loadPetAssignments(projectPath));
   }, [projectPath]);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setSystemReducedMotion(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  const toggleAnimation = () => {
+    const next = !animationEnabled;
+    setMotionOverride(next);
+    window.localStorage.setItem(MOTION_KEY, String(next));
+  };
 
   useEffect(() => {
     if (bridge.models.length === 0) return;
@@ -143,7 +165,7 @@ export default function App() {
   };
 
   return (
-    <main className="app-shell metaverse-app">
+    <main className={`app-shell metaverse-app ${animationEnabled ? "motion-enabled" : "motion-disabled"}`}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="Auto Codex 홈">
           <span className="brand-mark">AC</span>
@@ -291,6 +313,7 @@ export default function App() {
               assistantText={bridge.assistantText}
               taskOutputs={bridge.taskOutputs}
               characterAssignments={worldCharacterAssignments}
+              animationEnabled={animationEnabled}
               streaming={busy}
               onOpenResults={() => setMainView("results")}
             />
@@ -315,6 +338,8 @@ export default function App() {
               onAssignPet={assignPet}
               characterAssignments={worldCharacterAssignments}
               onAssignCharacter={assignWorldCharacter}
+              animationEnabled={animationEnabled}
+              onToggleAnimation={toggleAnimation}
               onOpenResults={() => setMainView("results")}
             />
           ) : (
@@ -330,7 +355,7 @@ export default function App() {
 
       </div>
 
-      <footer><span>Auto Codex · local-first</span><span>애니메이션은 실제 App Server 이벤트에서만 상태가 바뀝니다.</span></footer>
+      <footer><span>Auto Codex · local-first</span><span>애니메이션은 시스템 설정과 애니메이션 토글을 따르며, 상태·이동은 실제 App Server 이벤트를 반영합니다.</span></footer>
       {bridge.approvals[0] && (
         <ApprovalDialog approval={bridge.approvals[0]} onResolve={(decision) => bridge.resolveApproval(bridge.approvals[0].approvalId, decision)} />
       )}

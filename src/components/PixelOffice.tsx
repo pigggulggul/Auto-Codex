@@ -26,6 +26,7 @@ import {
   WORLD_COLS,
   WORLD_ROWS,
   characterFrame,
+  characterNeedsHorizontalFlip,
   characterStateRow,
   createBlockedTiles,
   directionBetween,
@@ -52,6 +53,8 @@ type Props = {
   onAssignPet: (role: AgentRole, petId: string) => void;
   characterAssignments: WorldCharacterAssignments;
   onAssignCharacter: (role: AgentRole, index: number) => void;
+  animationEnabled: boolean;
+  onToggleAnimation: () => void;
   onOpenResults: () => void;
 };
 
@@ -393,6 +396,8 @@ export function PixelOffice({
   modelLabel,
   characterAssignments,
   onAssignCharacter,
+  animationEnabled,
+  onToggleAnimation,
   onOpenResults,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -411,7 +416,7 @@ export function PixelOffice({
   const [zoom, setZoom] = useState(2);
   const [handoff, setHandoff] = useState<Handoff | null>(null);
   const handoffRef = useRef<Handoff | null>(null);
-  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const reducedMotion = !animationEnabled;
 
   const agents = useMemo(() => {
     const byRole = new Map((run?.agents ?? []).map((agent) => [agent.role, agent]));
@@ -448,13 +453,6 @@ export function PixelOffice({
       if (window.render_game_to_text === renderWorldState) delete window.render_game_to_text;
       delete window.advanceTime;
     };
-  }, []);
-
-  useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReducedMotion(query.matches);
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
   }, []);
 
   useEffect(() => {
@@ -669,7 +667,7 @@ export function PixelOffice({
             if (!sprite) return;
             const frame = reducedMotion ? 0 : characterFrame(agent.snapshot.activity, moving, simulationTime / 1000 + agent.spriteIndex * 0.17);
             const row = characterStateRow(agent.snapshot.activity, moving);
-            if (agent.direction === "left") {
+            if (characterNeedsHorizontalFlip(agent.direction, moving)) {
               ctx.save();
               ctx.translate(drawX + CHARACTER_DRAW_WIDTH * currentZoom, 0);
               ctx.scale(-1, 1);
@@ -833,6 +831,15 @@ export function PixelOffice({
            <span>{zoom}×</span>
            <button type="button" onClick={() => setWorldZoom(zoom + 1)} disabled={zoom >= 4} aria-label="확대">+</button>
            <button type="button" onClick={() => { panRef.current = { x: 0, y: 0 }; setWorldZoom(2); }}>RESET</button>
+           <button
+             type="button"
+             className={`pixel-motion-toggle ${animationEnabled ? "active" : ""}`}
+             aria-pressed={animationEnabled}
+             aria-label={animationEnabled ? "애니메이션 끄기" : "애니메이션 켜기"}
+             onClick={onToggleAnimation}
+           >
+             {animationEnabled ? "애니 ON" : "애니 OFF"}
+           </button>
          </div>
        </div>
 
@@ -868,6 +875,7 @@ export function PixelOffice({
 
         <div className={`pixel-asset-status ${assetStatus.errors.length ? "has-error" : ""}`}>
           {assetStatus.loaded < assetStatus.total ? `ASSETS ${assetStatus.loaded}/${assetStatus.total}` : assetStatus.errors.length ? `${assetStatus.errors.length} ASSET ERRORS` : "PIXEL ASSETS READY"}
+          <small className="pixel-motion-status">{animationEnabled ? " · ANIMATION ON" : " · REDUCED MOTION"}</small>
         </div>
 
         <div className="pixel-world-bubble-layer" aria-hidden="true">

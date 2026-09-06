@@ -215,7 +215,7 @@ try {
   }
 
   # Characters are the reviewed 2-frame x 4-state sheets produced by
-  # build-character-sprites.py from the user's references.
+  # finalize-character-sheets.ps1; copy preserves the reviewed opaque RGB pixels.
   $characterOutput = Join-Path $outputRoot "characters"
   $characterSource = Join-Path $inputRoot "characters"
   New-Item -ItemType Directory -Force -Path $characterOutput | Out-Null

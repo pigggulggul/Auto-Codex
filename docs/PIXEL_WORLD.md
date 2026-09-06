@@ -31,6 +31,13 @@ Codex and then rasterized into the exact runtime dimensions used by the world.
 - Character sheets: 512 by 1024 pixels with a regular 2 by 4 grid of 256-pixel
   square cells. Each `idle`, `moving`, `working`, and `thinking` row contains
   two authored frames.
+  The September 2026 repair uses fully opaque warm-gray RGB backgrounds
+  (#A09895), a 12px minimum cell margin, and a local foot baseline of y=240.
+  The authored walk row is the left-facing source pose; the Canvas mirrors
+  those two frames only while an agent is moving right.
+  The world toolbar includes an explicit animation toggle. It follows
+  `prefers-reduced-motion` by default and stores an explicit user choice so the
+  sprite frames can be enabled when the system setting is too restrictive.
   Characters render in a 3:4 box at 24 by 32 logical pixels (48 by 64 screen
   pixels at the default world zoom).
 - Character animation mapping: row 0 is `idle` plus `success`/`error`, row 1 is
@@ -60,10 +67,14 @@ shifting.
 
 `tools/generated-inputs/` stores the reviewed runtime-ready source sheets and
 `tools/build-generated-pixel-assets.ps1` deterministically exports the runtime
-files. `tools/build-character-sprites.py` removes connected generated
-backgrounds, aligns feet, and exports 2x4 sheets with 256px square cells and
-eight active frames. The QA contact sheet is
-`docs/character-sprites-preview.jpg`.
+files. The repaired opaque sheets are finalized with
+`tools/finalize-character-sheets.ps1`; it assembles reviewed ImageGen regions,
+uses one nearest-neighbor scale per character, aligns feet, and verifies
+dimensions, opacity, margins and nonidentical frame pairs. Do not run the
+legacy background-removing `tools/build-character-sprites.py` on these opaque
+sheets. The contact sheet is `docs/character-sprites-preview.jpg`; open
+`docs/character-animation-preview.html` for playback and A/B frame inspection.
+The exact built-in ImageGen prompts are in `docs/character-repair-prompts.json`.
 
 The bridge and approval boundaries are unchanged. The Canvas renderer receives
 only normalized snapshots and never executes commands.

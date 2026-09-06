@@ -101,6 +101,24 @@
   font-size: 8px;
 }
 
+.pixel-world-controls .pixel-motion-toggle {
+  width: auto;
+  padding-inline: 7px;
+  color: #79535e;
+  background: #ffe8ef;
+  font-size: 8px;
+}
+
+.pixel-world-controls .pixel-motion-toggle.active {
+  color: #315f54;
+  background: #d7f6df;
+}
+
+.pixel-world-controls .pixel-motion-toggle:focus-visible {
+  outline: 2px solid #513e62;
+  outline-offset: 2px;
+}
+
 .pixel-asset-status {
   position: absolute;
   z-index: 7;
@@ -118,6 +136,11 @@
 .pixel-asset-status.has-error {
   color: #ffe7d7;
   background: #a34f4b;
+}
+
+.pixel-motion-status {
+  color: #806a83;
+  font: inherit;
 }
 
 .pixel-agent-inspector {

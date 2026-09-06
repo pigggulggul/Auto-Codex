@@ -293,6 +293,14 @@ export function directionBetween(from: TilePoint, to: TilePoint): Direction {
   return "down";
 }
 
+/**
+ * The authored walk row is the left-facing source pose. Mirror only that row
+ * while moving right so the two authored frames work in both directions.
+ */
+export function characterNeedsHorizontalFlip(direction: Direction, moving: boolean): boolean {
+  return moving && direction === "right";
+}
+
 export function characterFrame(state: PetState, moving: boolean, elapsedSeconds: number): number {
   return Math.floor(elapsedSeconds / characterFrameDuration(state, moving)) % CHARACTER_FRAME_COLUMNS;
 }

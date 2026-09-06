@@ -16,10 +16,14 @@ Auto Codex의 실제 픽셀 월드 이미지는 `public/world/`에 있습니다.
 
 `auto-codex-campus.png`는 `.metaverse-map`의 배경이며, 기존 CSS 방과 가구는 클릭 영역만 남기고 숨깁니다. Canvas 픽셀 오피스는 논리 타일 16px을 유지하되 캐릭터·가구·바닥을 2배 픽셀 밀도로 내보내 기본 2× 표시에서 세부가 뭉개지지 않게 합니다. `auto-codex-effects.png`는 `idle`, `thinking`, `reading`, `editing`, `running`, `waitingApproval`, `success`, `error`, `handoff` 상태에 매핑됩니다.
 
-새 캐릭터 시트는 built-in ImageGen으로 생성한 뒤 프로젝트의
-`tools/build-character-sprites.py`로 256×256 셀, 2열×4행, 총 512×1024 구조로
+현재 캐릭터 시트는 built-in ImageGen으로 수정한 뒤 프로젝트의
+`tools/finalize-character-sheets.ps1`로 256×256 셀, 2열×4행, 총 512×1024 구조로
 정렬했습니다. 행 순서는 idle, moving, working, thinking이며 각 행에
 애니메이션 프레임 2개를 배치합니다.
+2026-09 수정본은 기존 캐릭터의 정체성을 유지하고 머리 누락과 보행을 보정했습니다.
+배경은 요청에 따라 불투명 RGB #A09895이며, 발 기준선은 각 셀 y=240입니다.
+현재 수정 프롬프트는 `character-repair-prompts.json`, 재생 미리보기는
+`character-animation-preview.html`에 있습니다. 아래는 최초 생성 당시 기록입니다.
 제공 이미지는 체형과 픽셀 분위기 참고로만 사용했고, 캐릭터 정체성,
 헤어, 의상, 액세서리, 실루엣과 색 구성은 모두 새로 설계했습니다.
 

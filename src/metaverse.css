@@ -1210,3 +1210,10 @@ body {
   .world-character.is-animated,
   .collapse-glyph { animation: none; transition: none; }
 }
+
+/* An explicit user choice in the world toolbar may opt back into motion even
+   when the OS/browser prefers reduced motion. The default still follows the
+   system preference. */
+.motion-enabled .world-character.is-animated {
+  animation: character-frame-swap var(--character-frame-duration, .68s) steps(1, end) infinite, character-soft-bob 1.4s steps(2, end) infinite !important;
+}

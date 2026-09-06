@@ -12,6 +12,7 @@ type Props = {
   assistantText: string;
   taskOutputs: Record<string, string>;
   characterAssignments: WorldCharacterAssignments;
+  animationEnabled?: boolean;
   streaming: boolean;
   onOpenResults?: () => void;
 };
@@ -40,7 +41,7 @@ function timeLabel(timestamp: string): string {
     : parsed.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-export function OperationsPanel({ activities, run, assistantText, taskOutputs, characterAssignments, streaming, onOpenResults }: Props) {
+export function OperationsPanel({ activities, run, assistantText, taskOutputs, characterAssignments, animationEnabled = true, streaming, onOpenResults }: Props) {
   const [tab, setTab] = useState<PanelTab>("activity");
   const outputs = useMemo(() => run?.tasks.map((task) => ({
     task,
@@ -71,7 +72,7 @@ export function OperationsPanel({ activities, run, assistantText, taskOutputs, c
               const spriteIndex = characterIndexForRole(role, characterAssignments);
               return (
                 <article className={`activity-card state-${activity.state}`} key={activity.id}>
-                  <div className="activity-face"><WorldCharacter spriteIndex={spriteIndex} state={activity.state} size={64} /></div>
+                  <div className="activity-face"><WorldCharacter spriteIndex={spriteIndex} state={activity.state} size={64} animated={animationEnabled} /></div>
                   <div className="activity-copy">
                     <div><strong>{ROLE_LABELS[role]}</strong><time>{timeLabel(activity.timestamp)}</time></div>
                     <h3>{activity.title}</h3>
