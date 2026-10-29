@@ -1,22 +1,23 @@
 import type { AgentRole, PetState } from "../../shared/protocol";
 
 export const TILE_SIZE = 16;
-export const WORLD_COLS = 32;
-export const WORLD_ROWS = 18;
+export const WORLD_COLS = 40;
+export const WORLD_ROWS = 24;
 export const CANVAS_WIDTH = WORLD_COLS * TILE_SIZE * 2;
 export const CANVAS_HEIGHT = WORLD_ROWS * TILE_SIZE * 2;
-// Character art uses square 256px source cells in a 2x4 sheet. The service
-// renders those cells in a 3:4 character box: 24x32 logical pixels, or 48x64
-// at default zoom.
+// Keep the authored square cells square. High-density backing stores sample
+// directly from the original atlas rather than magnifying a tiny raster.
 export const CHARACTER_FRAME_WIDTH = 256;
 export const CHARACTER_FRAME_HEIGHT = 256;
-export const CHARACTER_DRAW_WIDTH = TILE_SIZE * 1.5;
-export const CHARACTER_DRAW_HEIGHT = TILE_SIZE * 2;
+export const CHARACTER_DRAW_WIDTH = 48;
+export const CHARACTER_DRAW_HEIGHT = 48;
 export const CHARACTER_FRAME_COLUMNS = 2;
 export const CHARACTER_SHEET_COLUMNS = 2;
 export const CHARACTER_STATE_ROWS = 4;
 export const ASSET_PIXEL_DENSITY = 2;
 export const PET_FRAME_SIZE = TILE_SIZE * 2;
+export const PET_DRAW_SIZE = 24;
+export const LOUNGE_RUG = { col: 16, row: 9, width: 7, height: 7 };
 
 const CHARACTER_ROW_BY_STATE: Partial<Record<PetState, number>> = {
   editing: 2,
@@ -64,26 +65,42 @@ export const ROLE_COLORS: Record<AgentRole, string> = {
 };
 
 export const STATIONS: Record<AgentRole, TilePoint> = {
-  researcher: { col: 3, row: 4 },
-  builder: { col: 10, row: 4 },
-  documenter: { col: 17, row: 4 },
-  visual: { col: 24, row: 4 },
-  integrator: { col: 3, row: 15 },
-  coordinator: { col: 10, row: 15 },
-  qa: { col: 17, row: 15 },
-  general: { col: 24, row: 15 },
+  researcher: { col: 4, row: 6 },
+  builder: { col: 13, row: 6 },
+  documenter: { col: 22, row: 6 },
+  visual: { col: 31, row: 6 },
+  integrator: { col: 4, row: 21 },
+  coordinator: { col: 13, row: 21 },
+  qa: { col: 22, row: 21 },
+  general: { col: 31, row: 21 },
 };
 
 export const REST_SPOTS: Record<AgentRole, TilePoint> = {
-  researcher: { col: 3, row: 8 },
-  builder: { col: 7, row: 9 },
-  documenter: { col: 11, row: 8 },
-  visual: { col: 13, row: 10 },
-  integrator: { col: 19, row: 8 },
-  coordinator: { col: 21, row: 10 },
-  qa: { col: 25, row: 8 },
-  general: { col: 28, row: 9 },
+  researcher: { col: 6, row: 10 },
+  builder: { col: 12, row: 10 },
+  documenter: { col: 27, row: 10 },
+  visual: { col: 33, row: 10 },
+  integrator: { col: 6, row: 14 },
+  coordinator: { col: 12, row: 14 },
+  qa: { col: 27, row: 14 },
+  general: { col: 33, row: 14 },
 };
+
+export function isCommonArea(point: TilePoint): boolean {
+  return point.row >= 10 && point.row <= 14 && point.col >= 2 && point.col <= WORLD_COLS - 3;
+}
+
+export function idleWanderTargets(role: AgentRole, blocked = createBlockedTiles()): TilePoint[] {
+  const center = REST_SPOTS[role];
+  const candidates: TilePoint[] = [];
+  for (let row = center.row - 1; row <= center.row + 1; row += 1) {
+    for (let col = center.col - 2; col <= center.col + 2; col += 1) {
+      const point = { col, row };
+      if (isCommonArea(point) && isWalkable(point, blocked)) candidates.push(point);
+    }
+  }
+  return candidates;
+}
 
 export type FurniturePlacement = {
   id: string;
@@ -111,20 +128,26 @@ export type RoomLayout = {
   role?: AgentRole;
 };
 
-// The world is still a compact 32x18 canvas, but the floor plan is organized
-// as rooms and a connected central lounge so the scene reads like a building
-// rather than a flat sheet of terrain.
+// Each role owns an office; rest spots are in the common corridor. The lounge is open
+// to the main corridor, leaving both sides clear for room-to-room traffic.
 export const ROOM_LAYOUTS: RoomLayout[] = [
-  { id: "research-room", role: "researcher", col: 1, row: 1, width: 7, height: 5, floorIndex: 7 },
-  { id: "builder-room", role: "builder", col: 8, row: 1, width: 7, height: 5, floorIndex: 3 },
-  { id: "documenter-room", role: "documenter", col: 15, row: 1, width: 7, height: 5, floorIndex: 5 },
-  { id: "visual-room", role: "visual", col: 22, row: 1, width: 9, height: 5, floorIndex: 8 },
-  { id: "lounge-room", col: 14, row: 6, width: 5, height: 6, floorIndex: 8 },
-  { id: "integrator-room", role: "integrator", col: 1, row: 12, width: 7, height: 5, floorIndex: 3 },
-  { id: "coordinator-room", role: "coordinator", col: 8, row: 12, width: 7, height: 5, floorIndex: 5 },
-  { id: "qa-room", role: "qa", col: 15, row: 12, width: 7, height: 5, floorIndex: 8 },
-  { id: "general-room", role: "general", col: 22, row: 12, width: 9, height: 5, floorIndex: 7 },
+  { id: "research-room", role: "researcher", col: 1, row: 1, width: 9, height: 7, floorIndex: 7 },
+  { id: "builder-room", role: "builder", col: 10, row: 1, width: 9, height: 7, floorIndex: 3 },
+  { id: "documenter-room", role: "documenter", col: 19, row: 1, width: 9, height: 7, floorIndex: 7 },
+  { id: "visual-room", role: "visual", col: 28, row: 1, width: 11, height: 7, floorIndex: 8 },
+  { id: "lounge-room", col: 14, row: 9, width: 12, height: 7, floorIndex: 4 },
+  { id: "integrator-room", role: "integrator", col: 1, row: 16, width: 9, height: 7, floorIndex: 5 },
+  { id: "coordinator-room", role: "coordinator", col: 10, row: 16, width: 9, height: 7, floorIndex: 3 },
+  { id: "qa-room", role: "qa", col: 19, row: 16, width: 9, height: 7, floorIndex: 8 },
+  { id: "general-room", role: "general", col: 28, row: 16, width: 11, height: 7, floorIndex: 7 },
 ];
+
+export function roomDoorTiles(room: RoomLayout): TilePoint[] {
+  if (!room.role) return [];
+  const row = room.row < WORLD_ROWS / 2 ? room.row + room.height : room.row;
+  const col = room.col + Math.floor(room.width / 2);
+  return [{ col, row }, { col: col + 1, row }];
+}
 
 const TOP_ROLES: AgentRole[] = ["researcher", "builder", "documenter", "visual"];
 const BOTTOM_ROLES: AgentRole[] = ["integrator", "coordinator", "qa", "general"];
@@ -136,9 +159,9 @@ function workstationFurniture(role: AgentRole, deskCol: number, deskRow: number)
       asset: "DESK/DESK_FRONT.png",
       col: deskCol,
       row: deskRow,
-      width: 48,
-      height: 32,
-      footprintW: 3,
+      width: 64,
+      height: 40,
+      footprintW: 4,
       footprintH: 2,
       ownerRole: role,
       blocks: true,
@@ -148,8 +171,8 @@ function workstationFurniture(role: AgentRole, deskCol: number, deskRow: number)
       asset: "PC/PC_FRONT_OFF.png",
       col: deskCol + 1,
       row: deskRow,
-      width: 16,
-      height: 32,
+      width: 36,
+      height: 28,
       footprintW: 1,
       footprintH: 1,
       ownerRole: role,
@@ -159,8 +182,8 @@ function workstationFurniture(role: AgentRole, deskCol: number, deskRow: number)
       asset: "CUSHIONED_CHAIR/CUSHIONED_CHAIR_FRONT.png",
       col: deskCol + 1,
       row: deskRow + 2,
-      width: 16,
-      height: 16,
+      width: 24,
+      height: 24,
       footprintW: 1,
       footprintH: 1,
       ownerRole: role,
@@ -169,25 +192,29 @@ function workstationFurniture(role: AgentRole, deskCol: number, deskRow: number)
 }
 
 export const FURNITURE: FurniturePlacement[] = [
-  ...TOP_ROLES.flatMap((role, index) => workstationFurniture(role, 2 + index * 7, 2)),
-  ...BOTTOM_ROLES.flatMap((role, index) => workstationFurniture(role, 2 + index * 7, 13)),
-  { id: "lounge-sofa-top", asset: "SOFA/SOFA_FRONT.png", col: 15, row: 7, width: 32, height: 16, footprintW: 2, footprintH: 1, blocks: true },
-  { id: "lounge-table", asset: "COFFEE_TABLE/COFFEE_TABLE.png", col: 15, row: 9, width: 32, height: 32, footprintW: 2, footprintH: 2, blocks: true },
-  { id: "lounge-sofa-bottom", asset: "SOFA/SOFA_BACK.png", col: 15, row: 11, width: 32, height: 16, footprintW: 2, footprintH: 1, blocks: true },
-  { id: "whiteboard", asset: "WHITEBOARD/WHITEBOARD.png", col: 16, row: 2, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "books-left", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 5, row: 2, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "books-right", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 25, row: 2, width: 32, height: 32, footprintW: 2, footprintH: 1 },
-  { id: "plant-nw", asset: "PLANT/PLANT.png", col: 1, row: 2, width: 16, height: 32, footprintW: 1, footprintH: 2, blocks: true },
-  { id: "plant-ne", asset: "LARGE_PLANT/LARGE_PLANT.png", col: 28, row: 2, width: 32, height: 48, footprintW: 2, footprintH: 3, blocks: true },
-  { id: "plant-sw", asset: "PLANT_2/PLANT_2.png", col: 1, row: 14, width: 16, height: 32, footprintW: 1, footprintH: 2, blocks: true },
-  { id: "plant-se", asset: "FLOWER/FLOWER.png", col: 29, row: 14, width: 16, height: 32, footprintW: 1, footprintH: 2, blocks: true },
-  { id: "coffee", asset: "COFFEE/COFFEE.png", col: 15, row: 10, width: 16, height: 16, footprintW: 1, footprintH: 1 },
-  { id: "clock", asset: "CLOCK/CLOCK.png", col: 20, row: 2, width: 16, height: 32, footprintW: 1, footprintH: 1 },
-  { id: "clock-builder", asset: "CLOCK/CLOCK.png", col: 13, row: 2, width: 16, height: 32, footprintW: 1, footprintH: 1 },
-  { id: "lounge-plant-left", asset: "PLANT_2/PLANT_2.png", col: 14, row: 7, width: 16, height: 32, footprintW: 1, footprintH: 2 },
-  { id: "lounge-plant-right", asset: "PLANT/PLANT.png", col: 17, row: 7, width: 16, height: 32, footprintW: 1, footprintH: 2 },
-  { id: "clock-qa", asset: "CLOCK/CLOCK.png", col: 20, row: 14, width: 16, height: 32, footprintW: 1, footprintH: 1 },
-  { id: "whiteboard-qa", asset: "WHITEBOARD/WHITEBOARD.png", col: 15, row: 14, width: 32, height: 32, footprintW: 2, footprintH: 1 },
+  ...TOP_ROLES.flatMap((role, index) => workstationFurniture(role, 3 + index * 9, 3)),
+  ...BOTTOM_ROLES.flatMap((role, index) => workstationFurniture(role, 3 + index * 9, 18)),
+  { id: "lounge-sofa-top", asset: "SOFA/SOFA_FRONT.png", col: 17, row: 11, width: 72, height: 36, footprintW: 4, footprintH: 1, blocks: true },
+  { id: "lounge-table", asset: "COFFEE_TABLE/COFFEE_TABLE.png", col: 17, row: 13, width: 48, height: 24, footprintW: 4, footprintH: 1, blocks: true },
+  { id: "lounge-sofa-bottom", asset: "SOFA/SOFA_BACK.png", col: 17, row: 15, width: 72, height: 28, footprintW: 4, footprintH: 1, blocks: true },
+  { id: "lounge-flowers", asset: "PLANT_2/PLANT_2.png", col: 14, row: 11, width: 24, height: 32, footprintW: 2, footprintH: 1, blocks: true },
+  { id: "lounge-plant", asset: "LARGE_PLANT/LARGE_PLANT.png", col: 24, row: 11, width: 32, height: 40, footprintW: 2, footprintH: 2, blocks: true },
+  { id: "research-books", ownerRole: "researcher", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 8, row: 3, width: 24, height: 48, footprintW: 1, footprintH: 2, blocks: true },
+  { id: "research-flowers", ownerRole: "researcher", asset: "PLANT_2/PLANT_2.png", col: 8, row: 6, width: 20, height: 28, footprintW: 1, footprintH: 1, blocks: true },
+  { id: "builder-board", ownerRole: "builder", asset: "WHITEBOARD/WHITEBOARD.png", col: 17, row: 3, width: 32, height: 32, footprintW: 1, footprintH: 2 },
+  { id: "builder-clock", ownerRole: "builder", asset: "CLOCK/CLOCK.png", col: 17, row: 1, width: 12, height: 12, footprintW: 1, footprintH: 1 },
+  { id: "documenter-books", ownerRole: "documenter", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 26, row: 3, width: 24, height: 48, footprintW: 1, footprintH: 2, blocks: true },
+  { id: "documenter-board", ownerRole: "documenter", asset: "WHITEBOARD/WHITEBOARD.png", col: 26, row: 6, width: 24, height: 24, footprintW: 1, footprintH: 1 },
+  { id: "visual-board", ownerRole: "visual", asset: "WHITEBOARD/WHITEBOARD.png", col: 35, row: 3, width: 40, height: 36, footprintW: 2, footprintH: 2 },
+  { id: "visual-plant", ownerRole: "visual", asset: "LARGE_PLANT/LARGE_PLANT.png", col: 36, row: 6, width: 28, height: 40, footprintW: 1, footprintH: 2, blocks: true },
+  { id: "integrator-books", ownerRole: "integrator", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 8, row: 18, width: 24, height: 48, footprintW: 1, footprintH: 2, blocks: true },
+  { id: "integrator-flowers", ownerRole: "integrator", asset: "PLANT_2/PLANT_2.png", col: 8, row: 21, width: 20, height: 28, footprintW: 1, footprintH: 1, blocks: true },
+  { id: "coordinator-board", ownerRole: "coordinator", asset: "WHITEBOARD/WHITEBOARD.png", col: 17, row: 18, width: 32, height: 32, footprintW: 1, footprintH: 2 },
+  { id: "coordinator-clock", ownerRole: "coordinator", asset: "CLOCK/CLOCK.png", col: 17, row: 16, width: 12, height: 12, footprintW: 1, footprintH: 1 },
+  { id: "qa-board", ownerRole: "qa", asset: "WHITEBOARD/WHITEBOARD.png", col: 26, row: 18, width: 32, height: 32, footprintW: 1, footprintH: 2 },
+  { id: "qa-clock", ownerRole: "qa", asset: "CLOCK/CLOCK.png", col: 26, row: 16, width: 12, height: 12, footprintW: 1, footprintH: 1 },
+  { id: "general-books", ownerRole: "general", asset: "DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png", col: 37, row: 18, width: 24, height: 48, footprintW: 1, footprintH: 2, blocks: true },
+  { id: "general-flowers", ownerRole: "general", asset: "FLOWER/FLOWER.png", col: 37, row: 21, width: 20, height: 28, footprintW: 1, footprintH: 1, blocks: true },
 ];
 
 export const ASSET_ROOT = "/generated-pixel-assets";
@@ -206,8 +233,9 @@ export function furnitureVisualRect(
   naturalWidth = item.width * ASSET_PIXEL_DENSITY,
   naturalHeight = item.height * ASSET_PIXEL_DENSITY,
 ): FurnitureVisualRect {
-  const width = naturalWidth / ASSET_PIXEL_DENSITY;
-  const height = naturalHeight / ASSET_PIXEL_DENSITY;
+  const scale = Math.min(item.width / naturalWidth, item.height / naturalHeight);
+  const width = naturalWidth * scale;
+  const height = naturalHeight * scale;
   const footprintWidth = item.footprintW * TILE_SIZE;
   return {
     x: item.col * TILE_SIZE + (footprintWidth - width) / 2,
@@ -215,6 +243,15 @@ export function furnitureVisualRect(
     width,
     height,
   };
+}
+
+export function furnitureSortDepth(item: FurniturePlacement): number {
+  const surface = item.ownerRole && item.id.endsWith("-pc")
+    ? FURNITURE.find((candidate) => candidate.ownerRole === item.ownerRole && candidate.id.endsWith("-desk"))
+    : undefined;
+  // A monitor sits ON the desk. Its elevated visual bottom must not sort it
+  // behind the tabletop and hide the keyboard/stand.
+  return surface ? (surface.row + surface.footprintH) * TILE_SIZE + 1 : (item.row + item.footprintH) * TILE_SIZE;
 }
 
 export function tileKey(point: TilePoint): string {
@@ -230,6 +267,15 @@ export function createBlockedTiles(): Set<string> {
   for (let row = 0; row < WORLD_ROWS; row += 1) {
     blocked.add(tileKey({ col: 0, row }));
     blocked.add(tileKey({ col: WORLD_COLS - 1, row }));
+  }
+  for (const room of ROOM_LAYOUTS.filter((candidate) => candidate.role)) {
+    const doors = new Set(roomDoorTiles(room).map(tileKey));
+    for (let col = room.col; col <= room.col + room.width; col++) {
+      for (const row of [room.row, room.row + room.height]) if (!doors.has(tileKey({ col, row }))) blocked.add(tileKey({ col, row }));
+    }
+    for (let row = room.row; row <= room.row + room.height; row++) {
+      for (const col of [room.col, room.col + room.width]) blocked.add(tileKey({ col, row }));
+    }
   }
   for (const item of FURNITURE) {
     if (!item.blocks) continue;
@@ -293,16 +339,14 @@ export function directionBetween(from: TilePoint, to: TilePoint): Direction {
   return "down";
 }
 
-/**
- * The authored walk row is the left-facing source pose. Mirror only that row
- * while moving right so the two authored frames work in both directions.
- */
-export function characterNeedsHorizontalFlip(direction: Direction, moving: boolean): boolean {
-  return moving && direction === "right";
-}
-
 export function characterFrame(state: PetState, moving: boolean, elapsedSeconds: number): number {
   return Math.floor(elapsedSeconds / characterFrameDuration(state, moving)) % CHARACTER_FRAME_COLUMNS;
+}
+
+// One authored footfall per eight logical pixels. The gait pauses when the
+// character stops instead of being driven by an unrelated global clock.
+export function characterWalkFrame(distance: number): number {
+  return Math.floor(Math.max(0, distance) / 8) % CHARACTER_FRAME_COLUMNS;
 }
 
 export function characterFrameDuration(state: PetState, moving: boolean): number {

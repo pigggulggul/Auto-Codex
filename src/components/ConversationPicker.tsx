@@ -29,12 +29,13 @@ export function ConversationPicker({ conversations, activeConversationId, disabl
         <select value={activeConversationId} onChange={(event) => onSelect(event.target.value)} disabled={disabled}>
           {conversations.map((conversation) => (
             <option key={conversation.id} value={conversation.id}>
-              {conversation.title} · {shortId(conversation.id)}
+              {conversation.projectPath?.split(/[\\/]/).at(-1) || (conversation.workspaceMode === "research" ? "조사" : "미연결")} · {conversation.title} · {shortId(conversation.id)}
             </option>
           ))}
         </select>
       </label>
-      <p>새 대화는 새 ID로 시작하고, 목록에서 이전 대화를 선택하면 해당 맥락으로 이어집니다.</p>
+      {active?.preview && <p className="conversation-preview">{active.preview}</p>}
+      <p>대화와 작업 내역은 이 PC에 자동 저장됩니다. 앱을 다시 켜거나 프로젝트를 바꿔도 목록에서 이어갈 수 있습니다.</p>
     </section>
   );
 }

@@ -10,6 +10,7 @@ import type {
   ModelInfo,
   ReasoningEffort,
   WorkspaceMode,
+  ConversationMessage,
 } from "../../shared/protocol";
 import { loadTokenUsage, mergeTokenUsage, saveTokenUsage, summarizeTokenUsage } from "../lib/tokenUsage";
 
@@ -56,6 +57,7 @@ export function useBridge() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [skillRationale, setSkillRationale] = useState<string>("");
   const [assistantText, setAssistantText] = useState("");
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [taskOutputs, setTaskOutputs] = useState<Record<string, string>>({});
   const [turnStatus, setTurnStatus] = useState("idle");
   const [isPickingProject, setIsPickingProject] = useState(false);
@@ -87,6 +89,7 @@ export function useBridge() {
             setSnapshot(message.snapshot);
             break;
           case "conversation.state":
+            setMessages(message.state.messages ?? []);
             setAssistantText(message.state.assistantText);
             setTaskOutputs(message.state.taskOutputs);
             setActivities(message.state.activities);
@@ -118,12 +121,14 @@ export function useBridge() {
             break;
           case "turn.state":
             setTurnStatus(message.status);
+            if (!message.taskId && message.status !== "inProgress") setMessages((current) => current.map((entry, index) => index === current.length - 1 && entry.role === "assistant" ? { ...entry, status: message.status === "completed" ? "completed" : message.status === "interrupted" ? "interrupted" : "failed" } : entry));
             break;
           case "assistant.text":
             if (message.taskId) {
               setTaskOutputs((current) => ({ ...current, [message.taskId!]: message.text }));
             } else {
               setAssistantText(message.text);
+              setMessages((current) => current.map((entry, index) => index === current.length - 1 && entry.role === "assistant" ? { ...entry, text: message.text } : entry));
             }
             break;
           case "activity.event":
@@ -159,6 +164,8 @@ export function useBridge() {
         if (socketRef.current !== socket) return;
         socketRef.current = null;
         setSnapshot((current) => ({ ...current, connected: false, appServerReady: false, petState: "connecting" }));
+        setApprovals([]);
+        setTurnStatus("idle");
         if (!disposed) {
           const delay = Math.min(5_000, 500 * 2 ** retryCountRef.current++);
           retryRef.current = window.setTimeout(connect, delay);
@@ -220,6 +227,7 @@ export function useBridge() {
     refreshSkills: () => send({ type: "skills.refresh" }),
     refreshModels: () => send({ type: "models.refresh" }),
     assistantText,
+    messages,
     taskOutputs,
     conversations: snapshot.conversations,
     tokenUsage,
@@ -232,10 +240,6 @@ export function useBridge() {
       effort?: ReasoningEffort,
     ) => {
       const sent = send({ type: "turn.start", prompt, skillMode, skillPath, executionMode, model, effort });
-      if (sent) {
-        setAssistantText("");
-        setTaskOutputs({});
-      }
       return sent;
     },
     interruptTurn: () => send({ type: "turn.interrupt" }),

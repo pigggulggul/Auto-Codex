@@ -113,4 +113,6 @@ Manual routing defaults to repository-scoped skills. The renderer can expand the
 - Network access is disabled by default for every turn.
 - Each team Task receives an ephemeral App Server thread so outputs and events cannot be confused with another Task.
 - Folderless research mode never supplies a project cwd and forces every task to `readOnly`; network access must be explicitly enabled for that mode.
-- Solo conversations reuse their selected thread; Team Auto tasks remain ephemeral and receive prior conversation context through a bounded summary.
+- Solo conversations persist their thread IDs and call `thread/resume` after an App Server restart. Team Auto tasks remain ephemeral and receive prior user/assistant context through bounded history.
+- The bridge saves project-associated transcripts, per-request task results and the selected conversation in `.local-data/history.json` using serialized atomic writes. The static server never serves that directory.
+- Restored in-progress work becomes interrupted history. No approval IDs, trust decisions or network grants are restored; saved data never authorizes tool execution.

@@ -9,12 +9,12 @@ import {
   CHARACTER_DRAW_HEIGHT,
   CHARACTER_DRAW_WIDTH,
   CHARACTER_ASSETS,
-  CHARACTER_FRAME_HEIGHT,
-  CHARACTER_FRAME_WIDTH,
   FURNITURE,
   FLOOR_ASSETS,
   PET_ASSETS,
   PET_FRAME_SIZE,
+  PET_DRAW_SIZE,
+  LOUNGE_RUG,
   REST_SPOTS,
   ROOM_LAYOUTS,
   ROLE_COLORS,
@@ -25,21 +25,24 @@ import {
   WALL_ASSET,
   WORLD_COLS,
   WORLD_ROWS,
-  characterFrame,
-  characterNeedsHorizontalFlip,
-  characterStateRow,
+  characterWalkFrame,
+  roomDoorTiles,
   createBlockedTiles,
   directionBetween,
   findPath,
   furnitureAssetPath,
   furnitureVisualRect,
+  furnitureSortDepth,
   isRuntimeActive,
+  isCommonArea,
+  idleWanderTargets,
   isWalkable,
   pointCenter,
   type Direction,
   type TilePoint,
 } from "../world/pixelWorld";
 import { characterIndexForRole, type WorldCharacterAssignments } from "../lib/worldCharacters";
+import { alphaBounds, drawCharacterSprite, type SpriteBounds } from "../world/spriteRendering";
 
 type Props = {
   run: RunSnapshot | null;
@@ -68,6 +71,7 @@ type WorldAgent = {
   tileRow: number;
   path: TilePoint[];
   moveProgress: number;
+  walkDistance: number;
   direction: Direction;
   target: TilePoint;
   nextWanderAt: number;
@@ -101,7 +105,7 @@ declare global {
 }
 
 const BLOCKED_TILES = createBlockedTiles();
-const PC_ON_ASSETS = [1, 2, 3].map((frame) => `${ASSET_ROOT}/furniture/PC/PC_FRONT_ON_${frame}.png`);
+const PC_ON_ASSETS = [1, 2].map((frame) => `${ASSET_ROOT}/furniture/PC/PC_FRONT_ON_${frame}.png`);
 
 const ZONE_RECTS: Array<{ role: AgentRole; col: number; row: number; width: number; height: number }> = ROOM_LAYOUTS
   .filter((room) => room.role)
@@ -228,16 +232,14 @@ function drawDoorThreshold(ctx: CanvasRenderingContext2D, col: number, row: numb
 }
 
 function drawRoomArchitecture(ctx: CanvasRenderingContext2D, zoom: number, offset: Point): void {
-  const roomDoor = (room: { width: number }) => Math.floor(room.width / 2);
-  for (const room of ROOM_LAYOUTS) {
-    const opening = roomDoor(room);
-    drawHorizontalWall(ctx, room.col, room.row, room.width, zoom, offset, [opening]);
-    drawHorizontalWall(ctx, room.col, room.row + room.height, room.width, zoom, offset, [opening]);
-    const sideOpening = Math.floor(room.height / 2);
-    drawVerticalWall(ctx, room.col, room.row + 1, room.height - 1, zoom, offset, [sideOpening - 1]);
-    drawVerticalWall(ctx, room.col + room.width, room.row + 1, room.height - 1, zoom, offset, [sideOpening - 1]);
-    drawDoorThreshold(ctx, room.col + opening, room.row, zoom, offset);
-    drawDoorThreshold(ctx, room.col + opening, room.row + room.height, zoom, offset);
+  for (const room of ROOM_LAYOUTS.filter((candidate) => candidate.role)) {
+    const doors = roomDoorTiles(room);
+    const openings = doors.map((door) => door.col - room.col);
+    drawHorizontalWall(ctx, room.col, room.row, room.width, zoom, offset, doors[0].row === room.row ? openings : []);
+    drawHorizontalWall(ctx, room.col, room.row + room.height, room.width, zoom, offset, doors[0].row === room.row + room.height ? openings : []);
+    drawVerticalWall(ctx, room.col, room.row + 1, room.height - 1, zoom, offset);
+    drawVerticalWall(ctx, room.col + room.width, room.row + 1, room.height - 1, zoom, offset);
+    for (const door of doors) drawDoorThreshold(ctx, door.col, door.row, zoom, offset);
   }
 
   // Exterior shell: unlike the previous implementation this is a wall body,
@@ -289,6 +291,7 @@ function initialWorldAgent(snapshot: AgentSnapshot, index: number, assignment: n
     tileRow: rest.row,
     path: [],
     moveProgress: 0,
+    walkDistance: 0,
     direction: index % 2 === 0 ? "down" : "up",
     target: rest,
     nextWanderAt: performance.now() + 1600 + index * 330,
@@ -299,8 +302,8 @@ function initialWorldAgent(snapshot: AgentSnapshot, index: number, assignment: n
 
 function initialPets(): WorldPet[] {
   return [
-    { id: "claudio", name: "Claudio", spriteIndex: 0, tileCol: 13, tileRow: 8, direction: "down" as const },
-    { id: "gitcat", name: "Gitcat", spriteIndex: 1, tileCol: 19, tileRow: 10, direction: "left" as const },
+    { id: "claudio", name: "Claudio", spriteIndex: 0, tileCol: 11, tileRow: 12, direction: "down" as const },
+    { id: "gitcat", name: "Gitcat", spriteIndex: 1, tileCol: 28, tileRow: 12, direction: "left" as const },
   ].map((pet, index) => {
     const center = pointCenter({ col: pet.tileCol, row: pet.tileRow });
     return {
@@ -325,30 +328,29 @@ function routeAgent(agent: WorldAgent, target: TilePoint, now = performance.now(
   agent.nextWanderAt = now + 2600;
 }
 
-function randomRestTarget(role: AgentRole): TilePoint {
-  const center = REST_SPOTS[role];
-  const candidates: TilePoint[] = [];
-  for (let row = center.row - 2; row <= center.row + 2; row += 1) {
-    for (let col = center.col - 2; col <= center.col + 2; col += 1) {
-      const point = { col, row };
-      if (isWalkable(point, BLOCKED_TILES)) candidates.push(point);
-    }
-  }
-  return candidates[Math.floor(Math.random() * candidates.length)] ?? center;
+function randomRestTarget(role: AgentRole, others: Iterable<WorldAgent>): TilePoint {
+  const occupied = Array.from(others).filter((agent) => agent.role !== role);
+  const candidates = idleWanderTargets(role, BLOCKED_TILES).filter((point) => occupied.every((agent) => (
+    Math.hypot(point.col - agent.target.col, point.row - agent.target.row) >= 2
+    && Math.hypot(point.col - agent.tileCol, point.row - agent.tileRow) >= 2
+  )));
+  return candidates[Math.floor(Math.random() * candidates.length)] ?? REST_SPOTS[role];
 }
 
 function moveEntity(
   entity: Pick<WorldAgent, "x" | "y" | "tileCol" | "tileRow" | "path" | "moveProgress" | "direction">,
   dt: number,
   speed: number,
-): void {
+): number {
   let remainingDistance = speed * dt;
+  let totalTravelled = 0;
   while (remainingDistance > 0 && entity.path.length > 0) {
     const next = entity.path[0];
     const from = { col: entity.tileCol, row: entity.tileRow };
     entity.direction = directionBetween(from, next);
     const distanceToNextTile = (1 - entity.moveProgress) * TILE_SIZE;
     const travelled = Math.min(remainingDistance, distanceToNextTile);
+    totalTravelled += travelled;
     entity.moveProgress += travelled / TILE_SIZE;
     remainingDistance -= travelled;
     const start = pointCenter(from);
@@ -364,6 +366,7 @@ function moveEntity(
       entity.moveProgress = 0;
     }
   }
+  return totalTravelled;
 }
 
 function assetUrls(): string[] {
@@ -402,7 +405,9 @@ export function PixelOffice({
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const bubbleRefs = useRef(new Map<AgentRole, HTMLDivElement>());
+  const roomLabelRefs = useRef(new Map<AgentRole, HTMLButtonElement>());
   const assetsRef = useRef(new Map<string, HTMLImageElement>());
+  const propBoundsRef = useRef(new Map<string, SpriteBounds>());
   const agentsRef = useRef(new Map<AgentRole, WorldAgent>());
   const petsRef = useRef<WorldPet[]>(initialPets());
   const selectedRoleRef = useRef<AgentRole | null>(null);
@@ -438,6 +443,8 @@ export function PixelOffice({
         activity: agent.snapshot.activity,
         tile: { col: agent.tileCol, row: agent.tileRow },
         moving: agent.path.length > 0 || agent.moveProgress > 0,
+        walkDistance: agent.walkDistance,
+        walkFrame: characterWalkFrame(agent.walkDistance),
       })),
       pets: petsRef.current.map((pet) => ({
         id: pet.id,
@@ -466,6 +473,16 @@ export function PixelOffice({
       image.onload = () => {
         if (cancelled) return;
         assetsRef.current.set(url, image);
+        if (url.includes("/furniture/")) {
+          const sample = document.createElement("canvas");
+          sample.width = image.naturalWidth; sample.height = image.naturalHeight;
+          const sampleContext = sample.getContext("2d", { willReadFrequently: true });
+          if (sampleContext) {
+            sampleContext.drawImage(image, 0, 0);
+            const bounds = alphaBounds(sample.width, sample.height, sampleContext.getImageData(0, 0, sample.width, sample.height).data);
+            if (bounds) propBoundsRef.current.set(url, bounds);
+          }
+        }
         loaded += 1;
         setAssetStatus({ loaded, total: urls.length, errors: [...errors] });
       };
@@ -489,15 +506,13 @@ export function PixelOffice({
         worldAgent = initialWorldAgent(snapshot, index, assigned);
         agentsRef.current.set(snapshot.role, worldAgent);
       }
+      const wasActive = isRuntimeActive(worldAgent.snapshot.status);
       worldAgent.snapshot = snapshot;
       worldAgent.spriteIndex = assigned;
-      if (handoff?.from === snapshot.role) {
-        const recipient = STATIONS[handoff.to];
-        routeAgent(worldAgent, { col: Math.max(1, recipient.col - 1), row: recipient.row }, now);
-        worldAgent.handoffUntil = now + 2600;
-      } else if (isRuntimeActive(snapshot.status)) {
+      if (isRuntimeActive(snapshot.status)) {
+        worldAgent.manualUntil = 0;
         routeAgent(worldAgent, STATIONS[snapshot.role], now);
-      } else if (worldAgent.manualUntil <= now) {
+      } else if (worldAgent.manualUntil <= now && (wasActive || !isCommonArea(worldAgent.target))) {
         routeAgent(worldAgent, REST_SPOTS[snapshot.role], now);
       }
     });
@@ -526,12 +541,22 @@ export function PixelOffice({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.imageSmoothingEnabled = false;
+    const resize = () => {
+      const bounds = canvas.getBoundingClientRect();
+      const density = Math.min(window.devicePixelRatio || 1, 3);
+      canvas.width = Math.max(1, Math.round(bounds.width * density));
+      canvas.height = Math.max(1, Math.round(bounds.height * density));
+    };
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    resize();
     let animationFrame = 0;
     let previousTime = performance.now();
     let previousOffset = timeOffsetRef.current;
 
     const draw = (time: number) => {
+      ctx.setTransform(canvas.width / CANVAS_WIDTH, 0, 0, canvas.height / CANVAS_HEIGHT, 0, 0);
+      ctx.imageSmoothingEnabled = false;
       const simulationTime = time + timeOffsetRef.current;
       const realDelta = Math.min(Math.max(0, time - previousTime), 50);
       const forcedDelta = Math.max(0, timeOffsetRef.current - previousOffset);
@@ -541,6 +566,10 @@ export function PixelOffice({
       const currentZoom = zoomRef.current;
       const worldWidth = WORLD_COLS * TILE_SIZE * currentZoom;
       const worldHeight = WORLD_ROWS * TILE_SIZE * currentZoom;
+      panRef.current = {
+        x: Math.max(-(worldWidth - CANVAS_WIDTH) / 2, Math.min((worldWidth - CANVAS_WIDTH) / 2, panRef.current.x)),
+        y: Math.max(-(worldHeight - CANVAS_HEIGHT) / 2, Math.min((worldHeight - CANVAS_HEIGHT) / 2, panRef.current.y)),
+      };
       const offset = {
         x: Math.round((CANVAS_WIDTH - worldWidth) / 2 + panRef.current.x),
         y: Math.round((CANVAS_HEIGHT - worldHeight) / 2 + panRef.current.y),
@@ -557,10 +586,10 @@ export function PixelOffice({
           agent.path = [];
           agent.moveProgress = 0;
         } else {
-          moveEntity(agent, dt, 34);
+          agent.walkDistance += moveEntity(agent, dt, 34);
         }
         if (!reducedMotion && !isRuntimeActive(agent.snapshot.status) && agent.path.length === 0 && simulationTime > agent.nextWanderAt && simulationTime > agent.manualUntil && simulationTime > agent.handoffUntil) {
-          routeAgent(agent, randomRestTarget(agent.role), simulationTime);
+          routeAgent(agent, randomRestTarget(agent.role, agentsRef.current.values()), simulationTime);
           agent.nextWanderAt = simulationTime + 3200 + Math.random() * 4200;
         }
       }
@@ -569,9 +598,9 @@ export function PixelOffice({
         if (reducedMotion && pet.path.length > 0) pet.path = [];
         else moveEntity(pet, dt, 38);
         if (!reducedMotion && pet.path.length === 0 && simulationTime > pet.nextWanderAt) {
-          const selected = selectedRoleRef.current ? agentsRef.current.get(selectedRoleRef.current) : null;
-          const follow = selected && Math.abs(selected.tileCol - pet.tileCol) + Math.abs(selected.tileRow - pet.tileRow) < 8;
-          const target = follow ? randomRestTarget(selected.role) : { col: 3 + Math.floor(Math.random() * 26), row: 7 + Math.floor(Math.random() * 4) };
+          // Companions use the common corridor, keeping individual offices and
+          // their working/idle characters clear of overlapping pet sprites.
+          const target = { col: 3 + Math.floor(Math.random() * (WORLD_COLS - 6)), row: 10 + Math.floor(Math.random() * 5) };
           if (isWalkable(target, BLOCKED_TILES)) pet.path = findPath({ col: pet.tileCol, row: pet.tileRow }, target, BLOCKED_TILES);
           pet.nextWanderAt = simulationTime + 3500 + Math.random() * 5000;
         }
@@ -613,8 +642,7 @@ export function PixelOffice({
       const carpet = assetsRef.current.get(CARPET_ASSETS[1]);
       if (carpet) {
         ctx.save();
-        ctx.globalAlpha = 0.76;
-        ctx.drawImage(carpet, offset.x + 14 * TILE_SIZE * currentZoom, offset.y + 7 * TILE_SIZE * currentZoom, 4 * TILE_SIZE * currentZoom, 4 * TILE_SIZE * currentZoom);
+        ctx.drawImage(carpet, offset.x + LOUNGE_RUG.col * TILE_SIZE * currentZoom, offset.y + LOUNGE_RUG.row * TILE_SIZE * currentZoom, LOUNGE_RUG.width * TILE_SIZE * currentZoom, LOUNGE_RUG.height * TILE_SIZE * currentZoom);
         ctx.restore();
       }
 
@@ -627,12 +655,13 @@ export function PixelOffice({
         }
         const image = assetsRef.current.get(url);
         if (!image) continue;
-        const rect = furnitureVisualRect(item, image.naturalWidth, image.naturalHeight);
+        const source = propBoundsRef.current.get(url) ?? { x: 0, y: 0, width: image.naturalWidth, height: image.naturalHeight };
+        const rect = furnitureVisualRect(item, source.width, source.height);
         const x = offset.x + rect.x * currentZoom;
         const y = offset.y + rect.y * currentZoom;
         drawables.push({
-          z: rect.y + rect.height,
-          draw: () => ctx.drawImage(image, x, y, rect.width * currentZoom, rect.height * currentZoom),
+          z: furnitureSortDepth(item),
+          draw: () => ctx.drawImage(image, source.x, source.y, source.width, source.height, x, y, rect.width * currentZoom, rect.height * currentZoom),
         });
       }
 
@@ -644,8 +673,8 @@ export function PixelOffice({
         const bounce = !reducedMotion && agent.snapshot.activity === "success" ? Math.abs(Math.sin(simulationTime / 170)) * 4 : 0;
         const shake = !reducedMotion && agent.snapshot.activity === "error" ? Math.sin(simulationTime / 75) * 1.4 : 0;
         const groundY = agent.y + GROUND_OFFSET_Y + (seated ? 2 : 0);
-        const drawX = offset.x + (agent.x - CHARACTER_DRAW_WIDTH / 2 + shake) * currentZoom;
-        const drawY = offset.y + (groundY - CHARACTER_DRAW_HEIGHT + CHARACTER_FOOT_SINK - bounce) * currentZoom;
+        const drawX = Math.round(offset.x + (agent.x - CHARACTER_DRAW_WIDTH / 2 + shake) * currentZoom);
+        const drawY = Math.round(offset.y + (groundY - CHARACTER_DRAW_HEIGHT + CHARACTER_FOOT_SINK - bounce) * currentZoom);
         drawables.push({
           z: agent.y + 8,
           draw: () => {
@@ -665,17 +694,8 @@ export function PixelOffice({
               ctx.restore();
             }
             if (!sprite) return;
-            const frame = reducedMotion ? 0 : characterFrame(agent.snapshot.activity, moving, simulationTime / 1000 + agent.spriteIndex * 0.17);
-            const row = characterStateRow(agent.snapshot.activity, moving);
-            if (characterNeedsHorizontalFlip(agent.direction, moving)) {
-              ctx.save();
-              ctx.translate(drawX + CHARACTER_DRAW_WIDTH * currentZoom, 0);
-              ctx.scale(-1, 1);
-              ctx.drawImage(sprite, frame * CHARACTER_FRAME_WIDTH, row * CHARACTER_FRAME_HEIGHT, CHARACTER_FRAME_WIDTH, CHARACTER_FRAME_HEIGHT, 0, drawY, CHARACTER_DRAW_WIDTH * currentZoom, CHARACTER_DRAW_HEIGHT * currentZoom);
-              ctx.restore();
-            } else {
-              ctx.drawImage(sprite, frame * CHARACTER_FRAME_WIDTH, row * CHARACTER_FRAME_HEIGHT, CHARACTER_FRAME_WIDTH, CHARACTER_FRAME_HEIGHT, drawX, drawY, CHARACTER_DRAW_WIDTH * currentZoom, CHARACTER_DRAW_HEIGHT * currentZoom);
-            }
+            drawCharacterSprite(ctx, sprite, { state: agent.snapshot.activity, moving, travelled: agent.walkDistance, elapsedSeconds: simulationTime / 1000 + agent.spriteIndex * 0.17, reducedMotion },
+              { x: drawX, y: drawY, width: CHARACTER_DRAW_WIDTH * currentZoom, height: CHARACTER_DRAW_HEIGHT * currentZoom });
           },
         });
       }
@@ -692,19 +712,19 @@ export function PixelOffice({
           sourceRow = 2;
           sourceCol = moving ? frame : 3;
         }
-        const x = offset.x + (pet.x - 8) * currentZoom;
-        const y = offset.y + (pet.y - 16) * currentZoom;
+        const x = offset.x + (pet.x - PET_DRAW_SIZE / 2) * currentZoom;
+        const y = offset.y + (pet.y - PET_DRAW_SIZE) * currentZoom;
         drawables.push({
           z: pet.y + 7,
           draw: () => {
             if (pet.direction === "left") {
               ctx.save();
-              ctx.translate(x + PET_FRAME_SIZE * currentZoom, 0);
+              ctx.translate(x + PET_DRAW_SIZE * currentZoom, 0);
               ctx.scale(-1, 1);
-              ctx.drawImage(sprite, sourceCol * PET_FRAME_SIZE, sourceRow * PET_FRAME_SIZE, PET_FRAME_SIZE, PET_FRAME_SIZE, 0, y, PET_FRAME_SIZE * currentZoom, PET_FRAME_SIZE * currentZoom);
+              ctx.drawImage(sprite, sourceCol * PET_FRAME_SIZE, sourceRow * PET_FRAME_SIZE, PET_FRAME_SIZE, PET_FRAME_SIZE, 0, y, PET_DRAW_SIZE * currentZoom, PET_DRAW_SIZE * currentZoom);
               ctx.restore();
             } else {
-              ctx.drawImage(sprite, sourceCol * PET_FRAME_SIZE, sourceRow * PET_FRAME_SIZE, PET_FRAME_SIZE, PET_FRAME_SIZE, x, y, PET_FRAME_SIZE * currentZoom, PET_FRAME_SIZE * currentZoom);
+              ctx.drawImage(sprite, sourceCol * PET_FRAME_SIZE, sourceRow * PET_FRAME_SIZE, PET_FRAME_SIZE, PET_FRAME_SIZE, x, y, PET_DRAW_SIZE * currentZoom, PET_DRAW_SIZE * currentZoom);
             }
             if (pet.heartUntil > simulationTime) {
               ctx.fillStyle = "#ee6f8f";
@@ -737,33 +757,28 @@ export function PixelOffice({
         bubbleNode.classList.toggle("is-error", agent.snapshot.activity === "error");
       }
 
-      // Keep room headers above furniture and characters so a large prop can
-      // never visually cut the role label in half.
+      // Labels are DOM text: readable at every zoom and display density.
       for (const zone of ZONE_RECTS) {
+        const label = roomLabelRefs.current.get(zone.role);
+        if (!label) continue;
         const x = offset.x + (zone.col + 0.55) * TILE_SIZE * currentZoom;
-        const y = offset.y + (zone.row + 0.28) * TILE_SIZE * currentZoom;
-        const width = Math.min(zone.width - 1.1, 5.8) * TILE_SIZE * currentZoom;
-        ctx.fillStyle = "rgba(28, 43, 45, .9)";
-        ctx.fillRect(x, y, width, 7 * currentZoom);
-        ctx.fillStyle = "#fffbe8";
-        ctx.font = `700 ${4.5 * currentZoom}px monospace`;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(ROLE_LABELS[zone.role].toUpperCase(), x + 4 * currentZoom, y + 3.5 * currentZoom, width - 6 * currentZoom);
+        const y = offset.y + (zone.row + (zone.row > WORLD_ROWS / 2 ? 1 : 0.1)) * TILE_SIZE * currentZoom;
+        label.style.left = `${x / CANVAS_WIDTH * 100}%`;
+        label.style.top = `${y / CANVAS_HEIGHT * 100}%`;
       }
 
       animationFrame = window.requestAnimationFrame(draw);
     };
 
     animationFrame = window.requestAnimationFrame(draw);
-    return () => window.cancelAnimationFrame(animationFrame);
+    return () => { window.cancelAnimationFrame(animationFrame); observer.disconnect(); };
   }, [reducedMotion]);
 
   const canvasPoint = (event: React.PointerEvent<HTMLCanvasElement>): TilePoint => {
     const canvas = event.currentTarget;
     const bounds = canvas.getBoundingClientRect();
-    const x = (event.clientX - bounds.left) * (canvas.width / bounds.width);
-    const y = (event.clientY - bounds.top) * (canvas.height / bounds.height);
+    const x = (event.clientX - bounds.left) * (CANVAS_WIDTH / bounds.width);
+    const y = (event.clientY - bounds.top) * (CANVAS_HEIGHT / bounds.height);
     const currentZoom = zoomRef.current;
     const offsetX = (CANVAS_WIDTH - WORLD_COLS * TILE_SIZE * currentZoom) / 2 + panRef.current.x;
     const offsetY = (CANVAS_HEIGHT - WORLD_ROWS * TILE_SIZE * currentZoom) / 2 + panRef.current.y;
@@ -843,6 +858,11 @@ export function PixelOffice({
          </div>
        </div>
 
+      <div className={`pixel-asset-status ${assetStatus.errors.length ? "has-error" : ""}`} role="status">
+        {assetStatus.loaded < assetStatus.total ? `이미지 준비 ${assetStatus.loaded}/${assetStatus.total}` : assetStatus.errors.length ? `이미지 ${assetStatus.errors.length}개 로드 실패` : "이미지 준비 완료"}
+        <small className="pixel-motion-status">{animationEnabled ? " · 애니메이션 켜짐" : " · 동작 줄이기"}</small>
+      </div>
+      <div className="pixel-world-scrollport" tabIndex={0} role="region" aria-label="픽셀 사무실 · 작은 화면에서는 좌우로 스크롤할 수 있습니다">
       <div className="pixel-world-stage">
         <canvas
           ref={canvasRef}
@@ -873,9 +893,8 @@ export function PixelOffice({
           onWheel={() => {}}
         />
 
-        <div className={`pixel-asset-status ${assetStatus.errors.length ? "has-error" : ""}`}>
-          {assetStatus.loaded < assetStatus.total ? `ASSETS ${assetStatus.loaded}/${assetStatus.total}` : assetStatus.errors.length ? `${assetStatus.errors.length} ASSET ERRORS` : "PIXEL ASSETS READY"}
-          <small className="pixel-motion-status">{animationEnabled ? " · ANIMATION ON" : " · REDUCED MOTION"}</small>
+        <div className="pixel-room-labels">
+          {ZONE_RECTS.map((zone) => <button type="button" key={zone.role} ref={(node) => { if (node) roomLabelRefs.current.set(zone.role, node); else roomLabelRefs.current.delete(zone.role); }} onClick={() => setSelectedRole(zone.role)}>{ROLE_LABELS[zone.role]}</button>)}
         </div>
 
         <div className="pixel-world-bubble-layer" aria-hidden="true">
@@ -925,6 +944,7 @@ export function PixelOffice({
             <small>{isRuntimeActive(selectedAgent.status) ? "작업 중에는 실제 이벤트가 이동과 애니메이션을 제어합니다." : "빈 바닥을 클릭하면 선택한 에이전트가 이동합니다."}</small>
           </aside>
         )}
+      </div>
       </div>
 
       <div className="pixel-agent-roster" aria-label="에이전트 상태 목록">

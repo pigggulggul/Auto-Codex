@@ -5,6 +5,7 @@ Add-Type -AssemblyName System.Drawing
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $inputRoot = Join-Path $projectRoot "tools\generated-inputs"
 $outputRoot = Join-Path $projectRoot "public\generated-pixel-assets"
+$propRegions = Get-Content -LiteralPath (Join-Path $inputRoot 'props-v2-regions.json') -Raw | ConvertFrom-Json
 
 function New-TransparentBitmap {
   param([int]$Width, [int]$Height)
@@ -76,6 +77,17 @@ function Get-AlphaBounds {
   }
   if ($maxX -lt 0) { return [System.Drawing.Rectangle]::new(0, 0, $Bitmap.Width, $Bitmap.Height) }
   return [System.Drawing.Rectangle]::new($minX, $minY, $maxX - $minX + 1, $maxY - $minY + 1)
+}
+
+function Get-PropCell {
+  param([System.Drawing.Bitmap]$Source, [string]$Kind, [int]$Column, [int]$Row)
+  # ImageGen's authored gutters are reviewed explicitly. Equal grid cuts can
+  # slice a complete pot or import leaves belonging to the cell above it.
+  $layout = $propRegions.$Kind
+  if ($Source.Width -ne $layout.width -or $Source.Height -ne $layout.height) { throw "Unreviewed $Kind atlas dimensions" }
+  $left = $layout.columns[$Column]; $right = $layout.columns[$Column + 1]
+  $top = $layout.rowCutsByColumn[$Column][$Row]; $bottom = $layout.rowCutsByColumn[$Column][$Row + 1]
+  return $Source.Clone([System.Drawing.Rectangle]::new($left, $top, $right - $left, $bottom - $top), [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
 }
 
 function Render-Fit {
@@ -151,8 +163,8 @@ function Render-Shifted {
 New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
 
 $tileAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "tile-atlas.png"))
-$furnitureAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "furniture-atlas.png"))
-$decorAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "decor-atlas.png"))
+$furnitureAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "furniture-atlas-v2.png"))
+$decorAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "decor-atlas-v2.png"))
 $petAtlas = [System.Drawing.Bitmap]::FromFile((Join-Path $inputRoot "pet-atlas.png"))
 
 try {
@@ -194,32 +206,27 @@ try {
   }
   Save-Png $wall (Join-Path $outputRoot "walls\wall_0.png")
 
-  # Three 128x128 carpet swatches, each repeated from a generated teal tile.
+  # Use the reviewed complete rug, not a patchwork of unrelated floor tiles.
   for ($index = 0; $index -lt 3; $index += 1) {
     $carpet = New-TransparentBitmap 128 128
     $carpetGraphics = New-PixelGraphics $carpet
     try {
-      for ($row = 0; $row -lt 4; $row += 1) {
-        for ($column = 0; $column -lt 4; $column += 1) {
-          $cell = Get-GridCell $tileAtlas 8 8 (($index + $column + $row) % 8) 4
-          $texture = Render-Texture $cell 32 32 4
-          Draw-Into $carpetGraphics $texture ($column * 32) ($row * 32) 32 32
-          $texture.Dispose()
-          $cell.Dispose()
-        }
-      }
+      $cell = Get-PropCell $furnitureAtlas 'furniture' 2 2
+      $rug = Render-Fit $cell 128 128 -Trim
+      Draw-Into $carpetGraphics $rug 0 0 128 128
+      $rug.Dispose()
+      $cell.Dispose()
     } finally {
       $carpetGraphics.Dispose()
     }
     Save-Png $carpet (Join-Path $outputRoot "carpets\carpet_$index.png")
   }
 
-  # Characters are the reviewed 2-frame x 4-state sheets produced by
-  # finalize-character-sheets.ps1; copy preserves the reviewed opaque RGB pixels.
+  # Copy the reviewed 2-frame x 4-state character sheets, preserving authored
+  # poses and alpha channels exactly.
   $characterOutput = Join-Path $outputRoot "characters"
   $characterSource = Join-Path $inputRoot "characters"
   New-Item -ItemType Directory -Force -Path $characterOutput | Out-Null
-  Get-ChildItem -LiteralPath $characterOutput -Filter "char_*.png" -File | Remove-Item -Force
   for ($character = 0; $character -lt 5; $character += 1) {
     Copy-Item -LiteralPath (Join-Path $characterSource "char_$character.png") -Destination (Join-Path $characterOutput "char_$character.png") -Force
   }
@@ -229,12 +236,12 @@ try {
   # The cactus slot intentionally receives the generated flowering plant so no
   # original cactus artwork remains.
   $furnitureMappings = @(
-    @{ Path = "DESK\DESK_FRONT.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 0; Row = 0; Width = 96; Height = 64 },
-    @{ Path = "PC\PC_FRONT_OFF.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 2; Row = 1; Width = 32; Height = 64 },
-    @{ Path = "CUSHIONED_CHAIR\CUSHIONED_CHAIR_FRONT.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 2; Row = 0; Width = 32; Height = 32 },
-    @{ Path = "SOFA\SOFA_FRONT.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 0; Row = 1; Width = 64; Height = 32 },
-    @{ Path = "SOFA\SOFA_BACK.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 0; Row = 1; Width = 64; Height = 32 },
-    @{ Path = "COFFEE_TABLE\COFFEE_TABLE.png"; Source = $furnitureAtlas; Columns = 4; Rows = 4; Column = 1; Row = 1; Width = 64; Height = 64 },
+    @{ Path = "DESK\DESK_FRONT.png"; Source = $furnitureAtlas; Columns = 3; Rows = 3; Column = 0; Row = 0; Width = 96; Height = 64 },
+    @{ Path = "PC\PC_FRONT_OFF.png"; Source = $furnitureAtlas; Columns = 3; Rows = 3; Column = 2; Row = 1; Width = 64; Height = 48 },
+    @{ Path = "CUSHIONED_CHAIR\CUSHIONED_CHAIR_FRONT.png"; Source = $furnitureAtlas; Columns = 3; Rows = 3; Column = 1; Row = 0; Width = 32; Height = 32 },
+    @{ Path = "SOFA\SOFA_FRONT.png"; Source = $furnitureAtlas; Columns = 3; Rows = 3; Column = 2; Row = 0; Width = 64; Height = 48 },
+    @{ Path = "SOFA\SOFA_BACK.png"; Source = $furnitureAtlas; Columns = 3; Rows = 3; Column = 0; Row = 1; Width = 64; Height = 48 },
+    @{ Path = "COFFEE_TABLE\COFFEE_TABLE.png"; Source = $furnitureAtlas; Columns = 3; Rows = 3; Column = 1; Row = 1; Width = 64; Height = 48 },
     @{ Path = "WHITEBOARD\WHITEBOARD.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 0; Row = 0; Width = 64; Height = 64 },
     @{ Path = "DOUBLE_BOOKSHELF\DOUBLE_BOOKSHELF.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 1; Row = 0; Width = 64; Height = 64 },
     @{ Path = "PLANT\PLANT.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 2; Row = 0; Width = 32; Height = 64 },
@@ -242,17 +249,18 @@ try {
     @{ Path = "PLANT_2\PLANT_2.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 0; Row = 1; Width = 32; Height = 64 },
     @{ Path = "FLOWER\FLOWER.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 3; Row = 1; Width = 32; Height = 64 },
     @{ Path = "COFFEE\COFFEE.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 2; Row = 1; Width = 32; Height = 32 },
-    @{ Path = "CLOCK\CLOCK.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 1; Row = 1; Width = 32; Height = 64 }
+    @{ Path = "CLOCK\CLOCK.png"; Source = $decorAtlas; Columns = 4; Rows = 2; Column = 1; Row = 1; Width = 32; Height = 32 }
   )
   foreach ($mapping in $furnitureMappings) {
-    $cell = Get-GridCell $mapping.Source $mapping.Columns $mapping.Rows $mapping.Column $mapping.Row
+    $kind = if ($mapping.Source -eq $furnitureAtlas) { 'furniture' } else { 'decor' }
+    $cell = Get-PropCell $mapping.Source $kind $mapping.Column $mapping.Row
     $asset = Render-Fit $cell $mapping.Width $mapping.Height -Trim
     Save-Png $asset (Join-Path $outputRoot ("furniture\" + $mapping.Path))
     $cell.Dispose()
   }
   for ($frame = 1; $frame -le 3; $frame += 1) {
-    $cell = Get-GridCell $furnitureAtlas 4 4 2 1
-    $asset = Render-Fit $cell 32 64 -Trim
+    $cell = Get-PropCell $furnitureAtlas 'furniture' (($frame - 1) % 2) 2
+    $asset = Render-Fit $cell 64 48 -Trim
     Save-Png $asset (Join-Path $outputRoot ("furniture\PC\PC_FRONT_ON_$frame.png"))
     $cell.Dispose()
   }
@@ -283,9 +291,9 @@ try {
   }
 
   $manifest = [ordered]@{
-    version = 2
+    version = 3
     source = "Original assets generated for Auto Codex"
-    generatedAt = "2026-09-02"
+    generatedAt = "2026-10-25"
     tileSize = 16
     characterSheet = "512x1024; 2 columns x 4 rows; 256x256 frames; states are idle, moving, working, thinking"
     petSheet = "192x192; 6 columns x 6 rows; 32x32 frames; 2x runtime pixel density"

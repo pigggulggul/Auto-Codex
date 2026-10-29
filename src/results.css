@@ -1,0 +1,47 @@
+.large-result-heading > div { min-width: 0; }
+.large-result-heading h2 { overflow-wrap: anywhere; }
+.large-result-card > header { border-radius: 5px 5px 0 0; }
+.result-text-toolbar { display: flex; justify-content: flex-end; padding: 8px 14px 0; }
+.result-text-toolbar .result-expand-button { font-size: 12px; min-height: 32px; }
+.result-text-body { min-height: 100px; max-height: 480px; overflow: auto; padding: 12px 22px 24px; scrollbar-gutter: stable; }
+.markdown-text { color: #294950; font: 16px/1.85 "Pretendard Variable", "Segoe UI", "Malgun Gothic", sans-serif; overflow-wrap: anywhere; }
+.markdown-text > :first-child { margin-top: 0; }
+.markdown-text > :last-child { margin-bottom: 0; }
+.markdown-text p { margin: 0 0 1em; white-space: pre-wrap; }
+.markdown-text h1, .markdown-text h2, .markdown-text h3, .markdown-text h4, .markdown-text h5, .markdown-text h6 { color: #28454e; margin: 1.25em 0 .5em; line-height: 1.45; }
+.markdown-text h1 { font-size: 1.65em; }
+.markdown-text h2 { font-size: 1.4em; }
+.markdown-text h3 { font-size: 1.2em; }
+.markdown-text ul, .markdown-text ol { padding-left: 1.7em; margin: .6em 0 1em; }
+.markdown-text li { margin: .3em 0; white-space: pre-wrap; }
+.markdown-text code { font: .9em/1.65 Consolas, monospace; background: #edeaf7; padding: .15em .35em; border-radius: 4px; }
+.markdown-text pre { margin: 1em 0; max-height: none; padding: 16px; color: #263f48; background: #f0f3f7; font: 14px/1.7 Consolas, monospace; white-space: pre; overflow: auto; word-break: normal; border: 1px solid #d8dfe6; border-radius: 7px; }
+.markdown-text pre code { padding: 0; background: transparent; font: inherit; }
+.markdown-text blockquote { margin: 1em 0; padding: 10px 18px; border-left: 4px solid #a497d5; background: #f6f3fd; }
+.markdown-text a { color: #5141a1; text-decoration: underline; }
+.markdown-text hr { border: 0; border-top: 1px solid #c6d7d4; margin: 1.5em 0; }
+.markdown-table { max-width: 100%; overflow-x: auto; margin: 1em 0; }
+.markdown-text table { width: 100%; border-collapse: collapse; font-size: .94em; }
+.markdown-text th, .markdown-text td { padding: 10px 14px; border: 1px solid #bed2ce; text-align: left; min-width: 100px; }
+.markdown-text th { background: #eaf5ef; font-weight: 700; }
+.result-reader { width: min(1100px, calc(100vw - 32px)); max-width: none; height: min(900px, calc(100dvh - 32px)); max-height: none; padding: 0; border: 2px solid #9785bf; border-radius: 14px; color: #294950; background: #fffefa; box-shadow: 0 20px 80px #26364255; }
+.result-reader::backdrop { background: #26364299; }
+.result-reader-shell { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.result-reader-heading { flex: none; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px; background: #f4effb; border-bottom: 1px solid #d7ccdf; }
+.result-reader-heading > div { min-width: 0; }
+.result-reader-heading h2 { margin: 6px 0 0; font-size: 22px; overflow-wrap: anywhere; }
+.result-reader button { flex: none; padding: 8px 12px; border: 1px solid #ad9fc9; border-radius: 7px; color: #51426e; background: #fff; cursor: pointer; font-size: 13px; }
+.result-reader button:focus-visible, .result-expand-button:focus-visible { outline: 3px solid #6557ad; outline-offset: 3px; }
+.result-reader-tools { flex: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 24px; border-bottom: 1px solid #e3e5df; }
+.result-reader-tools button[aria-pressed="true"] { color: #fff; background: #7764a9; }
+.result-reader-content { flex: 1; min-height: 0; overflow: auto; padding: 24px clamp(18px, 5vw, 60px) 40px; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.result-reader .result-reader-source { margin: 0; max-height: none; padding: 0; color: #294950; background: transparent; font: 15px/1.8 Consolas, "Malgun Gothic", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+body:has(.result-reader[open]) { overflow: hidden; }
+@media (max-width: 720px) {
+  .result-text-body { padding: 12px 16px 20px; }
+  .markdown-text { font-size: 15px; }
+  .result-reader { width: calc(100vw - 12px); height: calc(100dvh - 12px); border-radius: 8px; }
+  .result-reader-heading { padding: 14px; }
+  .result-reader-heading h2 { font-size: 18px; }
+  .result-reader-tools { padding: 10px 14px; }
+}

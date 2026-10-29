@@ -4,6 +4,7 @@ import App from "./App";
 import "./styles.css";
 import "./metaverse.css";
 import "./pixel-world.css";
+import "./results.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -1,7 +1,7 @@
 ﻿{
-    "version":  2,
+    "version":  3,
     "source":  "Original assets generated for Auto Codex",
-    "generatedAt":  "2026-09-02",
+    "generatedAt":  "2026-10-25",
     "tileSize":  16,
     "characterSheet":  "512x1024; 2 columns x 4 rows; 256x256 frames; states are idle, moving, working, thinking",
     "petSheet":  "192x192; 6 columns x 6 rows; 32x32 frames; 2x runtime pixel density",

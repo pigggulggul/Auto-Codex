@@ -17,6 +17,7 @@ coverage/
 *.tsbuildinfo
 
 # Local runtime files
+.local-data/
 *.log
 *.pid
 tmp/

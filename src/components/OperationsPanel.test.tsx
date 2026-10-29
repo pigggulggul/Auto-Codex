@@ -19,8 +19,8 @@ describe("OperationsPanel character identity", () => {
       streaming
     />);
     expect(html).toContain("/generated-pixel-assets/characters/char_3.png");
-    expect(html).toContain("width:48px;height:64px");
-    expect(html).toContain("background-size:96px 256px");
+    expect(html).toContain("width:64px;height:64px");
+    expect(html).toContain("background-size:128px 256px");
     expect(html).toContain("background-position:0 -128px");
   });
 });

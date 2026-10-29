@@ -25,7 +25,7 @@ type CharacterStyle = CSSProperties & {
 
 export function WorldCharacter({ spriteIndex, state, size = 50, animated = true, className = "" }: Props) {
   const height = size;
-  const width = Math.round(size * 3 / 4);
+  const width = size;
   const row = characterStateRow(state, false);
   const url = CHARACTER_ASSETS[spriteIndex % CHARACTER_ASSETS.length];
   const style: CharacterStyle = {

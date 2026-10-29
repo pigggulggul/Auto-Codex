@@ -1,0 +1,167 @@
+{
+  "date": "2026-10-29",
+  "version": "1.2.0",
+  "method": "실제 브라우저 입력·선택·업로드·프롬프트 조립·새로고침 + HTTP 파일 백업 복원 검증. 실제 초보 사용자 조사는 아님.",
+  "scenarios": [
+    {
+      "name": "DI/DO 보드 상태 변환 시뮬레이터 · UX 검증",
+      "entry": "아이디어부터",
+      "projectId": "p_ec092a81-da00-41ff-94bf-49749277874f",
+      "finalSnapshotId": "snap_5ded9d21-c261-4752-bc0b-68df7e7c4d20",
+      "blockingIssues": 0,
+      "steps": [
+        {
+          "name": "DI/DO 보드 상태 변환 시뮬레이터 · UX 검증 사용 순서",
+          "steps": [
+            "DI/DO 현재 상태 확인",
+            "DI 입력값 변경",
+            "변환 규칙 적용",
+            "DO 출력과 로그 확인"
+          ],
+          "links": 10
+        }
+      ],
+      "files": 6,
+      "fullBackupRestored": true,
+      "fileHashesPreserved": true,
+      "referenceAndFlowIdsPreserved": true,
+      "sourceProjectUnchanged": true,
+      "promptZipBytes": 64324,
+      "promptCharacters": 7938,
+      "unrelatedExamples": false
+    },
+    {
+      "name": "라이어 게임 디자인 · UX 검증",
+      "entry": "이미지부터",
+      "projectId": "p_629ea859-92f3-4110-8586-6942568686f6",
+      "finalSnapshotId": "snap_b9cfebf4-061f-4f92-8212-e34d45ebab99",
+      "blockingIssues": 0,
+      "steps": [
+        {
+          "name": "라이어 게임 디자인 · UX 검증 사용 순서",
+          "steps": [
+            "참가자와 라운드 설정",
+            "각자 역할 비공개 확인",
+            "대화와 단서 제시",
+            "라이어 지목 투표",
+            "정답과 라이어 공개"
+          ],
+          "links": 14
+        }
+      ],
+      "files": 2,
+      "fullBackupRestored": true,
+      "fileHashesPreserved": true,
+      "referenceAndFlowIdsPreserved": true,
+      "sourceProjectUnchanged": true,
+      "promptZipBytes": 119892,
+      "promptCharacters": 9003,
+      "unrelatedExamples": false
+    },
+    {
+      "name": "이상형월드컵 사이트 UI · UX 검증",
+      "entry": "컨셉 확정",
+      "projectId": "p_1e0e30c8-a764-457e-a53c-3e8224c7e146",
+      "finalSnapshotId": "snap_9702ea09-237d-48c9-8ce2-53cc2c4ad1b1",
+      "blockingIssues": 0,
+      "steps": [
+        {
+          "name": "이상형월드컵 사이트 UI · UX 검증 사용 순서",
+          "steps": [
+            "주제와 후보 수 선택",
+            "두 후보 비교",
+            "선호 후보 선택",
+            "다음 대결 진행",
+            "최종 우승자 확인"
+          ],
+          "links": 13
+        }
+      ],
+      "files": 0,
+      "fullBackupRestored": true,
+      "fileHashesPreserved": true,
+      "referenceAndFlowIdsPreserved": true,
+      "sourceProjectUnchanged": true,
+      "promptZipBytes": 67635,
+      "promptCharacters": 8205,
+      "unrelatedExamples": false
+    },
+    {
+      "name": "앙케이트 사이트 UI · UX 검증",
+      "entry": "기존 결과 개선",
+      "projectId": "p_36c34588-7672-4546-9733-4c500e5c327b",
+      "finalSnapshotId": "snap_ec981fb7-1d3e-45aa-a535-e5818a0b5842",
+      "blockingIssues": 0,
+      "steps": [
+        {
+          "name": "앙케이트 사이트 UI · UX 검증 사용 순서",
+          "steps": [
+            "질문과 참여 방법 확인",
+            "참여 가능 시간 선택",
+            "응답 확인과 제출",
+            "제출 완료 확인",
+            "집계 결과 확인"
+          ],
+          "links": 13
+        }
+      ],
+      "files": 1,
+      "fullBackupRestored": true,
+      "fileHashesPreserved": true,
+      "referenceAndFlowIdsPreserved": true,
+      "sourceProjectUnchanged": true,
+      "promptZipBytes": 70411,
+      "promptCharacters": 8474,
+      "unrelatedExamples": false
+    }
+  ],
+  "revision": {
+    "projectId": "p_ec092a81-da00-41ff-94bf-49749277874f",
+    "results": 6,
+    "plans": 3,
+    "parentReviewLinked": true,
+    "sameCriteria": true,
+    "styleObservedAndResolved": true,
+    "otherVerdictsNotInvented": true,
+    "wholeReviewCompleted": false
+  },
+  "visual": {
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile": [
+      390,
+      844
+    ],
+    "mobileHorizontalOverflow": false,
+    "liveColorPreview": true,
+    "guideAndDetailedShareStyleId": true,
+    "screenshots": [
+      "12-generic-flow.png",
+      "13-di-style.png",
+      "14-liar-reference.png",
+      "15-survey-review.png",
+      "16-liar-prompt.png",
+      "17-worldcup-prompt.png",
+      "18-survey-prompt.png",
+      "19-di-recheck.png",
+      "20-first-task.png",
+      "21-mobile-first-task.png",
+      "22-mobile-style.png"
+    ],
+    "missingInputFocusedAndRecovers": true
+  },
+  "automatedTests": {
+    "passed": 53,
+    "failed": 0,
+    "syntaxModules": 14
+  },
+  "browserPageErrors": 0,
+  "externalRequestsInThreeScenarioBrowserRun": 0,
+  "requiresHumanValidation": [
+    "처음 쓰는 사람의 용어 이해·과제 완료율·주관적 난이도",
+    "실제 제작한 네 제품의 동작과 디자인 품질",
+    "키보드·스크린리더를 사용한 전체 접근성 검수"
+  ]
+}

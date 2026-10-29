@@ -1,0 +1,9 @@
+{
+  "tool": "built-in image_gen",
+  "target": "tools/generated-inputs/characters/char_0.png",
+  "export": "Normalize the selected transparent 2x4 atlas to 512x1024 RGBA; copy the same source to public/generated-pixel-assets/characters/char_0.png.",
+  "prompts": [
+    "Use case: background-extraction / precise-object-edit. Edit target is this exact 512x1024 sprite sheet with two columns and four rows, each cell 256x256. Preserve the existing orange-haired mint-beret chibi character identity, costume, poses and eight-frame positions and scale. Remove all non-character background fragments especially the gray staircase/checkerboard/room rectangle behind the SECOND column SECOND row walking frame. Make the entire background truly transparent including inside that frame. Repair any damaged outline there. Keep every full figure inside its own cell, feet at y=240 within each cell. No grid lines, text, shadow, floor, room, colored matte, checkerboard pattern or other props. Output same 2x4 regular atlas composition suitable for game animation, crisp complete artwork, transparent PNG.",
+    "Precise cleanup of provided 2-column 4-row game sprite atlas. Keep all eight poses and character identity exactly. Remove every neon green and red fringe/halo pixel around silhouette and restore clean dark brown outlines. Truly transparent background. Keep grid 2 columns 4 rows each square, no labels. Character feet consistent at 94% of each cell height. Crisp pixel art consistent with original small pixel character, not blurry or painting. No colored fringing or noise. Preserve the transparent backdrop."
+  ]
+}

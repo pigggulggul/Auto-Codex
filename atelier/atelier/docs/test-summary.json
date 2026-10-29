@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-29",
+  "runtime": "Windows / Node 22.18.0 / built-in SQLite",
+  "syntaxCheck": "passed",
+  "nodeTests": {
+    "passed": 53,
+    "failed": 0
+  },
+  "browserJourney": {
+    "passed": true,
+    "externalRequests": 0,
+    "checks": [
+      "four-start-paths",
+      "actual-original-and-crop",
+      "confirmed-decisions-to-prompt",
+      "actual-ZIP",
+      "manual-result-to-revision-and-re-review",
+      "frozen-criteria-and-reset-verdicts",
+      "reload-resume",
+      "backup-with-four-images-and-lineage"
+    ],
+    "rerunAfterExtension": true
+  },
+  "additionalBrowserChecks": [
+    "plan-draft-return",
+    "failed-save-keeps-input",
+    "explicit-retry-and-reload",
+    "modal-keyboard-cycle",
+    "escape-close",
+    "all-eight-tabs-after-extension",
+    "independent-font-cache-per-project",
+    "real-upload-navigation-protection"
+  ],
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000,
+      "scrollWidth": 1425
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 753
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 375
+    }
+  ],
+  "needsHumanValidation": [
+    "AC54 novice-independent-use",
+    "actual-product-design-quality",
+    "full-screen-reader-and-cross-browser-matrix"
+  ],
+  "resultFixtures": "Explicitly labeled QA images of Atelier, not real externally produced game/photo-service deliverables",
+  "appVersion": "1.1.0",
+  "syntaxModules": 13,
+  "extension": {
+    "structuredTransitions": 10,
+    "unreachableAndDeadEndBlocked": true,
+    "realFontFace": true,
+    "typesUploaded": [
+      "Markdown",
+      "WOFF2",
+      "JSON"
+    ],
+    "scopedFiles": 2,
+    "fullBackupFilesAtTest": 3,
+    "unrelatedFileExcluded": true,
+    "mobileScrollWidth": 375,
+    "pageErrors": 0
+  },
+  "version": "1.2.0",
+  "latestUXReport": "UX-1.2.md",
+  "latestScenarioEvidence": "ux-scenarios.json"
+}

@@ -193,10 +193,23 @@ export type ConversationSummary = {
   updatedAt: string;
   preview: string;
   messageCount: number;
+  projectPath?: string | null;
+  workspaceMode?: WorkspaceMode;
+};
+
+export type ConversationMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  timestamp: string;
+  status: "streaming" | "completed" | "failed" | "interrupted";
+  run?: RunSnapshot | null;
+  taskOutputs?: Record<string, string>;
 };
 
 export type ConversationState = {
   id: string;
+  messages: ConversationMessage[];
   assistantText: string;
   taskOutputs: Record<string, string>;
   activities: ActivityEvent[];

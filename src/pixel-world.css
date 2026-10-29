@@ -42,13 +42,15 @@
   overscroll-behavior: contain;
 }
 
+.pixel-world-scrollport { overflow: auto; }
+.pixel-world-scrollport:focus-visible { outline: 3px solid #725fb0; outline-offset: -3px; }
+
 .pixel-world-canvas {
   width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 5 / 3;
   display: block;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  image-rendering: auto;
   touch-action: none;
 }
 
@@ -77,7 +79,7 @@
   border: 0;
   color: #604c6e;
   background: #fff2f8;
-  font: 800 11px/1 monospace;
+  font: 800 13px/1 "Segoe UI", "Malgun Gothic", sans-serif;
 }
 
 .pixel-world-controls button {
@@ -98,7 +100,7 @@
   width: auto;
   padding-inline: 8px;
   background: #b59bdb;
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .pixel-world-controls .pixel-motion-toggle {
@@ -106,7 +108,7 @@
   padding-inline: 7px;
   color: #79535e;
   background: #ffe8ef;
-  font-size: 8px;
+  font-size: 12px;
 }
 
 .pixel-world-controls .pixel-motion-toggle.active {
@@ -120,17 +122,13 @@
 }
 
 .pixel-asset-status {
-  position: absolute;
+  position: relative;
   z-index: 7;
-  top: 12px;
-  right: 12px;
-  padding: 7px 9px;
-  border: 2px solid #96739b;
-  border-radius: 4px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #c8b6ce;
   color: #654e70;
   background: rgba(255, 242, 249, .94);
-  box-shadow: 3px 3px 0 rgba(75, 50, 84, .22);
-  font: 800 9px/1 monospace;
+  font: 600 12px/1.4 "Segoe UI", "Malgun Gothic", sans-serif;
 }
 
 .pixel-asset-status.has-error {
@@ -345,14 +343,13 @@
 
 .pixel-agent-roster .pixel-roster-portrait {
   flex: none;
-  width: 42px;
-  height: 56px;
+  width: 72px;
+  height: 72px;
   display: block;
-  border: 2px solid rgba(255, 255, 255, .45);
   background-repeat: no-repeat;
   background-position: 0 0;
-  background-size: 84px 224px;
-  image-rendering: pixelated;
+  background-size: 144px 288px;
+  image-rendering: auto;
 }
 
 .pixel-agent-roster button:hover .pixel-roster-portrait,
@@ -375,13 +372,13 @@
 }
 
 .pixel-agent-roster strong {
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .pixel-agent-roster small {
   margin-top: 3px;
-  opacity: .72;
-  font-size: 8px;
+  color: #594b62;
+  font-size: 12px;
 }
 
 .pixel-world-legend {
@@ -389,7 +386,7 @@
   border-top-color: #a881a9;
   color: #695772;
   background: linear-gradient(90deg, #fff0f7, #edf1ff) !important;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 @keyframes pixel-handoff-in {
@@ -402,13 +399,47 @@
 }
 
 @media (max-width: 720px) {
+  .pixel-world-stage { min-width: 720px; }
+  .pixel-world-canvas { touch-action: pan-x pan-y; }
   .pixel-world-toolbar { align-items: flex-start; }
   .pixel-agent-inspector { top: 48px; right: 7px; width: 56%; padding: 10px; }
   .pixel-character-options { grid-template-columns: repeat(3, 1fr); }
   .pixel-agent-roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pixel-world-toolbar .pixel-world-controls { transform: scale(.86); transform-origin: center right; }
-  .pixel-asset-status { top: 7px; right: 7px; font-size: 7px; }
+  .pixel-world-toolbar .pixel-world-controls { flex-wrap: wrap; }
+  .pixel-agent-roster .pixel-roster-portrait { width: 56px; height: 56px; background-size: 112px 224px; }
+  .pixel-world-stage .pixel-agent-inspector { position: fixed; z-index: 100; top: auto; right: 16px; bottom: 16px; width: min(380px, calc(100vw - 32px)); max-height: 80vh; overflow: auto; }
 }
+
+.pixel-room-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.pixel-room-labels button {
+  position: absolute; padding: 4px 9px; border: 1px solid #75828c; border-radius: 4px;
+  color: #fffdf0; background: #293b46; box-shadow: 0 2px 0 #142530;
+  font: 700 12px/1.2 "Segoe UI", "Malgun Gothic", sans-serif; white-space: nowrap; cursor: pointer; pointer-events: auto;
+  transform: translateY(-100%);
+}
+.pixel-character-options button > span { width: 64px; height: 64px; background-size: 128px 256px; image-rendering: auto; }
+.pixel-agent-inspector { width: min(380px, 70%); }
+.pixel-agent-inspector p, .pixel-agent-inspector > small, .pixel-inspector-role,
+.pixel-agent-inspector dt, .pixel-agent-inspector dd, .pixel-character-label { font-size: 12px; line-height: 1.5; }
+.pixel-world-toolbar { flex-wrap: wrap; gap: 10px; padding-block: 12px; }
+.metaverse-app.app-shell { max-width: 1800px; }
+.metaverse-app .world-character { image-rendering: auto; }
+.metaverse-app .activity-face { width: 76px; height: 80px; }
+.metaverse-app .activity-card { grid-template-columns: 80px minmax(0, 1fr); }
+.metaverse-app .conversation-picker p, .metaverse-app .conversation-select-label,
+.metaverse-app .conversation-picker small, .metaverse-app .left-rail-switch button strong,
+.metaverse-app .left-rail-switch button small, .metaverse-app .helper-copy,
+.metaverse-app .path-caption, .metaverse-app .model-option strong, .metaverse-app .model-option small { font-size: 12px; line-height: 1.5; }
+.conversation-message.user { border-color: #8fbcaf; background: #f2fff9; }
+.conversation-preview { color: #435e63; overflow-wrap: anywhere; }
+.metaverse-app .workspace-mode-picker button small,
+.metaverse-app .execution-mode button small,
+.metaverse-app .skill-option small,
+.metaverse-app .skill-rationale { font-size: 12px; line-height: 1.5; }
+.metaverse-app .eyebrow { font-size: 10px; }
+.conversation-task-history { padding: 12px 16px; border-top: 1px solid #d7c9de; }
+.conversation-task-history summary { cursor: pointer; font-size: 13px; font-weight: 700; }
+.conversation-task-history h3 { font-size: 14px; }
 
 @media (prefers-reduced-motion: reduce) {
   .pixel-handoff-toast { animation: none; }

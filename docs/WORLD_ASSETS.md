@@ -4,7 +4,11 @@ The Canvas office uses the original replacement pack in
 `public/generated-pixel-assets/`. The older `public/world/` images remain
 available for the legacy campus layer and are not used by the Canvas renderer.
 
-Auto Codex의 실제 픽셀 월드 이미지는 `public/world/`에 있습니다.
+현재 Canvas 픽셀 월드 이미지는 `public/generated-pixel-assets/`에 있습니다.
+아래 `public/world/` 경로는 이전 캠퍼스 렌더러용입니다. 2026-10 보행·소품
+보수 규격은 [PIXEL_WORLD.md](PIXEL_WORLD.md)를 따릅니다. 현재 보수 원본은
+`tools/generated-inputs/furniture-atlas-v2.png`, `decor-atlas-v2.png`와
+`characters/char_0.png`~`char_4.png`이며, 균등 격자로 다시 자르지 마세요.
 
 | 파일 | 크기 | 용도 |
 |---|---:|---|

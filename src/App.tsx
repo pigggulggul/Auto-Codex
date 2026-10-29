@@ -344,6 +344,7 @@ export default function App() {
             />
           ) : (
             <ResultView
+              messages={bridge.messages}
               conversationTitle={bridge.conversations.find((conversation) => conversation.id === bridge.snapshot.activeConversationId)?.title || "새 대화"}
               conversationId={bridge.snapshot.activeConversationId}
               run={activeRun}

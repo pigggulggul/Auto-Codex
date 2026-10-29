@@ -1,0 +1,3131 @@
+{
+  "format": "atelier-backup",
+  "version": 1,
+  "exportedAt": "2026-10-29T07:48:06.048Z",
+  "project": {
+    "schemaVersion": 1,
+    "modelVersion": 2,
+    "id": "p_36c34588-7672-4546-9733-4c500e5c327b",
+    "name": "앙케이트 사이트 UI · UX 검증",
+    "idea": "모임 일정에 답변하고 결과를 확인하는 간단한 앙케이트 사이트",
+    "entry": "improve",
+    "type": "기타",
+    "version": 8,
+    "revision": 38,
+    "createdAt": "2026-10-29T07:37:36.313Z",
+    "updatedAt": "2026-10-29T07:39:52.070Z",
+    "fields": {
+      "product": {
+        "id": "d_ecff78fd-d25b-4354-b9e7-544d92b010c9",
+        "version": 3,
+        "value": "모임 일정에 답변하고 결과를 확인하는 간단한 앙케이트 사이트",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:38.900Z"
+          },
+          {
+            "version": 2,
+            "value": "모임 일정에 답변하고 결과를 확인하는 간단한 앙케이트 사이트",
+            "status": "proposed",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:39.314Z"
+          }
+        ],
+        "dependsOn": []
+      },
+      "user": {
+        "id": "d_d72784b2-8823-4bea-977f-b3c633a9813a",
+        "version": 3,
+        "value": "모임 일정을 고르는 초대받은 참가자",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:38.919Z"
+          },
+          {
+            "version": 2,
+            "value": "모임 일정을 고르는 초대받은 참가자",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:39.314Z"
+          }
+        ],
+        "dependsOn": []
+      },
+      "goal": {
+        "id": "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1",
+        "version": 4,
+        "value": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:36.780Z"
+          },
+          {
+            "version": 2,
+            "value": "응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면",
+            "status": "confirmed",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:38.924Z"
+          },
+          {
+            "version": 3,
+            "value": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+            "status": "confirmed",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:39.314Z"
+          }
+        ],
+        "dependsOn": []
+      },
+      "decisionMaker": {
+        "id": "d_e9012bc2-96d4-4d1f-93c2-7c5932097a8f",
+        "version": 2,
+        "value": "모임 일정을 고르는 초대받은 참가자 — 별도 구매 담당자는 아직 정하지 않음",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "제품 설명에서 확인한 사용자를 재사용함. 구매 정책은 추가하지 않음",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:39.314Z"
+          }
+        ],
+        "dependsOn": [
+          "d_d72784b2-8823-4bea-977f-b3c633a9813a"
+        ]
+      },
+      "value": {
+        "id": "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf",
+        "version": 2,
+        "value": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "사용자가 마칠 작업을 제공 가치로 재사용함",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:39.314Z"
+          }
+        ],
+        "dependsOn": [
+          "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1"
+        ]
+      },
+      "doubt": {
+        "id": "d_0d905587-038b-4e4d-8c46-ac2f18e4166d",
+        "version": 2,
+        "value": "어디부터 눌러야 하는지 모를 수 있다는 사용자 가설",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:40.114Z"
+          }
+        ],
+        "dependsOn": []
+      },
+      "evidence": {
+        "id": "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91",
+        "version": 2,
+        "value": "시작 버튼과 짧은 단계 안내를 실제 작업 화면에 표시하고 시작부터 완료까지 직접 실행해 확인한다.",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "사용자가 직접 선택한 내장 도움 방안. 사용자 조사 결과가 아님",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:40.114Z"
+          }
+        ],
+        "dependsOn": [
+          "d_0d905587-038b-4e4d-8c46-ac2f18e4166d"
+        ]
+      },
+      "environment": {
+        "id": "d_418c01f2-c3b2-40be-952d-0f5bdebf0e32",
+        "version": 2,
+        "value": "컴퓨터와 모바일 웹 · 키보드·마우스·터치 · 한국어",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:39.314Z"
+          }
+        ],
+        "dependsOn": []
+      },
+      "scope": {
+        "id": "d_2336b198-b833-4b1f-a7e5-45b614e17050",
+        "version": 2,
+        "value": "지금 만들기: 앙케이트 질문 읽기, 참여 가능 시간 선택, 응답 검토와 제출, 응답 수정, 집계 결과 확인",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:40.114Z"
+          }
+        ],
+        "dependsOn": []
+      },
+      "fit": {
+        "id": "d_19c64e96-7cd3-4f27-8132-0b15b365fe57",
+        "version": 2,
+        "value": "내용을 오래 읽거나 입력해야 해서 — 차분히 읽는 화면",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:42.096Z"
+          }
+        ],
+        "dependsOn": [
+          "d_93aba44d-a426-452f-80fe-b75bbafa121f"
+        ]
+      },
+      "constraints": {
+        "id": "d_7b8c19a9-c7a3-475d-bba9-7bd5d78dd3c6",
+        "version": 2,
+        "value": "",
+        "status": "excluded",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:40.114Z"
+          }
+        ],
+        "dependsOn": []
+      },
+      "criteria": {
+        "id": "d_eb6dc121-ff87-45ab-baaf-757816f64c40",
+        "version": 2,
+        "value": "첫 화면에서 시작할 버튼을 찾을 수 있다.\n주요 작업을 마치면 결과와 완료 여부를 알 수 있다.\n응답 제출 후 완료 안내와 응답 수정 방법을 바로 찾을 수 있다.",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "",
+            "status": "unknown",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:43.314Z"
+          }
+        ],
+        "dependsOn": []
+      }
+    },
+    "features": [
+      {
+        "id": "d_2e090a70-06ac-4917-ae7e-4e3fafd07131",
+        "version": 2,
+        "value": "앙케이트 질문 읽기",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "앙케이트 질문 읽기",
+            "status": "confirmed",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:40.913Z"
+          }
+        ],
+        "dependsOn": [],
+        "priority": "이번 범위",
+        "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+        "action": "앙케이트 질문 읽기",
+        "info": "사용자가 입력하거나 확인할 정보",
+        "flowIds": [
+          "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+        ]
+      },
+      {
+        "id": "d_a1afd5ca-5266-48a4-bee9-061e2c843ed2",
+        "version": 2,
+        "value": "참여 가능 시간 선택",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "참여 가능 시간 선택",
+            "status": "confirmed",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:40.913Z"
+          }
+        ],
+        "dependsOn": [],
+        "priority": "이번 범위",
+        "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+        "action": "참여 가능 시간 선택",
+        "info": "사용자가 입력하거나 확인할 정보",
+        "flowIds": [
+          "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+        ]
+      },
+      {
+        "id": "d_77068565-0451-464f-b181-97a4b09c5063",
+        "version": 2,
+        "value": "응답 검토와 제출",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "응답 검토와 제출",
+            "status": "confirmed",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:40.913Z"
+          }
+        ],
+        "dependsOn": [],
+        "priority": "이번 범위",
+        "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+        "action": "응답 검토와 제출",
+        "info": "사용자가 입력하거나 확인할 정보",
+        "flowIds": [
+          "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+        ]
+      },
+      {
+        "id": "d_22587bdc-9c45-4c0c-b45c-2d230683bf99",
+        "version": 2,
+        "value": "응답 수정",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "응답 수정",
+            "status": "confirmed",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:40.913Z"
+          }
+        ],
+        "dependsOn": [],
+        "priority": "이번 범위",
+        "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+        "action": "응답 수정",
+        "info": "사용자가 입력하거나 확인할 정보",
+        "flowIds": [
+          "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+        ]
+      },
+      {
+        "id": "d_6cb3af19-feee-4b98-934a-0849167697ea",
+        "version": 2,
+        "value": "집계 결과 확인",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "집계 결과 확인",
+            "status": "confirmed",
+            "source": "user",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:40.913Z"
+          }
+        ],
+        "dependsOn": [],
+        "priority": "이번 범위",
+        "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+        "action": "집계 결과 확인",
+        "info": "사용자가 입력하거나 확인할 정보",
+        "flowIds": [
+          "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+        ]
+      }
+    ],
+    "contents": [
+      {
+        "id": "d_f8708bf4-43cc-4562-a36a-586b20db1f39",
+        "version": 1,
+        "value": "질문 문구와 응답 선택지, 응답 집계 예시 데이터",
+        "status": "confirmed",
+        "source": "user",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [],
+        "dependsOn": [],
+        "easyManaged": true,
+        "kind": "데이터",
+        "availability": "제작 필요",
+        "materialType": "제안 문구",
+        "content": "실제 파일은 미확보. 구현 과정에서 준비할 계획.",
+        "purpose": "핵심 작업에 필요한 안내와 예시",
+        "conditions": "샘플과 실제 자료 구별",
+        "screenIds": []
+      }
+    ],
+    "flows": [
+      {
+        "id": "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3",
+        "version": 1,
+        "value": "앙케이트 사이트 UI · UX 검증 사용 순서",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [],
+        "dependsOn": [],
+        "easyManaged": true,
+        "goal": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+        "role": "모임 일정을 고르는 초대받은 참가자",
+        "start": "질문과 참여 방법 확인",
+        "complete": "집계 결과 확인에서 작업 결과를 확인",
+        "steps": [
+          "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+          "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+          "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+          "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+          "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115"
+        ],
+        "branch": "선택을 바꾸고 싶으면 이전 단계로 돌아감",
+        "recovery": "입력과 선택을 유지하고 이전 단계로 돌아가 수정",
+        "loop": false,
+        "graph": {
+          "version": 1,
+          "reviewedVersion": 1,
+          "entryId": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+          "terminalIds": [
+            "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115"
+          ],
+          "transitions": [
+            {
+              "id": "edge_66434ee8-cbe2-4a0d-92d5-ca24e1f333d1",
+              "from": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "to": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "kind": "next",
+              "condition": "",
+              "preserve": ""
+            },
+            {
+              "id": "edge_bfdfcc72-1b34-467a-91b6-c79215828b84",
+              "from": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "to": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "kind": "next",
+              "condition": "",
+              "preserve": ""
+            },
+            {
+              "id": "edge_81388f87-84fd-48b4-bc99-a3f695f954a6",
+              "from": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "to": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "kind": "next",
+              "condition": "",
+              "preserve": ""
+            },
+            {
+              "id": "edge_e29a93ff-0709-4560-aa57-358e33f2112f",
+              "from": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "to": "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+              "kind": "next",
+              "condition": "",
+              "preserve": ""
+            },
+            {
+              "id": "edge_6b9cfcaf-7cd5-4ed3-8bf8-82a3f1fd50f1",
+              "from": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "to": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "kind": "branch",
+              "condition": "사용자가 이전 선택을 바꾸려 함",
+              "preserve": "입력한 값·선택·현재 진행 상태"
+            },
+            {
+              "id": "edge_ed900073-dd71-4be8-aab6-c35c3fbadcdb",
+              "from": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "to": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "kind": "branch",
+              "condition": "사용자가 이전 선택을 바꾸려 함",
+              "preserve": "입력한 값·선택·현재 진행 상태"
+            },
+            {
+              "id": "edge_e1ef8d0d-5cf2-45e2-81cd-e9e724a132ef",
+              "from": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "to": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "kind": "branch",
+              "condition": "사용자가 이전 선택을 바꾸려 함",
+              "preserve": "입력한 값·선택·현재 진행 상태"
+            },
+            {
+              "id": "edge_b611d57a-fd07-41cc-b5f8-45e71dfffa73",
+              "from": "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+              "to": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "kind": "branch",
+              "condition": "사용자가 이전 선택을 바꾸려 함",
+              "preserve": "입력한 값·선택·현재 진행 상태"
+            },
+            {
+              "id": "edge_8371515e-7ceb-4a8c-b795-8f4e25f70a19",
+              "from": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "to": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "kind": "recovery",
+              "condition": "이 단계의 작업 실패 또는 취소",
+              "preserve": "입력한 값·선택·현재 진행 상태"
+            },
+            {
+              "id": "edge_7c698064-86ba-465c-8c49-82ea33625d3b",
+              "from": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "to": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "kind": "recovery",
+              "condition": "이 단계의 작업 실패 또는 취소",
+              "preserve": "입력한 값·선택·현재 진행 상태"
+            },
+            {
+              "id": "edge_a8861698-2b96-4118-b0a7-1fe14b6e79a8",
+              "from": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "to": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "kind": "recovery",
+              "condition": "이 단계의 작업 실패 또는 취소",
+              "preserve": "입력한 값·선택·현재 진행 상태"
+            },
+            {
+              "id": "edge_52416100-f2d4-4376-bd5c-20b071b2f5f8",
+              "from": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "to": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "kind": "recovery",
+              "condition": "이 단계의 작업 실패 또는 취소",
+              "preserve": "입력한 값·선택·현재 진행 상태"
+            },
+            {
+              "id": "edge_a7620e66-fbd7-43b0-a055-956f3c36aa68",
+              "from": "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+              "to": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "kind": "recovery",
+              "condition": "이 단계의 작업 실패 또는 취소",
+              "preserve": "입력한 값·선택·현재 진행 상태"
+            }
+          ],
+          "branchPolicy": "mapped",
+          "branchReason": "",
+          "recoveryPolicy": "mapped",
+          "recoveryReason": "사용자가 실패 후 재시도 위치를 선택함"
+        }
+      }
+    ],
+    "screens": [
+      {
+        "id": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+        "version": 1,
+        "value": "질문과 참여 방법 확인",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [],
+        "dependsOn": [],
+        "role": "질문과 참여 방법 확인을 수행하고 현재 진행 상태를 확인",
+        "kind": "페이지",
+        "entry": "사용자가 작업 시작",
+        "priority": "질문과 참여 방법 확인에 필요한 정보",
+        "actions": "질문과 참여 방법 확인, 시작",
+        "response": "입력과 선택을 반영하고 현재 상태 표시",
+        "next": "참여 가능 시간 선택",
+        "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+        "preserve": "입력한 값·선택·현재 진행 상태",
+        "links": []
+      },
+      {
+        "id": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+        "version": 1,
+        "value": "참여 가능 시간 선택",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [],
+        "dependsOn": [],
+        "role": "참여 가능 시간 선택을 수행하고 현재 진행 상태를 확인",
+        "kind": "페이지",
+        "entry": "질문과 참여 방법 확인",
+        "priority": "참여 가능 시간 선택에 필요한 정보",
+        "actions": "참여 가능 시간 선택, 이전 단계 확인",
+        "response": "입력과 선택을 반영하고 현재 상태 표시",
+        "next": "응답 확인과 제출",
+        "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+        "preserve": "입력한 값·선택·현재 진행 상태",
+        "links": []
+      },
+      {
+        "id": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+        "version": 1,
+        "value": "응답 확인과 제출",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [],
+        "dependsOn": [],
+        "role": "응답 확인과 제출을 수행하고 현재 진행 상태를 확인",
+        "kind": "페이지",
+        "entry": "참여 가능 시간 선택",
+        "priority": "응답 확인과 제출에 필요한 정보",
+        "actions": "응답 확인과 제출, 이전 단계 확인",
+        "response": "입력과 선택을 반영하고 현재 상태 표시",
+        "next": "제출 완료 확인",
+        "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+        "preserve": "입력한 값·선택·현재 진행 상태",
+        "links": []
+      },
+      {
+        "id": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+        "version": 1,
+        "value": "제출 완료 확인",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [],
+        "dependsOn": [],
+        "role": "제출 완료 확인을 수행하고 현재 진행 상태를 확인",
+        "kind": "페이지",
+        "entry": "응답 확인과 제출",
+        "priority": "제출 완료 확인에 필요한 정보",
+        "actions": "제출 완료 확인, 이전 단계 확인",
+        "response": "입력과 선택을 반영하고 현재 상태 표시",
+        "next": "집계 결과 확인",
+        "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+        "preserve": "입력한 값·선택·현재 진행 상태",
+        "links": []
+      },
+      {
+        "id": "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+        "version": 1,
+        "value": "집계 결과 확인",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [],
+        "dependsOn": [],
+        "role": "집계 결과 확인을 수행하고 현재 진행 상태를 확인",
+        "kind": "페이지",
+        "entry": "제출 완료 확인",
+        "priority": "집계 결과 확인에 필요한 정보",
+        "actions": "집계 결과 확인, 이전 단계 확인",
+        "response": "입력과 선택을 반영하고 현재 상태 표시",
+        "next": "완료",
+        "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+        "preserve": "입력한 값·선택·현재 진행 상태",
+        "links": []
+      }
+    ],
+    "references": [],
+    "concepts": [
+      {
+        "id": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+        "version": 3,
+        "value": "차분히 읽는 화면",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "내용을 오래 읽거나 입력해야 해서",
+        "scope": "프로젝트 전체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 2,
+            "value": "차분히 읽는 화면",
+            "status": "confirmed",
+            "source": "example",
+            "scope": "프로젝트 전체",
+            "reason": "",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:42.096Z"
+          }
+        ],
+        "dependsOn": [],
+        "label": "차분히 읽는 화면",
+        "summary": "읽을 내용을 중심에, 긴 글도 편안하게 배치합니다.",
+        "bg": "#f5f3ed",
+        "text": "#34372e",
+        "accent": "#526940",
+        "font": "serif",
+        "shape": "4px",
+        "layout": "본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치",
+        "material": "따뜻한 단색 바탕, 장식 없는 본문 표면",
+        "motion": "입력과 제출 상태만 150ms 전환",
+        "easyPalette": "quiet",
+        "selected": true,
+        "experience": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+        "hero": "프로젝트의 핵심 작업과 실제 콘텐츠",
+        "typography": "짧은 제목과 읽기 쉬운 한글 본문",
+        "intensity": "작업 화면은 낮은 장식 밀도",
+        "resources": "기본 서체와 단색 패널",
+        "reference": "사용자가 선택하는 내장 비교 예시. 이미지 분석 아님",
+        "assumptions": "실제 결과에서 사용성과 적합성 확인 필요"
+      }
+    ],
+    "styles": [
+      {
+        "id": "d_d6046dc5-aacd-436e-b9c7-98910e533b37",
+        "version": 2,
+        "value": "#f5f3ed",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+        "scope": "화면 바탕",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "#f5f3ed",
+            "status": "proposed",
+            "source": "example",
+            "scope": "화면 바탕",
+            "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:43.314Z"
+          }
+        ],
+        "dependsOn": [],
+        "role": "배경",
+        "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+        "exception": "가독성과 조작을 방해하면 강도를 줄임"
+      },
+      {
+        "id": "d_2aa73fb5-e434-415d-8afa-3a75e20988c7",
+        "version": 2,
+        "value": "#34372e",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+        "scope": "본문과 긴 안내",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "#34372e",
+            "status": "proposed",
+            "source": "example",
+            "scope": "본문과 긴 안내",
+            "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:43.314Z"
+          }
+        ],
+        "dependsOn": [],
+        "role": "본문",
+        "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+        "exception": "가독성과 조작을 방해하면 강도를 줄임"
+      },
+      {
+        "id": "d_e89745d6-fd5c-472c-b6a6-254eecfe2772",
+        "version": 2,
+        "value": "#526940",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+        "scope": "주요 버튼과 선택 테두리",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "#526940",
+            "status": "proposed",
+            "source": "example",
+            "scope": "주요 버튼과 선택 테두리",
+            "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:43.314Z"
+          }
+        ],
+        "dependsOn": [],
+        "role": "강조",
+        "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+        "exception": "가독성과 조작을 방해하면 강도를 줄임"
+      },
+      {
+        "id": "d_589ec55c-b30d-4c3e-9091-a7101eca20b3",
+        "version": 2,
+        "value": "serif",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+        "scope": "짧은 제목. 긴 한글 본문은 시스템 서체",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "serif",
+            "status": "proposed",
+            "source": "example",
+            "scope": "짧은 제목. 긴 한글 본문은 시스템 서체",
+            "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:43.314Z"
+          }
+        ],
+        "dependsOn": [],
+        "role": "서체",
+        "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+        "exception": "가독성과 조작을 방해하면 강도를 줄임"
+      },
+      {
+        "id": "d_86470a51-c03d-4f23-b888-db431a438509",
+        "version": 2,
+        "value": "4px",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+        "scope": "버튼과 패널",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "4px",
+            "status": "proposed",
+            "source": "example",
+            "scope": "버튼과 패널",
+            "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:43.314Z"
+          }
+        ],
+        "dependsOn": [],
+        "role": "형태",
+        "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+        "exception": "가독성과 조작을 방해하면 강도를 줄임"
+      },
+      {
+        "id": "d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6",
+        "version": 2,
+        "value": "본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+        "scope": "대표 작업 화면",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치",
+            "status": "proposed",
+            "source": "example",
+            "scope": "대표 작업 화면",
+            "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:43.314Z"
+          }
+        ],
+        "dependsOn": [],
+        "role": "배치",
+        "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+        "exception": "가독성과 조작을 방해하면 강도를 줄임"
+      },
+      {
+        "id": "d_df40567f-9b4e-4a7b-8d76-313d0ef634e4",
+        "version": 2,
+        "value": "따뜻한 단색 바탕, 장식 없는 본문 표면",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+        "scope": "브랜드 그래픽과 지정 리소스",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "따뜻한 단색 바탕, 장식 없는 본문 표면",
+            "status": "proposed",
+            "source": "example",
+            "scope": "브랜드 그래픽과 지정 리소스",
+            "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:43.314Z"
+          }
+        ],
+        "dependsOn": [],
+        "role": "재질",
+        "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+        "exception": "가독성과 조작을 방해하면 강도를 줄임"
+      },
+      {
+        "id": "d_b267c23d-489c-4742-944e-7c13e9c189a5",
+        "version": 2,
+        "value": "입력과 제출 상태만 150ms 전환",
+        "status": "confirmed",
+        "source": "example",
+        "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+        "scope": "상태가 바뀌는 컴포넌트",
+        "reviewNeeded": false,
+        "history": [
+          {
+            "version": 1,
+            "value": "입력과 제출 상태만 150ms 전환",
+            "status": "proposed",
+            "source": "example",
+            "scope": "상태가 바뀌는 컴포넌트",
+            "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+            "dependsOn": [],
+            "at": "2026-10-29T07:37:43.314Z"
+          }
+        ],
+        "dependsOn": [],
+        "role": "모션",
+        "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+        "exception": "가독성과 조작을 방해하면 강도를 줄임"
+      }
+    ],
+    "assets": [],
+    "snapshots": [
+      {
+        "id": "snap_f5679b96-8310-4945-ad94-934ade4543e2",
+        "number": 1,
+        "createdAt": "2026-10-29T07:37:36.780Z",
+        "revision": 2,
+        "templateVersion": "atelier-prompt-1.3.2",
+        "guideVersion": "guide-1.3.2",
+        "commonVersion": 1,
+        "selection": {
+          "mode": "all",
+          "ids": []
+        },
+        "scopeContexts": [],
+        "decisions": [
+          {
+            "id": "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1",
+            "version": 2
+          }
+        ],
+        "referenceFileIds": [],
+        "input": {
+          "schemaVersion": 1,
+          "modelVersion": 2,
+          "id": "p_36c34588-7672-4546-9733-4c500e5c327b",
+          "name": "앙케이트 사이트 UI · UX 검증",
+          "idea": "모임 일정에 답변하고 결과를 확인하는 간단한 앙케이트 사이트",
+          "entry": "improve",
+          "type": "아직 미정",
+          "version": 1,
+          "revision": 2,
+          "createdAt": "2026-10-29T07:37:36.313Z",
+          "updatedAt": "2026-10-29T07:37:36.780Z",
+          "fields": {
+            "product": {
+              "id": "d_ecff78fd-d25b-4354-b9e7-544d92b010c9",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "user": {
+              "id": "d_d72784b2-8823-4bea-977f-b3c633a9813a",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "goal": {
+              "id": "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1",
+              "version": 2,
+              "value": "응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "decisionMaker": {
+              "id": "d_e9012bc2-96d4-4d1f-93c2-7c5932097a8f",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "value": {
+              "id": "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "doubt": {
+              "id": "d_0d905587-038b-4e4d-8c46-ac2f18e4166d",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "evidence": {
+              "id": "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "environment": {
+              "id": "d_418c01f2-c3b2-40be-952d-0f5bdebf0e32",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "scope": {
+              "id": "d_2336b198-b833-4b1f-a7e5-45b614e17050",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "fit": {
+              "id": "d_19c64e96-7cd3-4f27-8132-0b15b365fe57",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "constraints": {
+              "id": "d_7b8c19a9-c7a3-475d-bba9-7bd5d78dd3c6",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "criteria": {
+              "id": "d_eb6dc121-ff87-45ab-baaf-757816f64c40",
+              "version": 1,
+              "value": "",
+              "status": "unknown",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            }
+          },
+          "features": [],
+          "contents": [],
+          "flows": [],
+          "screens": [],
+          "references": [],
+          "concepts": [],
+          "styles": [],
+          "assets": [],
+          "snapshots": [],
+          "results": [],
+          "reviews": [],
+          "plans": [],
+          "activity": [],
+          "intent": null,
+          "handoff": null,
+          "progress": {
+            "tab": "prompt",
+            "guideStage": 0,
+            "returnTo": null
+          },
+          "output": {
+            "purpose": "서비스 전체 UI UX 설계",
+            "format": "UI UX 설계 문서",
+            "scope": "서비스 전체",
+            "selection": {
+              "mode": "all",
+              "ids": []
+            },
+            "tech": "미정",
+            "extra": "",
+            "common": "사실·사용자 가설·제안을 구분한다. 실제 자료가 없으면 제작 계획으로 명시한다. 빈 상태·실패·대기에서 다음 행동을 설명한다. 실제 결과를 의도와 스타일에 대조하고 수정 후 같은 기준으로 재검토한다.",
+            "commonVersion": 1,
+            "procedure": "관찰 → 설계 → 제작 → 실제 결과 비교 → 수정과 재검토",
+            "procedureSource": "사용자 작업 절차",
+            "language": "한국어",
+            "version": 1
+          },
+          "settings": {
+            "density": "guide"
+          }
+        },
+        "criteria": [
+          {
+            "id": "intent",
+            "label": "서비스 목적과 전체 경험",
+            "expected": "응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면",
+            "scope": "behavior",
+            "decisionIds": [
+              "d_ecff78fd-d25b-4354-b9e7-544d92b010c9",
+              "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1"
+            ]
+          },
+          {
+            "id": "customer",
+            "label": "고객 의문과 판단",
+            "expected": "아직 확정하지 않은 기준 / 아직 확정하지 않은 기준",
+            "scope": "behavior",
+            "decisionIds": [
+              "d_d72784b2-8823-4bea-977f-b3c633a9813a",
+              "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf",
+              "d_0d905587-038b-4e4d-8c46-ac2f18e4166d",
+              "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91"
+            ]
+          },
+          {
+            "id": "fit",
+            "label": "분위기의 서비스 적합성",
+            "expected": "아직 확정하지 않은 기준",
+            "scope": "visual",
+            "decisionIds": [
+              "d_19c64e96-7cd3-4f27-8132-0b15b365fe57"
+            ]
+          },
+          {
+            "id": "style",
+            "label": "색·서체·형태·재질의 관계",
+            "expected": "직접 작성한 표현 기준 필요",
+            "scope": "visual",
+            "decisionIds": []
+          },
+          {
+            "id": "scope",
+            "label": "지정한 영역과 적용 강도",
+            "expected": "적용 범위 확인 필요",
+            "scope": "visual",
+            "decisionIds": []
+          },
+          {
+            "id": "reference",
+            "label": "레퍼런스의 유지와 조정",
+            "expected": "등록한 레퍼런스 없음. 직접 규칙으로 검토",
+            "scope": "visual",
+            "decisionIds": []
+          },
+          {
+            "id": "interaction",
+            "label": "정보·조작·복구",
+            "expected": "아직 확정하지 않은 기준",
+            "scope": "behavior",
+            "decisionIds": []
+          },
+          {
+            "id": "consistency",
+            "label": "대표 화면과 다른 상태의 일관성",
+            "expected": "아직 확정하지 않은 기준",
+            "scope": "visual",
+            "decisionIds": []
+          }
+        ],
+        "intent": null,
+        "output": {
+          "purpose": "서비스 전체 UI UX 설계",
+          "format": "UI UX 설계 문서",
+          "scope": "서비스 전체",
+          "selection": {
+            "mode": "all",
+            "ids": []
+          },
+          "tech": "미정",
+          "extra": "",
+          "common": "사실·사용자 가설·제안을 구분한다. 실제 자료가 없으면 제작 계획으로 명시한다. 빈 상태·실패·대기에서 다음 행동을 설명한다. 실제 결과를 의도와 스타일에 대조하고 수정 후 같은 기준으로 재검토한다.",
+          "commonVersion": 1,
+          "procedure": "관찰 → 설계 → 제작 → 실제 결과 비교 → 수정과 재검토",
+          "procedureSource": "사용자 작업 절차",
+          "language": "한국어",
+          "version": 1
+        },
+        "text": "기존 결과 진단용 기준. 확정되지 않은 항목은 확인 필요.\n\n# 앙케이트 사이트 UI · UX 검증 — 설계 초안\n\n템플릿 atelier-prompt-1.3.2 · 가이드 guide-1.3.2\n\n## 작업 목적과 산출물\n\n앙케이트 사이트 UI · UX 검증\n목적: 서비스 전체 UI UX 설계\n산출물: UI UX 설계 문서\n범위: 서비스 전체\n언어: 한국어\n기술 환경: 미정\n이 문서는 미정 정보를 남긴 설계 초안이다.\n\n## 공통 작업 기준과 절차\n\n사실·사용자 가설·제안을 구분한다. 실제 자료가 없으면 제작 계획으로 명시한다. 빈 상태·실패·대기에서 다음 행동을 설명한다. 실제 결과를 의도와 스타일에 대조하고 수정 후 같은 기준으로 재검토한다.\n기준 버전: 1\n작업 절차: 관찰 → 설계 → 제작 → 실제 결과 비교 → 수정과 재검토\n절차 출처: 사용자 작업 절차\n\n## 제품·고객·제공 가치와 전체 경험\n\n이용 후 무엇이 남으면 만족할까요?\n응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면 [d_dc305903-863c-4d7a-8549-7b7b2f5c08a1@2; 사용자 직접 입력]\n\n## 핵심 기능과 범위\n\n\n\n## 전체 흐름과 화면 또는 상태\n\n\n\n## 시각 규칙과 적용 범위\n\n\n\n## 레퍼런스 적용\n\n확정한 레퍼런스 적용 없음. 직접 작성한 스타일 규칙으로 설계한다. 이미지에 없는 화면이나 기능은 관찰 사실로 가정하지 않는다.\n\n## 콘텐츠·실제 파일과 제작 계획\n\n\n\n## 자연스러운 연결과 검토·수정\n\n시작·빈 상태·완료·실패·대기에서 현재 상황과 가능한 다음 행동을 설명한다. 뒤로 이동하거나 복구할 때 입력과 선택을 유지한다. 버튼은 실제 행동과 결과를 표현한다. 제공하지 않는 동작과 성과를 만들지 않는다. 여러 행동이 필요한 편집기와 게임의 선택 자유를 유지한다.\n\n생성 전 고객과 제공 결과·의문·경험·분위기의 연결을 설명한다. 생성 후 실제 결과를 아래 기준과 비교한다. 각 항목에 기대, 실제 관찰, 화면 또는 영역, 근거와 판정을 기록한다. 색상 하나로 전체 스타일 일치를 판정하지 않는다. 자료가 없으면 확인 불가다.\n- intent / 서비스 목적과 전체 경험: 응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면\n- customer / 고객 의문과 판단: 아직 확정하지 않은 기준 / 아직 확정하지 않은 기준\n- fit / 분위기의 서비스 적합성: 아직 확정하지 않은 기준\n- style / 색·서체·형태·재질의 관계: 직접 작성한 표현 기준 필요\n- scope / 지정한 영역과 적용 강도: 적용 범위 확인 필요\n- reference / 레퍼런스의 유지와 조정: 등록한 레퍼런스 없음. 직접 규칙으로 검토\n- interaction / 정보·조작·복구: 아직 확정하지 않은 기준\n- consistency / 대표 화면과 다른 상태의 일관성: 아직 확정하지 않은 기준\n\n불일치 시 원인·수정 범위·유지할 조건을 정한다. 수정본을 같은 기준과 비교하고 영향받는 기존 일치 항목도 다시 확인한다. 결과와 근거 없이 해결을 선언하지 않는다. 시각 검토와 실제 동작 검토는 구분한다. 의도가 바뀌면 이유와 새 기준 버전을 기록한다.\n\n## 미정·가정과 추가 지시\n\n별도 미정 문장 없음. 실제 자료가 없으면 확보를 먼저 확인한다.\n\n사용자 추가 지시 (원문):\n없음\n추가 지시와 구조화된 결정의 의미 충돌은 사용자 확인 대상으로 남긴다.",
+        "sections": [
+          {
+            "id": "section-0",
+            "title": "작업 목적과 산출물",
+            "body": "앙케이트 사이트 UI · UX 검증\n목적: 서비스 전체 UI UX 설계\n산출물: UI UX 설계 문서\n범위: 서비스 전체\n언어: 한국어\n기술 환경: 미정\n이 문서는 미정 정보를 남긴 설계 초안이다.",
+            "decisionIds": [],
+            "tab": "prompt"
+          },
+          {
+            "id": "section-1",
+            "title": "공통 작업 기준과 절차",
+            "body": "사실·사용자 가설·제안을 구분한다. 실제 자료가 없으면 제작 계획으로 명시한다. 빈 상태·실패·대기에서 다음 행동을 설명한다. 실제 결과를 의도와 스타일에 대조하고 수정 후 같은 기준으로 재검토한다.\n기준 버전: 1\n작업 절차: 관찰 → 설계 → 제작 → 실제 결과 비교 → 수정과 재검토\n절차 출처: 사용자 작업 절차",
+            "decisionIds": [],
+            "tab": "prompt"
+          },
+          {
+            "id": "section-2",
+            "title": "제품·고객·제공 가치와 전체 경험",
+            "body": "이용 후 무엇이 남으면 만족할까요?\n응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면 [d_dc305903-863c-4d7a-8549-7b7b2f5c08a1@2; 사용자 직접 입력]",
+            "decisionIds": [
+              "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1"
+            ],
+            "tab": "design"
+          },
+          {
+            "id": "section-3",
+            "title": "핵심 기능과 범위",
+            "body": "",
+            "decisionIds": [],
+            "tab": "design"
+          },
+          {
+            "id": "section-4",
+            "title": "전체 흐름과 화면 또는 상태",
+            "body": "",
+            "decisionIds": [],
+            "tab": "flow"
+          },
+          {
+            "id": "section-5",
+            "title": "시각 규칙과 적용 범위",
+            "body": "",
+            "decisionIds": [],
+            "tab": "style"
+          },
+          {
+            "id": "section-6",
+            "title": "레퍼런스 적용",
+            "body": "확정한 레퍼런스 적용 없음. 직접 작성한 스타일 규칙으로 설계한다. 이미지에 없는 화면이나 기능은 관찰 사실로 가정하지 않는다.",
+            "decisionIds": [],
+            "tab": "reference"
+          },
+          {
+            "id": "section-7",
+            "title": "콘텐츠·실제 파일과 제작 계획",
+            "body": "",
+            "decisionIds": [],
+            "tab": "style"
+          },
+          {
+            "id": "section-8",
+            "title": "자연스러운 연결과 검토·수정",
+            "body": "시작·빈 상태·완료·실패·대기에서 현재 상황과 가능한 다음 행동을 설명한다. 뒤로 이동하거나 복구할 때 입력과 선택을 유지한다. 버튼은 실제 행동과 결과를 표현한다. 제공하지 않는 동작과 성과를 만들지 않는다. 여러 행동이 필요한 편집기와 게임의 선택 자유를 유지한다.\n\n생성 전 고객과 제공 결과·의문·경험·분위기의 연결을 설명한다. 생성 후 실제 결과를 아래 기준과 비교한다. 각 항목에 기대, 실제 관찰, 화면 또는 영역, 근거와 판정을 기록한다. 색상 하나로 전체 스타일 일치를 판정하지 않는다. 자료가 없으면 확인 불가다.\n- intent / 서비스 목적과 전체 경험: 응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면\n- customer / 고객 의문과 판단: 아직 확정하지 않은 기준 / 아직 확정하지 않은 기준\n- fit / 분위기의 서비스 적합성: 아직 확정하지 않은 기준\n- style / 색·서체·형태·재질의 관계: 직접 작성한 표현 기준 필요\n- scope / 지정한 영역과 적용 강도: 적용 범위 확인 필요\n- reference / 레퍼런스의 유지와 조정: 등록한 레퍼런스 없음. 직접 규칙으로 검토\n- interaction / 정보·조작·복구: 아직 확정하지 않은 기준\n- consistency / 대표 화면과 다른 상태의 일관성: 아직 확정하지 않은 기준\n\n불일치 시 원인·수정 범위·유지할 조건을 정한다. 수정본을 같은 기준과 비교하고 영향받는 기존 일치 항목도 다시 확인한다. 결과와 근거 없이 해결을 선언하지 않는다. 시각 검토와 실제 동작 검토는 구분한다. 의도가 바뀌면 이유와 새 기준 버전을 기록한다.",
+            "decisionIds": [],
+            "tab": "review"
+          },
+          {
+            "id": "section-9",
+            "title": "미정·가정과 추가 지시",
+            "body": "별도 미정 문장 없음. 실제 자료가 없으면 확보를 먼저 확인한다.\n\n사용자 추가 지시 (원문):\n없음\n추가 지시와 구조화된 결정의 의미 충돌은 사용자 확인 대상으로 남긴다.",
+            "decisionIds": [],
+            "tab": "prompt"
+          }
+        ],
+        "draft": true,
+        "planId": null,
+        "baselineReason": "사용자 기대: 응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면 / 바꾸고 싶은 점: 제출 전 안내만 있어 제출 후 응답 수정 위치를 알 수 없다."
+      },
+      {
+        "id": "snap_ec981fb7-1d3e-45aa-a535-e5818a0b5842",
+        "number": 2,
+        "createdAt": "2026-10-29T07:37:44.081Z",
+        "revision": 38,
+        "templateVersion": "atelier-prompt-1.3.2",
+        "guideVersion": "guide-1.3.2",
+        "commonVersion": 1,
+        "selection": {
+          "mode": "all",
+          "ids": []
+        },
+        "scopeContexts": [],
+        "decisions": [
+          {
+            "id": "d_ecff78fd-d25b-4354-b9e7-544d92b010c9",
+            "version": 3
+          },
+          {
+            "id": "d_d72784b2-8823-4bea-977f-b3c633a9813a",
+            "version": 3
+          },
+          {
+            "id": "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1",
+            "version": 4
+          },
+          {
+            "id": "d_e9012bc2-96d4-4d1f-93c2-7c5932097a8f",
+            "version": 2
+          },
+          {
+            "id": "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf",
+            "version": 2
+          },
+          {
+            "id": "d_0d905587-038b-4e4d-8c46-ac2f18e4166d",
+            "version": 2
+          },
+          {
+            "id": "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91",
+            "version": 2
+          },
+          {
+            "id": "d_418c01f2-c3b2-40be-952d-0f5bdebf0e32",
+            "version": 2
+          },
+          {
+            "id": "d_2336b198-b833-4b1f-a7e5-45b614e17050",
+            "version": 2
+          },
+          {
+            "id": "d_19c64e96-7cd3-4f27-8132-0b15b365fe57",
+            "version": 2
+          },
+          {
+            "id": "d_eb6dc121-ff87-45ab-baaf-757816f64c40",
+            "version": 2
+          },
+          {
+            "id": "d_2e090a70-06ac-4917-ae7e-4e3fafd07131",
+            "version": 2
+          },
+          {
+            "id": "d_a1afd5ca-5266-48a4-bee9-061e2c843ed2",
+            "version": 2
+          },
+          {
+            "id": "d_77068565-0451-464f-b181-97a4b09c5063",
+            "version": 2
+          },
+          {
+            "id": "d_22587bdc-9c45-4c0c-b45c-2d230683bf99",
+            "version": 2
+          },
+          {
+            "id": "d_6cb3af19-feee-4b98-934a-0849167697ea",
+            "version": 2
+          },
+          {
+            "id": "d_f8708bf4-43cc-4562-a36a-586b20db1f39",
+            "version": 1
+          },
+          {
+            "id": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+            "version": 3
+          },
+          {
+            "id": "d_d6046dc5-aacd-436e-b9c7-98910e533b37",
+            "version": 2
+          },
+          {
+            "id": "d_2aa73fb5-e434-415d-8afa-3a75e20988c7",
+            "version": 2
+          },
+          {
+            "id": "d_e89745d6-fd5c-472c-b6a6-254eecfe2772",
+            "version": 2
+          },
+          {
+            "id": "d_589ec55c-b30d-4c3e-9091-a7101eca20b3",
+            "version": 2
+          },
+          {
+            "id": "d_86470a51-c03d-4f23-b888-db431a438509",
+            "version": 2
+          },
+          {
+            "id": "d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6",
+            "version": 2
+          },
+          {
+            "id": "d_df40567f-9b4e-4a7b-8d76-313d0ef634e4",
+            "version": 2
+          },
+          {
+            "id": "d_b267c23d-489c-4742-944e-7c13e9c189a5",
+            "version": 2
+          },
+          {
+            "id": "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3",
+            "version": 1
+          },
+          {
+            "id": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+            "version": 1
+          },
+          {
+            "id": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+            "version": 1
+          },
+          {
+            "id": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+            "version": 1
+          },
+          {
+            "id": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+            "version": 1
+          },
+          {
+            "id": "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+            "version": 1
+          }
+        ],
+        "referenceFileIds": [],
+        "input": {
+          "schemaVersion": 1,
+          "modelVersion": 2,
+          "id": "p_36c34588-7672-4546-9733-4c500e5c327b",
+          "name": "앙케이트 사이트 UI · UX 검증",
+          "idea": "모임 일정에 답변하고 결과를 확인하는 간단한 앙케이트 사이트",
+          "entry": "improve",
+          "type": "기타",
+          "version": 6,
+          "revision": 38,
+          "createdAt": "2026-10-29T07:37:36.313Z",
+          "updatedAt": "2026-10-29T07:37:43.314Z",
+          "fields": {
+            "product": {
+              "id": "d_ecff78fd-d25b-4354-b9e7-544d92b010c9",
+              "version": 3,
+              "value": "모임 일정에 답변하고 결과를 확인하는 간단한 앙케이트 사이트",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "user": {
+              "id": "d_d72784b2-8823-4bea-977f-b3c633a9813a",
+              "version": 3,
+              "value": "모임 일정을 고르는 초대받은 참가자",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "goal": {
+              "id": "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1",
+              "version": 4,
+              "value": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "decisionMaker": {
+              "id": "d_e9012bc2-96d4-4d1f-93c2-7c5932097a8f",
+              "version": 2,
+              "value": "모임 일정을 고르는 초대받은 참가자 — 별도 구매 담당자는 아직 정하지 않음",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "제품 설명에서 확인한 사용자를 재사용함. 구매 정책은 추가하지 않음",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [
+                "d_d72784b2-8823-4bea-977f-b3c633a9813a"
+              ]
+            },
+            "value": {
+              "id": "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf",
+              "version": 2,
+              "value": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "사용자가 마칠 작업을 제공 가치로 재사용함",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [
+                "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1"
+              ]
+            },
+            "doubt": {
+              "id": "d_0d905587-038b-4e4d-8c46-ac2f18e4166d",
+              "version": 2,
+              "value": "어디부터 눌러야 하는지 모를 수 있다는 사용자 가설",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "evidence": {
+              "id": "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91",
+              "version": 2,
+              "value": "시작 버튼과 짧은 단계 안내를 실제 작업 화면에 표시하고 시작부터 완료까지 직접 실행해 확인한다.",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "사용자가 직접 선택한 내장 도움 방안. 사용자 조사 결과가 아님",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [
+                "d_0d905587-038b-4e4d-8c46-ac2f18e4166d"
+              ]
+            },
+            "environment": {
+              "id": "d_418c01f2-c3b2-40be-952d-0f5bdebf0e32",
+              "version": 2,
+              "value": "컴퓨터와 모바일 웹 · 키보드·마우스·터치 · 한국어",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "scope": {
+              "id": "d_2336b198-b833-4b1f-a7e5-45b614e17050",
+              "version": 2,
+              "value": "지금 만들기: 앙케이트 질문 읽기, 참여 가능 시간 선택, 응답 검토와 제출, 응답 수정, 집계 결과 확인",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "fit": {
+              "id": "d_19c64e96-7cd3-4f27-8132-0b15b365fe57",
+              "version": 2,
+              "value": "내용을 오래 읽거나 입력해야 해서 — 차분히 읽는 화면",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [
+                "d_93aba44d-a426-452f-80fe-b75bbafa121f"
+              ]
+            },
+            "constraints": {
+              "id": "d_7b8c19a9-c7a3-475d-bba9-7bd5d78dd3c6",
+              "version": 2,
+              "value": "",
+              "status": "excluded",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            },
+            "criteria": {
+              "id": "d_eb6dc121-ff87-45ab-baaf-757816f64c40",
+              "version": 2,
+              "value": "첫 화면에서 시작할 버튼을 찾을 수 있다.\n주요 작업을 마치면 결과와 완료 여부를 알 수 있다.\n응답 제출 후 완료 안내와 응답 수정 방법을 바로 찾을 수 있다.",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": []
+            }
+          },
+          "features": [
+            {
+              "id": "d_2e090a70-06ac-4917-ae7e-4e3fafd07131",
+              "version": 2,
+              "value": "앙케이트 질문 읽기",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "priority": "이번 범위",
+              "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+              "action": "앙케이트 질문 읽기",
+              "info": "사용자가 입력하거나 확인할 정보",
+              "flowIds": [
+                "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+              ]
+            },
+            {
+              "id": "d_a1afd5ca-5266-48a4-bee9-061e2c843ed2",
+              "version": 2,
+              "value": "참여 가능 시간 선택",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "priority": "이번 범위",
+              "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+              "action": "참여 가능 시간 선택",
+              "info": "사용자가 입력하거나 확인할 정보",
+              "flowIds": [
+                "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+              ]
+            },
+            {
+              "id": "d_77068565-0451-464f-b181-97a4b09c5063",
+              "version": 2,
+              "value": "응답 검토와 제출",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "priority": "이번 범위",
+              "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+              "action": "응답 검토와 제출",
+              "info": "사용자가 입력하거나 확인할 정보",
+              "flowIds": [
+                "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+              ]
+            },
+            {
+              "id": "d_22587bdc-9c45-4c0c-b45c-2d230683bf99",
+              "version": 2,
+              "value": "응답 수정",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "priority": "이번 범위",
+              "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+              "action": "응답 수정",
+              "info": "사용자가 입력하거나 확인할 정보",
+              "flowIds": [
+                "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+              ]
+            },
+            {
+              "id": "d_6cb3af19-feee-4b98-934a-0849167697ea",
+              "version": 2,
+              "value": "집계 결과 확인",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "priority": "이번 범위",
+              "purpose": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+              "action": "집계 결과 확인",
+              "info": "사용자가 입력하거나 확인할 정보",
+              "flowIds": [
+                "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+              ]
+            }
+          ],
+          "contents": [
+            {
+              "id": "d_f8708bf4-43cc-4562-a36a-586b20db1f39",
+              "version": 1,
+              "value": "질문 문구와 응답 선택지, 응답 집계 예시 데이터",
+              "status": "confirmed",
+              "source": "user",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "easyManaged": true,
+              "kind": "데이터",
+              "availability": "제작 필요",
+              "materialType": "제안 문구",
+              "content": "실제 파일은 미확보. 구현 과정에서 준비할 계획.",
+              "purpose": "핵심 작업에 필요한 안내와 예시",
+              "conditions": "샘플과 실제 자료 구별",
+              "screenIds": []
+            }
+          ],
+          "flows": [
+            {
+              "id": "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3",
+              "version": 1,
+              "value": "앙케이트 사이트 UI · UX 검증 사용 순서",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "easyManaged": true,
+              "goal": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+              "role": "모임 일정을 고르는 초대받은 참가자",
+              "start": "질문과 참여 방법 확인",
+              "complete": "집계 결과 확인에서 작업 결과를 확인",
+              "steps": [
+                "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+                "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+                "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+                "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+                "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115"
+              ],
+              "branch": "선택을 바꾸고 싶으면 이전 단계로 돌아감",
+              "recovery": "입력과 선택을 유지하고 이전 단계로 돌아가 수정",
+              "loop": false,
+              "graph": {
+                "version": 1,
+                "reviewedVersion": 1,
+                "entryId": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+                "terminalIds": [
+                  "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115"
+                ],
+                "transitions": [
+                  {
+                    "id": "edge_66434ee8-cbe2-4a0d-92d5-ca24e1f333d1",
+                    "from": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+                    "to": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+                    "kind": "next",
+                    "condition": "",
+                    "preserve": ""
+                  },
+                  {
+                    "id": "edge_bfdfcc72-1b34-467a-91b6-c79215828b84",
+                    "from": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+                    "to": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+                    "kind": "next",
+                    "condition": "",
+                    "preserve": ""
+                  },
+                  {
+                    "id": "edge_81388f87-84fd-48b4-bc99-a3f695f954a6",
+                    "from": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+                    "to": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+                    "kind": "next",
+                    "condition": "",
+                    "preserve": ""
+                  },
+                  {
+                    "id": "edge_e29a93ff-0709-4560-aa57-358e33f2112f",
+                    "from": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+                    "to": "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+                    "kind": "next",
+                    "condition": "",
+                    "preserve": ""
+                  },
+                  {
+                    "id": "edge_6b9cfcaf-7cd5-4ed3-8bf8-82a3f1fd50f1",
+                    "from": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+                    "to": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+                    "kind": "branch",
+                    "condition": "사용자가 이전 선택을 바꾸려 함",
+                    "preserve": "입력한 값·선택·현재 진행 상태"
+                  },
+                  {
+                    "id": "edge_ed900073-dd71-4be8-aab6-c35c3fbadcdb",
+                    "from": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+                    "to": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+                    "kind": "branch",
+                    "condition": "사용자가 이전 선택을 바꾸려 함",
+                    "preserve": "입력한 값·선택·현재 진행 상태"
+                  },
+                  {
+                    "id": "edge_e1ef8d0d-5cf2-45e2-81cd-e9e724a132ef",
+                    "from": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+                    "to": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+                    "kind": "branch",
+                    "condition": "사용자가 이전 선택을 바꾸려 함",
+                    "preserve": "입력한 값·선택·현재 진행 상태"
+                  },
+                  {
+                    "id": "edge_b611d57a-fd07-41cc-b5f8-45e71dfffa73",
+                    "from": "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+                    "to": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+                    "kind": "branch",
+                    "condition": "사용자가 이전 선택을 바꾸려 함",
+                    "preserve": "입력한 값·선택·현재 진행 상태"
+                  },
+                  {
+                    "id": "edge_8371515e-7ceb-4a8c-b795-8f4e25f70a19",
+                    "from": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+                    "to": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+                    "kind": "recovery",
+                    "condition": "이 단계의 작업 실패 또는 취소",
+                    "preserve": "입력한 값·선택·현재 진행 상태"
+                  },
+                  {
+                    "id": "edge_7c698064-86ba-465c-8c49-82ea33625d3b",
+                    "from": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+                    "to": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+                    "kind": "recovery",
+                    "condition": "이 단계의 작업 실패 또는 취소",
+                    "preserve": "입력한 값·선택·현재 진행 상태"
+                  },
+                  {
+                    "id": "edge_a8861698-2b96-4118-b0a7-1fe14b6e79a8",
+                    "from": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+                    "to": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+                    "kind": "recovery",
+                    "condition": "이 단계의 작업 실패 또는 취소",
+                    "preserve": "입력한 값·선택·현재 진행 상태"
+                  },
+                  {
+                    "id": "edge_52416100-f2d4-4376-bd5c-20b071b2f5f8",
+                    "from": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+                    "to": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+                    "kind": "recovery",
+                    "condition": "이 단계의 작업 실패 또는 취소",
+                    "preserve": "입력한 값·선택·현재 진행 상태"
+                  },
+                  {
+                    "id": "edge_a7620e66-fbd7-43b0-a055-956f3c36aa68",
+                    "from": "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+                    "to": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+                    "kind": "recovery",
+                    "condition": "이 단계의 작업 실패 또는 취소",
+                    "preserve": "입력한 값·선택·현재 진행 상태"
+                  }
+                ],
+                "branchPolicy": "mapped",
+                "branchReason": "",
+                "recoveryPolicy": "mapped",
+                "recoveryReason": "사용자가 실패 후 재시도 위치를 선택함"
+              }
+            }
+          ],
+          "screens": [
+            {
+              "id": "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "version": 1,
+              "value": "질문과 참여 방법 확인",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "질문과 참여 방법 확인을 수행하고 현재 진행 상태를 확인",
+              "kind": "페이지",
+              "entry": "사용자가 작업 시작",
+              "priority": "질문과 참여 방법 확인에 필요한 정보",
+              "actions": "질문과 참여 방법 확인, 시작",
+              "response": "입력과 선택을 반영하고 현재 상태 표시",
+              "next": "참여 가능 시간 선택",
+              "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+              "preserve": "입력한 값·선택·현재 진행 상태",
+              "links": []
+            },
+            {
+              "id": "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "version": 1,
+              "value": "참여 가능 시간 선택",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "참여 가능 시간 선택을 수행하고 현재 진행 상태를 확인",
+              "kind": "페이지",
+              "entry": "질문과 참여 방법 확인",
+              "priority": "참여 가능 시간 선택에 필요한 정보",
+              "actions": "참여 가능 시간 선택, 이전 단계 확인",
+              "response": "입력과 선택을 반영하고 현재 상태 표시",
+              "next": "응답 확인과 제출",
+              "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+              "preserve": "입력한 값·선택·현재 진행 상태",
+              "links": []
+            },
+            {
+              "id": "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "version": 1,
+              "value": "응답 확인과 제출",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "응답 확인과 제출을 수행하고 현재 진행 상태를 확인",
+              "kind": "페이지",
+              "entry": "참여 가능 시간 선택",
+              "priority": "응답 확인과 제출에 필요한 정보",
+              "actions": "응답 확인과 제출, 이전 단계 확인",
+              "response": "입력과 선택을 반영하고 현재 상태 표시",
+              "next": "제출 완료 확인",
+              "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+              "preserve": "입력한 값·선택·현재 진행 상태",
+              "links": []
+            },
+            {
+              "id": "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "version": 1,
+              "value": "제출 완료 확인",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "제출 완료 확인을 수행하고 현재 진행 상태를 확인",
+              "kind": "페이지",
+              "entry": "응답 확인과 제출",
+              "priority": "제출 완료 확인에 필요한 정보",
+              "actions": "제출 완료 확인, 이전 단계 확인",
+              "response": "입력과 선택을 반영하고 현재 상태 표시",
+              "next": "집계 결과 확인",
+              "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+              "preserve": "입력한 값·선택·현재 진행 상태",
+              "links": []
+            },
+            {
+              "id": "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+              "version": 1,
+              "value": "집계 결과 확인",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "집계 결과 확인을 수행하고 현재 진행 상태를 확인",
+              "kind": "페이지",
+              "entry": "제출 완료 확인",
+              "priority": "집계 결과 확인에 필요한 정보",
+              "actions": "집계 결과 확인, 이전 단계 확인",
+              "response": "입력과 선택을 반영하고 현재 상태 표시",
+              "next": "완료",
+              "exceptions": "실패한 이유를 알리고 입력을 보존한 채 다시 시도",
+              "preserve": "입력한 값·선택·현재 진행 상태",
+              "links": []
+            }
+          ],
+          "references": [],
+          "concepts": [
+            {
+              "id": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+              "version": 3,
+              "value": "차분히 읽는 화면",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "내용을 오래 읽거나 입력해야 해서",
+              "scope": "프로젝트 전체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "label": "차분히 읽는 화면",
+              "summary": "읽을 내용을 중심에, 긴 글도 편안하게 배치합니다.",
+              "bg": "#f5f3ed",
+              "text": "#34372e",
+              "accent": "#526940",
+              "font": "serif",
+              "shape": "4px",
+              "layout": "본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치",
+              "material": "따뜻한 단색 바탕, 장식 없는 본문 표면",
+              "motion": "입력과 제출 상태만 150ms 전환",
+              "easyPalette": "quiet",
+              "selected": true,
+              "experience": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+              "hero": "프로젝트의 핵심 작업과 실제 콘텐츠",
+              "typography": "짧은 제목과 읽기 쉬운 한글 본문",
+              "intensity": "작업 화면은 낮은 장식 밀도",
+              "resources": "기본 서체와 단색 패널",
+              "reference": "사용자가 선택하는 내장 비교 예시. 이미지 분석 아님",
+              "assumptions": "실제 결과에서 사용성과 적합성 확인 필요"
+            }
+          ],
+          "styles": [
+            {
+              "id": "d_d6046dc5-aacd-436e-b9c7-98910e533b37",
+              "version": 2,
+              "value": "#f5f3ed",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+              "scope": "화면 바탕",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "배경",
+              "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+              "exception": "가독성과 조작을 방해하면 강도를 줄임"
+            },
+            {
+              "id": "d_2aa73fb5-e434-415d-8afa-3a75e20988c7",
+              "version": 2,
+              "value": "#34372e",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+              "scope": "본문과 긴 안내",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "본문",
+              "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+              "exception": "가독성과 조작을 방해하면 강도를 줄임"
+            },
+            {
+              "id": "d_e89745d6-fd5c-472c-b6a6-254eecfe2772",
+              "version": 2,
+              "value": "#526940",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+              "scope": "주요 버튼과 선택 테두리",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "강조",
+              "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+              "exception": "가독성과 조작을 방해하면 강도를 줄임"
+            },
+            {
+              "id": "d_589ec55c-b30d-4c3e-9091-a7101eca20b3",
+              "version": 2,
+              "value": "serif",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+              "scope": "짧은 제목. 긴 한글 본문은 시스템 서체",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "서체",
+              "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+              "exception": "가독성과 조작을 방해하면 강도를 줄임"
+            },
+            {
+              "id": "d_86470a51-c03d-4f23-b888-db431a438509",
+              "version": 2,
+              "value": "4px",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+              "scope": "버튼과 패널",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "형태",
+              "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+              "exception": "가독성과 조작을 방해하면 강도를 줄임"
+            },
+            {
+              "id": "d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6",
+              "version": 2,
+              "value": "본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+              "scope": "대표 작업 화면",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "배치",
+              "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+              "exception": "가독성과 조작을 방해하면 강도를 줄임"
+            },
+            {
+              "id": "d_df40567f-9b4e-4a7b-8d76-313d0ef634e4",
+              "version": 2,
+              "value": "따뜻한 단색 바탕, 장식 없는 본문 표면",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+              "scope": "브랜드 그래픽과 지정 리소스",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "재질",
+              "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+              "exception": "가독성과 조작을 방해하면 강도를 줄임"
+            },
+            {
+              "id": "d_b267c23d-489c-4742-944e-7c13e9c189a5",
+              "version": 2,
+              "value": "입력과 제출 상태만 150ms 전환",
+              "status": "confirmed",
+              "source": "example",
+              "reason": "내장 조합 예시. 서비스 적합성은 직접 확인",
+              "scope": "상태가 바뀌는 컴포넌트",
+              "reviewNeeded": false,
+              "history": [],
+              "dependsOn": [],
+              "role": "모션",
+              "conceptId": "d_93aba44d-a426-452f-80fe-b75bbafa121f",
+              "exception": "가독성과 조작을 방해하면 강도를 줄임"
+            }
+          ],
+          "assets": [],
+          "snapshots": [],
+          "results": [],
+          "reviews": [],
+          "plans": [],
+          "activity": [],
+          "intent": {
+            "choice": "match",
+            "reason": "사용자가 요약에 표시된 제품·사용자·기능·사용 순서·화면 스타일·확인 항목을 읽고 이 내용으로 요청하기를 선택함",
+            "revision": 38,
+            "at": "2026-10-29T07:37:43.696Z"
+          },
+          "handoff": null,
+          "progress": {
+            "tab": "prompt",
+            "guideStage": 0,
+            "returnTo": null
+          },
+          "output": {
+            "purpose": "서비스 전체 UI UX 설계",
+            "format": "UI UX 설계 문서",
+            "scope": "서비스 전체",
+            "selection": {
+              "mode": "all",
+              "ids": []
+            },
+            "tech": "미정",
+            "extra": "",
+            "common": "사실·사용자 가설·제안을 구분한다. 실제 자료가 없으면 제작 계획으로 명시한다. 빈 상태·실패·대기에서 다음 행동을 설명한다. 실제 결과를 의도와 스타일에 대조하고 수정 후 같은 기준으로 재검토한다.",
+            "commonVersion": 1,
+            "procedure": "관찰 → 설계 → 제작 → 실제 결과 비교 → 수정과 재검토",
+            "procedureSource": "사용자 작업 절차",
+            "language": "한국어",
+            "version": 1
+          },
+          "settings": {
+            "density": "guide"
+          }
+        },
+        "criteria": [
+          {
+            "id": "intent",
+            "label": "서비스 목적과 전체 경험",
+            "expected": "참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.",
+            "scope": "behavior",
+            "decisionIds": [
+              "d_ecff78fd-d25b-4354-b9e7-544d92b010c9",
+              "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1",
+              "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3"
+            ]
+          },
+          {
+            "id": "customer",
+            "label": "고객 의문과 판단",
+            "expected": "어디부터 눌러야 하는지 모를 수 있다는 사용자 가설 / 시작 버튼과 짧은 단계 안내를 실제 작업 화면에 표시하고 시작부터 완료까지 직접 실행해 확인한다.",
+            "scope": "behavior",
+            "decisionIds": [
+              "d_d72784b2-8823-4bea-977f-b3c633a9813a",
+              "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf",
+              "d_0d905587-038b-4e4d-8c46-ac2f18e4166d",
+              "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91",
+              "d_f8708bf4-43cc-4562-a36a-586b20db1f39"
+            ]
+          },
+          {
+            "id": "fit",
+            "label": "분위기의 서비스 적합성",
+            "expected": "내용을 오래 읽거나 입력해야 해서 — 차분히 읽는 화면",
+            "scope": "visual",
+            "decisionIds": [
+              "d_19c64e96-7cd3-4f27-8132-0b15b365fe57",
+              "d_93aba44d-a426-452f-80fe-b75bbafa121f"
+            ]
+          },
+          {
+            "id": "style",
+            "label": "색·서체·형태·재질의 관계",
+            "expected": "배경: #f5f3ed → 화면 바탕\n본문: #34372e → 본문과 긴 안내\n강조: #526940 → 주요 버튼과 선택 테두리\n서체: serif → 짧은 제목. 긴 한글 본문은 시스템 서체\n형태: 4px → 버튼과 패널\n배치: 본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치 → 대표 작업 화면\n재질: 따뜻한 단색 바탕, 장식 없는 본문 표면 → 브랜드 그래픽과 지정 리소스\n모션: 입력과 제출 상태만 150ms 전환 → 상태가 바뀌는 컴포넌트",
+            "scope": "visual",
+            "decisionIds": [
+              "d_d6046dc5-aacd-436e-b9c7-98910e533b37",
+              "d_2aa73fb5-e434-415d-8afa-3a75e20988c7",
+              "d_e89745d6-fd5c-472c-b6a6-254eecfe2772",
+              "d_589ec55c-b30d-4c3e-9091-a7101eca20b3",
+              "d_86470a51-c03d-4f23-b888-db431a438509",
+              "d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6",
+              "d_df40567f-9b4e-4a7b-8d76-313d0ef634e4",
+              "d_b267c23d-489c-4742-944e-7c13e9c189a5"
+            ]
+          },
+          {
+            "id": "scope",
+            "label": "지정한 영역과 적용 강도",
+            "expected": "화면 바탕 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n본문과 긴 안내 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n주요 버튼과 선택 테두리 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n짧은 제목. 긴 한글 본문은 시스템 서체 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n버튼과 패널 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n대표 작업 화면 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n브랜드 그래픽과 지정 리소스 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n상태가 바뀌는 컴포넌트 / 예외: 가독성과 조작을 방해하면 강도를 줄임",
+            "scope": "visual",
+            "decisionIds": [
+              "d_d6046dc5-aacd-436e-b9c7-98910e533b37",
+              "d_2aa73fb5-e434-415d-8afa-3a75e20988c7",
+              "d_e89745d6-fd5c-472c-b6a6-254eecfe2772",
+              "d_589ec55c-b30d-4c3e-9091-a7101eca20b3",
+              "d_86470a51-c03d-4f23-b888-db431a438509",
+              "d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6",
+              "d_df40567f-9b4e-4a7b-8d76-313d0ef634e4",
+              "d_b267c23d-489c-4742-944e-7c13e9c189a5",
+              "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115"
+            ]
+          },
+          {
+            "id": "reference",
+            "label": "레퍼런스의 유지와 조정",
+            "expected": "등록한 레퍼런스 없음. 직접 규칙으로 검토",
+            "scope": "visual",
+            "decisionIds": []
+          },
+          {
+            "id": "interaction",
+            "label": "정보·조작·복구",
+            "expected": "앙케이트 사이트 UI · UX 검증 사용 순서: 입력과 선택을 유지하고 이전 단계로 돌아가 수정",
+            "scope": "behavior",
+            "decisionIds": [
+              "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3",
+              "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115",
+              "d_2e090a70-06ac-4917-ae7e-4e3fafd07131",
+              "d_a1afd5ca-5266-48a4-bee9-061e2c843ed2",
+              "d_77068565-0451-464f-b181-97a4b09c5063",
+              "d_22587bdc-9c45-4c0c-b45c-2d230683bf99",
+              "d_6cb3af19-feee-4b98-934a-0849167697ea"
+            ]
+          },
+          {
+            "id": "consistency",
+            "label": "대표 화면과 다른 상태의 일관성",
+            "expected": "첫 화면에서 시작할 버튼을 찾을 수 있다.\n주요 작업을 마치면 결과와 완료 여부를 알 수 있다.\n응답 제출 후 완료 안내와 응답 수정 방법을 바로 찾을 수 있다.",
+            "scope": "visual",
+            "decisionIds": [
+              "d_d6046dc5-aacd-436e-b9c7-98910e533b37",
+              "d_2aa73fb5-e434-415d-8afa-3a75e20988c7",
+              "d_e89745d6-fd5c-472c-b6a6-254eecfe2772",
+              "d_589ec55c-b30d-4c3e-9091-a7101eca20b3",
+              "d_86470a51-c03d-4f23-b888-db431a438509",
+              "d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6",
+              "d_df40567f-9b4e-4a7b-8d76-313d0ef634e4",
+              "d_b267c23d-489c-4742-944e-7c13e9c189a5",
+              "d_f8708bf4-43cc-4562-a36a-586b20db1f39",
+              "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115"
+            ]
+          }
+        ],
+        "intent": {
+          "choice": "match",
+          "reason": "사용자가 요약에 표시된 제품·사용자·기능·사용 순서·화면 스타일·확인 항목을 읽고 이 내용으로 요청하기를 선택함",
+          "revision": 38,
+          "at": "2026-10-29T07:37:43.696Z"
+        },
+        "output": {
+          "purpose": "서비스 전체 UI UX 설계",
+          "format": "UI UX 설계 문서",
+          "scope": "서비스 전체",
+          "selection": {
+            "mode": "all",
+            "ids": []
+          },
+          "tech": "미정",
+          "extra": "",
+          "common": "사실·사용자 가설·제안을 구분한다. 실제 자료가 없으면 제작 계획으로 명시한다. 빈 상태·실패·대기에서 다음 행동을 설명한다. 실제 결과를 의도와 스타일에 대조하고 수정 후 같은 기준으로 재검토한다.",
+          "commonVersion": 1,
+          "procedure": "관찰 → 설계 → 제작 → 실제 결과 비교 → 수정과 재검토",
+          "procedureSource": "사용자 작업 절차",
+          "language": "한국어",
+          "version": 1
+        },
+        "text": "# 앙케이트 사이트 UI · UX 검증 — 통합 디자인 프롬프트\n\n템플릿 atelier-prompt-1.3.2 · 가이드 guide-1.3.2\n\n## 작업 목적과 산출물\n\n앙케이트 사이트 UI · UX 검증\n목적: 서비스 전체 UI UX 설계\n산출물: UI UX 설계 문서\n범위: 서비스 전체\n언어: 한국어\n기술 환경: 미정\n사용자 확인을 거친 확정 결정에 따라 설계한다.\n\n## 공통 작업 기준과 절차\n\n사실·사용자 가설·제안을 구분한다. 실제 자료가 없으면 제작 계획으로 명시한다. 빈 상태·실패·대기에서 다음 행동을 설명한다. 실제 결과를 의도와 스타일에 대조하고 수정 후 같은 기준으로 재검토한다.\n기준 버전: 1\n작업 절차: 관찰 → 설계 → 제작 → 실제 결과 비교 → 수정과 재검토\n절차 출처: 사용자 작업 절차\n\n## 제품·고객·제공 가치와 전체 경험\n\n무엇을 만드는 프로젝트인가요?\n모임 일정에 답변하고 결과를 확인하는 간단한 앙케이트 사이트 [d_ecff78fd-d25b-4354-b9e7-544d92b010c9@3; 사용자 직접 입력]\n\n누가, 어떤 상황에서 쓰나요?\n모임 일정을 고르는 초대받은 참가자 [d_d72784b2-8823-4bea-977f-b3c633a9813a@3; 사용자 직접 입력]\n\n누가 사용하거나 구매하기로 결정하나요?\n모임 일정을 고르는 초대받은 참가자 — 별도 구매 담당자는 아직 정하지 않음 [d_e9012bc2-96d4-4d1f-93c2-7c5932097a8f@2; 사용자 직접 입력]\n\n구매하거나 제공받는 대상은 무엇인가요?\n참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. [d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf@2; 사용자 직접 입력]\n\n사용자는 무엇을 망설릴까요?\n어디부터 눌러야 하는지 모를 수 있다는 사용자 가설 [d_0d905587-038b-4e4d-8c46-ac2f18e4166d@2; 내장 예시]\n\n처음 쓰는 사람이 막히지 않도록 어떤 안내나 기능을 넣을까요?\n시작 버튼과 짧은 단계 안내를 실제 작업 화면에 표시하고 시작부터 완료까지 직접 실행해 확인한다. [d_ce4398f6-06b8-4b2a-b077-319cafaf6a91@2; 내장 예시]\n\n이용 후 무엇이 남으면 만족할까요?\n참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. [d_dc305903-863c-4d7a-8549-7b7b2f5c08a1@4; 사용자 직접 입력]\n\n어디서, 어떤 방식으로 사용하나요?\n컴퓨터와 모바일 웹 · 키보드·마우스·터치 · 한국어 [d_418c01f2-c3b2-40be-952d-0f5bdebf0e32@2; 사용자 직접 입력]\n\n이번에 꼭 만들 범위는 어디까지인가요?\n지금 만들기: 앙케이트 질문 읽기, 참여 가능 시간 선택, 응답 검토와 제출, 응답 수정, 집계 결과 확인 [d_2336b198-b833-4b1f-a7e5-45b614e17050@2; 사용자 직접 입력]\n\n선택한 화면 스타일이 사용자의 작업에 어떤 도움이 되나요?\n내용을 오래 읽거나 입력해야 해서 — 차분히 읽는 화면 [d_19c64e96-7cd3-4f27-8132-0b15b365fe57@2; 사용자 직접 입력]\n\n완성된 화면과 동작에서 무엇을 확인할까요?\n첫 화면에서 시작할 버튼을 찾을 수 있다.\n주요 작업을 마치면 결과와 완료 여부를 알 수 있다.\n응답 제출 후 완료 안내와 응답 수정 방법을 바로 찾을 수 있다. [d_eb6dc121-ff87-45ab-baaf-757816f64c40@2; 사용자 직접 입력]\n\n## 핵심 기능과 범위\n\n이번 범위: 앙케이트 질문 읽기\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 앙케이트 질문 읽기 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3\n이번 범위: 참여 가능 시간 선택\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 참여 가능 시간 선택 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3\n이번 범위: 응답 검토와 제출\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 응답 검토와 제출 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3\n이번 범위: 응답 수정\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 응답 수정 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3\n이번 범위: 집계 결과 확인\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 집계 결과 확인 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3\n\n## 전체 흐름과 화면 또는 상태\n\n앙케이트 사이트 UI · UX 검증 사용 순서 [d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3@1]\n목표: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.; 역할: 모임 일정을 고르는 초대받은 참가자; 시작: 질문과 참여 방법 확인\n1. 질문과 참여 방법 확인 (페이지) [d_12a847c7-026a-4cb6-a287-8c7a7028bba6@1]\n   역할: 질문과 참여 방법 확인을 수행하고 현재 진행 상태를 확인; 진입: 사용자가 작업 시작; 정보 위계: 질문과 참여 방법 확인에 필요한 정보\n   행동: 질문과 참여 방법 확인, 시작; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 참여 가능 시간 선택\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n2. 참여 가능 시간 선택 (페이지) [d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5@1]\n   역할: 참여 가능 시간 선택을 수행하고 현재 진행 상태를 확인; 진입: 질문과 참여 방법 확인; 정보 위계: 참여 가능 시간 선택에 필요한 정보\n   행동: 참여 가능 시간 선택, 이전 단계 확인; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 응답 확인과 제출\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n3. 응답 확인과 제출 (페이지) [d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3@1]\n   역할: 응답 확인과 제출을 수행하고 현재 진행 상태를 확인; 진입: 참여 가능 시간 선택; 정보 위계: 응답 확인과 제출에 필요한 정보\n   행동: 응답 확인과 제출, 이전 단계 확인; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 제출 완료 확인\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n4. 제출 완료 확인 (페이지) [d_4ac178cc-2afd-4d85-ae60-2e66596b9575@1]\n   역할: 제출 완료 확인을 수행하고 현재 진행 상태를 확인; 진입: 응답 확인과 제출; 정보 위계: 제출 완료 확인에 필요한 정보\n   행동: 제출 완료 확인, 이전 단계 확인; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 집계 결과 확인\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n5. 집계 결과 확인 (페이지) [d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115@1]\n   역할: 집계 결과 확인을 수행하고 현재 진행 상태를 확인; 진입: 제출 완료 확인; 정보 위계: 집계 결과 확인에 필요한 정보\n   행동: 집계 결과 확인, 이전 단계 확인; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 완료\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n연결 구조:\n질문과 참여 방법 확인 → 참여 가능 시간 선택 [next] 조건: 기본 진행; 유지 데이터: 해당 화면의 보존 규칙\n참여 가능 시간 선택 → 응답 확인과 제출 [next] 조건: 기본 진행; 유지 데이터: 해당 화면의 보존 규칙\n응답 확인과 제출 → 제출 완료 확인 [next] 조건: 기본 진행; 유지 데이터: 해당 화면의 보존 규칙\n제출 완료 확인 → 집계 결과 확인 [next] 조건: 기본 진행; 유지 데이터: 해당 화면의 보존 규칙\n참여 가능 시간 선택 → 질문과 참여 방법 확인 [branch] 조건: 사용자가 이전 선택을 바꾸려 함; 유지 데이터: 입력한 값·선택·현재 진행 상태\n응답 확인과 제출 → 참여 가능 시간 선택 [branch] 조건: 사용자가 이전 선택을 바꾸려 함; 유지 데이터: 입력한 값·선택·현재 진행 상태\n제출 완료 확인 → 응답 확인과 제출 [branch] 조건: 사용자가 이전 선택을 바꾸려 함; 유지 데이터: 입력한 값·선택·현재 진행 상태\n집계 결과 확인 → 제출 완료 확인 [branch] 조건: 사용자가 이전 선택을 바꾸려 함; 유지 데이터: 입력한 값·선택·현재 진행 상태\n질문과 참여 방법 확인 → 질문과 참여 방법 확인 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n참여 가능 시간 선택 → 질문과 참여 방법 확인 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n응답 확인과 제출 → 참여 가능 시간 선택 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n제출 완료 확인 → 응답 확인과 제출 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n집계 결과 확인 → 제출 완료 확인 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n분기: 선택을 바꾸고 싶으면 이전 단계로 돌아감\n반복: 순차 완료; 복구: 입력과 선택을 유지하고 이전 단계로 돌아가 수정; 완료: 집계 결과 확인에서 작업 결과를 확인\n\n## 선택한 컨셉\n\n차분히 읽는 화면: 읽을 내용을 중심에, 긴 글도 편안하게 배치합니다.\n경험: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.; 주인공: 프로젝트의 핵심 작업과 실제 콘텐츠\n색 관계: 배경 #f5f3ed, 본문 #34372e, 강조 #526940\n글자: 짧은 제목과 읽기 쉬운 한글 본문\n재질: 따뜻한 단색 바탕, 장식 없는 본문 표면\n구성: 본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치\n적용 강도: 작업 화면은 낮은 장식 밀도\n리소스와 부담: 기본 서체와 단색 패널\n원본과의 관계: 사용자가 선택하는 내장 비교 예시. 이미지 분석 아님\n확인할 가정: 실제 결과에서 사용성과 적합성 확인 필요\n선택 이유: 내용을 오래 읽거나 입력해야 해서\n\n## 시각 규칙과 적용 범위\n\n배경: #f5f3ed → 화면 바탕\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_d6046dc5-aacd-436e-b9c7-98910e533b37@2]\n본문: #34372e → 본문과 긴 안내\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_2aa73fb5-e434-415d-8afa-3a75e20988c7@2]\n강조: #526940 → 주요 버튼과 선택 테두리\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_e89745d6-fd5c-472c-b6a6-254eecfe2772@2]\n서체: serif → 짧은 제목. 긴 한글 본문은 시스템 서체\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_589ec55c-b30d-4c3e-9091-a7101eca20b3@2]\n형태: 4px → 버튼과 패널\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_86470a51-c03d-4f23-b888-db431a438509@2]\n배치: 본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치 → 대표 작업 화면\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6@2]\n재질: 따뜻한 단색 바탕, 장식 없는 본문 표면 → 브랜드 그래픽과 지정 리소스\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_df40567f-9b4e-4a7b-8d76-313d0ef634e4@2]\n모션: 입력과 제출 상태만 150ms 전환 → 상태가 바뀌는 컴포넌트\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_b267c23d-489c-4742-944e-7c13e9c189a5@2]\n\n## 레퍼런스 적용\n\n확정한 레퍼런스 적용 없음. 직접 작성한 스타일 규칙으로 설계한다. 이미지에 없는 화면이나 기능은 관찰 사실로 가정하지 않는다.\n\n## 콘텐츠·실제 파일과 제작 계획\n\n질문 문구와 응답 선택지, 응답 집계 예시 데이터: 제안 문구, 제작 필요; 용도 핵심 작업에 필요한 안내와 예시; 실제 내용: 실제 파일은 미확보. 구현 과정에서 준비할 계획.; 조건 샘플과 실제 자료 구별; 파일 없음\n\n## 자연스러운 연결과 검토·수정\n\n시작·빈 상태·완료·실패·대기에서 현재 상황과 가능한 다음 행동을 설명한다. 뒤로 이동하거나 복구할 때 입력과 선택을 유지한다. 버튼은 실제 행동과 결과를 표현한다. 제공하지 않는 동작과 성과를 만들지 않는다. 여러 행동이 필요한 편집기와 게임의 선택 자유를 유지한다.\n\n생성 전 고객과 제공 결과·의문·경험·분위기의 연결을 설명한다. 생성 후 실제 결과를 아래 기준과 비교한다. 각 항목에 기대, 실제 관찰, 화면 또는 영역, 근거와 판정을 기록한다. 색상 하나로 전체 스타일 일치를 판정하지 않는다. 자료가 없으면 확인 불가다.\n- intent / 서비스 목적과 전체 경험: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.\n- customer / 고객 의문과 판단: 어디부터 눌러야 하는지 모를 수 있다는 사용자 가설 / 시작 버튼과 짧은 단계 안내를 실제 작업 화면에 표시하고 시작부터 완료까지 직접 실행해 확인한다.\n- fit / 분위기의 서비스 적합성: 내용을 오래 읽거나 입력해야 해서 — 차분히 읽는 화면\n- style / 색·서체·형태·재질의 관계: 배경: #f5f3ed → 화면 바탕\n본문: #34372e → 본문과 긴 안내\n강조: #526940 → 주요 버튼과 선택 테두리\n서체: serif → 짧은 제목. 긴 한글 본문은 시스템 서체\n형태: 4px → 버튼과 패널\n배치: 본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치 → 대표 작업 화면\n재질: 따뜻한 단색 바탕, 장식 없는 본문 표면 → 브랜드 그래픽과 지정 리소스\n모션: 입력과 제출 상태만 150ms 전환 → 상태가 바뀌는 컴포넌트\n- scope / 지정한 영역과 적용 강도: 화면 바탕 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n본문과 긴 안내 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n주요 버튼과 선택 테두리 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n짧은 제목. 긴 한글 본문은 시스템 서체 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n버튼과 패널 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n대표 작업 화면 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n브랜드 그래픽과 지정 리소스 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n상태가 바뀌는 컴포넌트 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n- reference / 레퍼런스의 유지와 조정: 등록한 레퍼런스 없음. 직접 규칙으로 검토\n- interaction / 정보·조작·복구: 앙케이트 사이트 UI · UX 검증 사용 순서: 입력과 선택을 유지하고 이전 단계로 돌아가 수정\n- consistency / 대표 화면과 다른 상태의 일관성: 첫 화면에서 시작할 버튼을 찾을 수 있다.\n주요 작업을 마치면 결과와 완료 여부를 알 수 있다.\n응답 제출 후 완료 안내와 응답 수정 방법을 바로 찾을 수 있다.\n\n불일치 시 원인·수정 범위·유지할 조건을 정한다. 수정본을 같은 기준과 비교하고 영향받는 기존 일치 항목도 다시 확인한다. 결과와 근거 없이 해결을 선언하지 않는다. 시각 검토와 실제 동작 검토는 구분한다. 의도가 바뀌면 이유와 새 기준 버전을 기록한다.\n\n## 미정·가정과 추가 지시\n\n별도 미정 문장 없음. 실제 자료가 없으면 확보를 먼저 확인한다.\n\n사용자 추가 지시 (원문):\n없음\n추가 지시와 구조화된 결정의 의미 충돌은 사용자 확인 대상으로 남긴다.",
+        "sections": [
+          {
+            "id": "section-0",
+            "title": "작업 목적과 산출물",
+            "body": "앙케이트 사이트 UI · UX 검증\n목적: 서비스 전체 UI UX 설계\n산출물: UI UX 설계 문서\n범위: 서비스 전체\n언어: 한국어\n기술 환경: 미정\n사용자 확인을 거친 확정 결정에 따라 설계한다.",
+            "decisionIds": [],
+            "tab": "prompt"
+          },
+          {
+            "id": "section-1",
+            "title": "공통 작업 기준과 절차",
+            "body": "사실·사용자 가설·제안을 구분한다. 실제 자료가 없으면 제작 계획으로 명시한다. 빈 상태·실패·대기에서 다음 행동을 설명한다. 실제 결과를 의도와 스타일에 대조하고 수정 후 같은 기준으로 재검토한다.\n기준 버전: 1\n작업 절차: 관찰 → 설계 → 제작 → 실제 결과 비교 → 수정과 재검토\n절차 출처: 사용자 작업 절차",
+            "decisionIds": [],
+            "tab": "prompt"
+          },
+          {
+            "id": "section-2",
+            "title": "제품·고객·제공 가치와 전체 경험",
+            "body": "무엇을 만드는 프로젝트인가요?\n모임 일정에 답변하고 결과를 확인하는 간단한 앙케이트 사이트 [d_ecff78fd-d25b-4354-b9e7-544d92b010c9@3; 사용자 직접 입력]\n\n누가, 어떤 상황에서 쓰나요?\n모임 일정을 고르는 초대받은 참가자 [d_d72784b2-8823-4bea-977f-b3c633a9813a@3; 사용자 직접 입력]\n\n누가 사용하거나 구매하기로 결정하나요?\n모임 일정을 고르는 초대받은 참가자 — 별도 구매 담당자는 아직 정하지 않음 [d_e9012bc2-96d4-4d1f-93c2-7c5932097a8f@2; 사용자 직접 입력]\n\n구매하거나 제공받는 대상은 무엇인가요?\n참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. [d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf@2; 사용자 직접 입력]\n\n사용자는 무엇을 망설릴까요?\n어디부터 눌러야 하는지 모를 수 있다는 사용자 가설 [d_0d905587-038b-4e4d-8c46-ac2f18e4166d@2; 내장 예시]\n\n처음 쓰는 사람이 막히지 않도록 어떤 안내나 기능을 넣을까요?\n시작 버튼과 짧은 단계 안내를 실제 작업 화면에 표시하고 시작부터 완료까지 직접 실행해 확인한다. [d_ce4398f6-06b8-4b2a-b077-319cafaf6a91@2; 내장 예시]\n\n이용 후 무엇이 남으면 만족할까요?\n참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. [d_dc305903-863c-4d7a-8549-7b7b2f5c08a1@4; 사용자 직접 입력]\n\n어디서, 어떤 방식으로 사용하나요?\n컴퓨터와 모바일 웹 · 키보드·마우스·터치 · 한국어 [d_418c01f2-c3b2-40be-952d-0f5bdebf0e32@2; 사용자 직접 입력]\n\n이번에 꼭 만들 범위는 어디까지인가요?\n지금 만들기: 앙케이트 질문 읽기, 참여 가능 시간 선택, 응답 검토와 제출, 응답 수정, 집계 결과 확인 [d_2336b198-b833-4b1f-a7e5-45b614e17050@2; 사용자 직접 입력]\n\n선택한 화면 스타일이 사용자의 작업에 어떤 도움이 되나요?\n내용을 오래 읽거나 입력해야 해서 — 차분히 읽는 화면 [d_19c64e96-7cd3-4f27-8132-0b15b365fe57@2; 사용자 직접 입력]\n\n완성된 화면과 동작에서 무엇을 확인할까요?\n첫 화면에서 시작할 버튼을 찾을 수 있다.\n주요 작업을 마치면 결과와 완료 여부를 알 수 있다.\n응답 제출 후 완료 안내와 응답 수정 방법을 바로 찾을 수 있다. [d_eb6dc121-ff87-45ab-baaf-757816f64c40@2; 사용자 직접 입력]",
+            "decisionIds": [
+              "d_ecff78fd-d25b-4354-b9e7-544d92b010c9",
+              "d_d72784b2-8823-4bea-977f-b3c633a9813a",
+              "d_e9012bc2-96d4-4d1f-93c2-7c5932097a8f",
+              "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf",
+              "d_0d905587-038b-4e4d-8c46-ac2f18e4166d",
+              "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91",
+              "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1",
+              "d_418c01f2-c3b2-40be-952d-0f5bdebf0e32",
+              "d_2336b198-b833-4b1f-a7e5-45b614e17050",
+              "d_19c64e96-7cd3-4f27-8132-0b15b365fe57",
+              "d_eb6dc121-ff87-45ab-baaf-757816f64c40"
+            ],
+            "tab": "design"
+          },
+          {
+            "id": "section-3",
+            "title": "핵심 기능과 범위",
+            "body": "이번 범위: 앙케이트 질문 읽기\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 앙케이트 질문 읽기 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3\n이번 범위: 참여 가능 시간 선택\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 참여 가능 시간 선택 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3\n이번 범위: 응답 검토와 제출\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 응답 검토와 제출 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3\n이번 범위: 응답 수정\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 응답 수정 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3\n이번 범위: 집계 결과 확인\n목적: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다. / 행동: 집계 결과 확인 / 필요한 정보: 사용자가 입력하거나 확인할 정보 / 연결 흐름: d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3",
+            "decisionIds": [
+              "d_2e090a70-06ac-4917-ae7e-4e3fafd07131",
+              "d_a1afd5ca-5266-48a4-bee9-061e2c843ed2",
+              "d_77068565-0451-464f-b181-97a4b09c5063",
+              "d_22587bdc-9c45-4c0c-b45c-2d230683bf99",
+              "d_6cb3af19-feee-4b98-934a-0849167697ea"
+            ],
+            "tab": "design"
+          },
+          {
+            "id": "section-4",
+            "title": "전체 흐름과 화면 또는 상태",
+            "body": "앙케이트 사이트 UI · UX 검증 사용 순서 [d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3@1]\n목표: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.; 역할: 모임 일정을 고르는 초대받은 참가자; 시작: 질문과 참여 방법 확인\n1. 질문과 참여 방법 확인 (페이지) [d_12a847c7-026a-4cb6-a287-8c7a7028bba6@1]\n   역할: 질문과 참여 방법 확인을 수행하고 현재 진행 상태를 확인; 진입: 사용자가 작업 시작; 정보 위계: 질문과 참여 방법 확인에 필요한 정보\n   행동: 질문과 참여 방법 확인, 시작; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 참여 가능 시간 선택\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n2. 참여 가능 시간 선택 (페이지) [d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5@1]\n   역할: 참여 가능 시간 선택을 수행하고 현재 진행 상태를 확인; 진입: 질문과 참여 방법 확인; 정보 위계: 참여 가능 시간 선택에 필요한 정보\n   행동: 참여 가능 시간 선택, 이전 단계 확인; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 응답 확인과 제출\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n3. 응답 확인과 제출 (페이지) [d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3@1]\n   역할: 응답 확인과 제출을 수행하고 현재 진행 상태를 확인; 진입: 참여 가능 시간 선택; 정보 위계: 응답 확인과 제출에 필요한 정보\n   행동: 응답 확인과 제출, 이전 단계 확인; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 제출 완료 확인\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n4. 제출 완료 확인 (페이지) [d_4ac178cc-2afd-4d85-ae60-2e66596b9575@1]\n   역할: 제출 완료 확인을 수행하고 현재 진행 상태를 확인; 진입: 응답 확인과 제출; 정보 위계: 제출 완료 확인에 필요한 정보\n   행동: 제출 완료 확인, 이전 단계 확인; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 집계 결과 확인\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n5. 집계 결과 확인 (페이지) [d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115@1]\n   역할: 집계 결과 확인을 수행하고 현재 진행 상태를 확인; 진입: 제출 완료 확인; 정보 위계: 집계 결과 확인에 필요한 정보\n   행동: 집계 결과 확인, 이전 단계 확인; 반응: 입력과 선택을 반영하고 현재 상태 표시; 다음: 완료\n   예외: 실패한 이유를 알리고 입력을 보존한 채 다시 시도; 보존: 입력한 값·선택·현재 진행 상태\n연결 구조:\n질문과 참여 방법 확인 → 참여 가능 시간 선택 [next] 조건: 기본 진행; 유지 데이터: 해당 화면의 보존 규칙\n참여 가능 시간 선택 → 응답 확인과 제출 [next] 조건: 기본 진행; 유지 데이터: 해당 화면의 보존 규칙\n응답 확인과 제출 → 제출 완료 확인 [next] 조건: 기본 진행; 유지 데이터: 해당 화면의 보존 규칙\n제출 완료 확인 → 집계 결과 확인 [next] 조건: 기본 진행; 유지 데이터: 해당 화면의 보존 규칙\n참여 가능 시간 선택 → 질문과 참여 방법 확인 [branch] 조건: 사용자가 이전 선택을 바꾸려 함; 유지 데이터: 입력한 값·선택·현재 진행 상태\n응답 확인과 제출 → 참여 가능 시간 선택 [branch] 조건: 사용자가 이전 선택을 바꾸려 함; 유지 데이터: 입력한 값·선택·현재 진행 상태\n제출 완료 확인 → 응답 확인과 제출 [branch] 조건: 사용자가 이전 선택을 바꾸려 함; 유지 데이터: 입력한 값·선택·현재 진행 상태\n집계 결과 확인 → 제출 완료 확인 [branch] 조건: 사용자가 이전 선택을 바꾸려 함; 유지 데이터: 입력한 값·선택·현재 진행 상태\n질문과 참여 방법 확인 → 질문과 참여 방법 확인 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n참여 가능 시간 선택 → 질문과 참여 방법 확인 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n응답 확인과 제출 → 참여 가능 시간 선택 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n제출 완료 확인 → 응답 확인과 제출 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n집계 결과 확인 → 제출 완료 확인 [recovery] 조건: 이 단계의 작업 실패 또는 취소; 유지 데이터: 입력한 값·선택·현재 진행 상태\n분기: 선택을 바꾸고 싶으면 이전 단계로 돌아감\n반복: 순차 완료; 복구: 입력과 선택을 유지하고 이전 단계로 돌아가 수정; 완료: 집계 결과 확인에서 작업 결과를 확인",
+            "decisionIds": [
+              "d_7edb6a41-5e8c-424e-9ecf-d91a2afcc4b3",
+              "d_12a847c7-026a-4cb6-a287-8c7a7028bba6",
+              "d_d88d3dcc-7c41-41ed-ae22-be691be2a0f5",
+              "d_1bbf774b-dcaf-4ec2-b683-d45fbe6682d3",
+              "d_4ac178cc-2afd-4d85-ae60-2e66596b9575",
+              "d_b7d7a398-0ac9-4d73-a4ed-27b7901a5115"
+            ],
+            "tab": "flow"
+          },
+          {
+            "id": "section-5",
+            "title": "선택한 컨셉",
+            "body": "차분히 읽는 화면: 읽을 내용을 중심에, 긴 글도 편안하게 배치합니다.\n경험: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.; 주인공: 프로젝트의 핵심 작업과 실제 콘텐츠\n색 관계: 배경 #f5f3ed, 본문 #34372e, 강조 #526940\n글자: 짧은 제목과 읽기 쉬운 한글 본문\n재질: 따뜻한 단색 바탕, 장식 없는 본문 표면\n구성: 본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치\n적용 강도: 작업 화면은 낮은 장식 밀도\n리소스와 부담: 기본 서체와 단색 패널\n원본과의 관계: 사용자가 선택하는 내장 비교 예시. 이미지 분석 아님\n확인할 가정: 실제 결과에서 사용성과 적합성 확인 필요\n선택 이유: 내용을 오래 읽거나 입력해야 해서",
+            "decisionIds": [
+              "d_93aba44d-a426-452f-80fe-b75bbafa121f"
+            ],
+            "tab": "concept"
+          },
+          {
+            "id": "section-6",
+            "title": "시각 규칙과 적용 범위",
+            "body": "배경: #f5f3ed → 화면 바탕\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_d6046dc5-aacd-436e-b9c7-98910e533b37@2]\n본문: #34372e → 본문과 긴 안내\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_2aa73fb5-e434-415d-8afa-3a75e20988c7@2]\n강조: #526940 → 주요 버튼과 선택 테두리\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_e89745d6-fd5c-472c-b6a6-254eecfe2772@2]\n서체: serif → 짧은 제목. 긴 한글 본문은 시스템 서체\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_589ec55c-b30d-4c3e-9091-a7101eca20b3@2]\n형태: 4px → 버튼과 패널\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_86470a51-c03d-4f23-b888-db431a438509@2]\n배치: 본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치 → 대표 작업 화면\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6@2]\n재질: 따뜻한 단색 바탕, 장식 없는 본문 표면 → 브랜드 그래픽과 지정 리소스\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_df40567f-9b4e-4a7b-8d76-313d0ef634e4@2]\n모션: 입력과 제출 상태만 150ms 전환 → 상태가 바뀌는 컴포넌트\n이유: 내장 조합 예시. 서비스 적합성은 직접 확인; 예외: 가독성과 조작을 방해하면 강도를 줄임 [d_b267c23d-489c-4742-944e-7c13e9c189a5@2]",
+            "decisionIds": [
+              "d_d6046dc5-aacd-436e-b9c7-98910e533b37",
+              "d_2aa73fb5-e434-415d-8afa-3a75e20988c7",
+              "d_e89745d6-fd5c-472c-b6a6-254eecfe2772",
+              "d_589ec55c-b30d-4c3e-9091-a7101eca20b3",
+              "d_86470a51-c03d-4f23-b888-db431a438509",
+              "d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6",
+              "d_df40567f-9b4e-4a7b-8d76-313d0ef634e4",
+              "d_b267c23d-489c-4742-944e-7c13e9c189a5"
+            ],
+            "tab": "style"
+          },
+          {
+            "id": "section-7",
+            "title": "레퍼런스 적용",
+            "body": "확정한 레퍼런스 적용 없음. 직접 작성한 스타일 규칙으로 설계한다. 이미지에 없는 화면이나 기능은 관찰 사실로 가정하지 않는다.",
+            "decisionIds": [],
+            "tab": "reference"
+          },
+          {
+            "id": "section-8",
+            "title": "콘텐츠·실제 파일과 제작 계획",
+            "body": "질문 문구와 응답 선택지, 응답 집계 예시 데이터: 제안 문구, 제작 필요; 용도 핵심 작업에 필요한 안내와 예시; 실제 내용: 실제 파일은 미확보. 구현 과정에서 준비할 계획.; 조건 샘플과 실제 자료 구별; 파일 없음",
+            "decisionIds": [
+              "d_f8708bf4-43cc-4562-a36a-586b20db1f39"
+            ],
+            "tab": "style"
+          },
+          {
+            "id": "section-9",
+            "title": "자연스러운 연결과 검토·수정",
+            "body": "시작·빈 상태·완료·실패·대기에서 현재 상황과 가능한 다음 행동을 설명한다. 뒤로 이동하거나 복구할 때 입력과 선택을 유지한다. 버튼은 실제 행동과 결과를 표현한다. 제공하지 않는 동작과 성과를 만들지 않는다. 여러 행동이 필요한 편집기와 게임의 선택 자유를 유지한다.\n\n생성 전 고객과 제공 결과·의문·경험·분위기의 연결을 설명한다. 생성 후 실제 결과를 아래 기준과 비교한다. 각 항목에 기대, 실제 관찰, 화면 또는 영역, 근거와 판정을 기록한다. 색상 하나로 전체 스타일 일치를 판정하지 않는다. 자료가 없으면 확인 불가다.\n- intent / 서비스 목적과 전체 경험: 참여 가능한 시간을 답변하고 제출 완료 여부와 응답 결과를 확인한다.\n- customer / 고객 의문과 판단: 어디부터 눌러야 하는지 모를 수 있다는 사용자 가설 / 시작 버튼과 짧은 단계 안내를 실제 작업 화면에 표시하고 시작부터 완료까지 직접 실행해 확인한다.\n- fit / 분위기의 서비스 적합성: 내용을 오래 읽거나 입력해야 해서 — 차분히 읽는 화면\n- style / 색·서체·형태·재질의 관계: 배경: #f5f3ed → 화면 바탕\n본문: #34372e → 본문과 긴 안내\n강조: #526940 → 주요 버튼과 선택 테두리\n서체: serif → 짧은 제목. 긴 한글 본문은 시스템 서체\n형태: 4px → 버튼과 패널\n배치: 본문 폭을 제한하고 제목·설명·입력 순서로 한 열 배치 → 대표 작업 화면\n재질: 따뜻한 단색 바탕, 장식 없는 본문 표면 → 브랜드 그래픽과 지정 리소스\n모션: 입력과 제출 상태만 150ms 전환 → 상태가 바뀌는 컴포넌트\n- scope / 지정한 영역과 적용 강도: 화면 바탕 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n본문과 긴 안내 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n주요 버튼과 선택 테두리 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n짧은 제목. 긴 한글 본문은 시스템 서체 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n버튼과 패널 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n대표 작업 화면 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n브랜드 그래픽과 지정 리소스 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n상태가 바뀌는 컴포넌트 / 예외: 가독성과 조작을 방해하면 강도를 줄임\n- reference / 레퍼런스의 유지와 조정: 등록한 레퍼런스 없음. 직접 규칙으로 검토\n- interaction / 정보·조작·복구: 앙케이트 사이트 UI · UX 검증 사용 순서: 입력과 선택을 유지하고 이전 단계로 돌아가 수정\n- consistency / 대표 화면과 다른 상태의 일관성: 첫 화면에서 시작할 버튼을 찾을 수 있다.\n주요 작업을 마치면 결과와 완료 여부를 알 수 있다.\n응답 제출 후 완료 안내와 응답 수정 방법을 바로 찾을 수 있다.\n\n불일치 시 원인·수정 범위·유지할 조건을 정한다. 수정본을 같은 기준과 비교하고 영향받는 기존 일치 항목도 다시 확인한다. 결과와 근거 없이 해결을 선언하지 않는다. 시각 검토와 실제 동작 검토는 구분한다. 의도가 바뀌면 이유와 새 기준 버전을 기록한다.",
+            "decisionIds": [],
+            "tab": "review"
+          },
+          {
+            "id": "section-10",
+            "title": "미정·가정과 추가 지시",
+            "body": "별도 미정 문장 없음. 실제 자료가 없으면 확보를 먼저 확인한다.\n\n사용자 추가 지시 (원문):\n없음\n추가 지시와 구조화된 결정의 의미 충돌은 사용자 확인 대상으로 남긴다.",
+            "decisionIds": [],
+            "tab": "prompt"
+          }
+        ],
+        "draft": false,
+        "planId": null
+      }
+    ],
+    "results": [
+      {
+        "id": "result_d51211a6-b5e8-4fb4-9b17-561574151e6a",
+        "number": 1,
+        "createdAt": "2026-10-29T07:37:36.886Z",
+        "fileId": "file_9e1f5a7a-c461-4295-9119-85f86b5e3dbe",
+        "snapshotId": "snap_f5679b96-8310-4945-ad94-934ade4543e2",
+        "screen": "설문 참여 화면 · 검증용 가상 결과",
+        "source": "회귀 검증용 HTML 직접 렌더 · 실제 외부 서비스 미구현",
+        "execution": "",
+        "environment": "미정",
+        "instruction": "",
+        "note": "제출 버튼은 보이지만 완료 후 수정 위치는 이 화면에서 알 수 없음",
+        "keep": ""
+      }
+    ],
+    "reviews": [
+      {
+        "id": "review_c84490de-568f-4380-82e7-15eacd1e5620",
+        "resultId": "result_d51211a6-b5e8-4fb4-9b17-561574151e6a",
+        "snapshotId": "snap_f5679b96-8310-4945-ad94-934ade4543e2",
+        "parentReviewId": null,
+        "planId": null,
+        "createdAt": "2026-10-29T07:37:36.886Z",
+        "state": "reviewing",
+        "scope": "visual",
+        "screen": "설문 참여 화면 · 검증용 가상 결과",
+        "intent": "unknown",
+        "intentReason": "",
+        "holdReason": "",
+        "learning": "",
+        "externalFeedback": "",
+        "feedbackSource": "",
+        "items": [
+          {
+            "id": "intent",
+            "label": "서비스 목적과 전체 경험",
+            "expected": "응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면",
+            "scope": "behavior",
+            "decisionIds": [
+              "d_ecff78fd-d25b-4354-b9e7-544d92b010c9",
+              "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1"
+            ],
+            "verdict": "unverifiable",
+            "observation": "",
+            "evidence": "",
+            "target": "",
+            "keep": "",
+            "cause": "",
+            "resolution": "unverifiable",
+            "regression": false,
+            "selected": false
+          },
+          {
+            "id": "customer",
+            "label": "고객 의문과 판단",
+            "expected": "아직 확정하지 않은 기준 / 아직 확정하지 않은 기준",
+            "scope": "behavior",
+            "decisionIds": [
+              "d_d72784b2-8823-4bea-977f-b3c633a9813a",
+              "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf",
+              "d_0d905587-038b-4e4d-8c46-ac2f18e4166d",
+              "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91"
+            ],
+            "verdict": "unverifiable",
+            "observation": "",
+            "evidence": "",
+            "target": "",
+            "keep": "",
+            "cause": "",
+            "resolution": "unverifiable",
+            "regression": false,
+            "selected": false
+          },
+          {
+            "id": "fit",
+            "label": "분위기의 서비스 적합성",
+            "expected": "아직 확정하지 않은 기준",
+            "scope": "visual",
+            "decisionIds": [
+              "d_19c64e96-7cd3-4f27-8132-0b15b365fe57"
+            ],
+            "verdict": "unverifiable",
+            "observation": "",
+            "evidence": "",
+            "target": "",
+            "keep": "",
+            "cause": "",
+            "resolution": "unverifiable",
+            "regression": false,
+            "selected": false
+          },
+          {
+            "id": "style",
+            "label": "색·서체·형태·재질의 관계",
+            "expected": "직접 작성한 표현 기준 필요",
+            "scope": "visual",
+            "decisionIds": [],
+            "verdict": "unverifiable",
+            "observation": "따뜻한 연한 바탕과 진한 본문, 초록 버튼이 보인다. 원래 정확한 색 규칙은 미정이다.",
+            "evidence": "등록한 HTML 검증 화면 전체",
+            "target": "",
+            "keep": "",
+            "cause": "",
+            "resolution": "unverifiable",
+            "regression": false,
+            "selected": false
+          },
+          {
+            "id": "scope",
+            "label": "지정한 영역과 적용 강도",
+            "expected": "적용 범위 확인 필요",
+            "scope": "visual",
+            "decisionIds": [],
+            "verdict": "unverifiable",
+            "observation": "",
+            "evidence": "",
+            "target": "",
+            "keep": "",
+            "cause": "",
+            "resolution": "unverifiable",
+            "regression": false,
+            "selected": false
+          },
+          {
+            "id": "reference",
+            "label": "레퍼런스의 유지와 조정",
+            "expected": "등록한 레퍼런스 없음. 직접 규칙으로 검토",
+            "scope": "visual",
+            "decisionIds": [],
+            "verdict": "unverifiable",
+            "observation": "",
+            "evidence": "",
+            "target": "",
+            "keep": "",
+            "cause": "",
+            "resolution": "unverifiable",
+            "regression": false,
+            "selected": false
+          },
+          {
+            "id": "interaction",
+            "label": "정보·조작·복구",
+            "expected": "아직 확정하지 않은 기준",
+            "scope": "behavior",
+            "decisionIds": [],
+            "verdict": "unverifiable",
+            "observation": "",
+            "evidence": "",
+            "target": "",
+            "keep": "",
+            "cause": "",
+            "resolution": "unverifiable",
+            "regression": false,
+            "selected": false
+          },
+          {
+            "id": "consistency",
+            "label": "대표 화면과 다른 상태의 일관성",
+            "expected": "아직 확정하지 않은 기준",
+            "scope": "visual",
+            "decisionIds": [],
+            "verdict": "unverifiable",
+            "observation": "",
+            "evidence": "",
+            "target": "",
+            "keep": "",
+            "cause": "",
+            "resolution": "unverifiable",
+            "regression": false,
+            "selected": false
+          }
+        ],
+        "recheck": {
+          "decisionIds": [
+            "d_ecff78fd-d25b-4354-b9e7-544d92b010c9",
+            "d_d72784b2-8823-4bea-977f-b3c633a9813a",
+            "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1",
+            "d_0d905587-038b-4e4d-8c46-ac2f18e4166d",
+            "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91",
+            "d_19c64e96-7cd3-4f27-8132-0b15b365fe57",
+            "d_e9012bc2-96d4-4d1f-93c2-7c5932097a8f",
+            "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf"
+          ],
+          "criterionIds": [
+            "intent",
+            "customer",
+            "fit"
+          ],
+          "reason": "fit 결정 변경",
+          "at": "2026-10-29T07:37:42.097Z"
+        }
+      }
+    ],
+    "plans": [],
+    "activity": [
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "색·글자·배치 규칙과 결과 확인 항목 확정",
+        "ids": [],
+        "revision": 38
+      },
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "criteria 결정 변경",
+        "ids": [
+          "d_eb6dc121-ff87-45ab-baaf-757816f64c40"
+        ],
+        "revision": 37
+      },
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "d_b267c23d-489c-4742-944e-7c13e9c189a5 결정 변경",
+        "ids": [
+          "d_b267c23d-489c-4742-944e-7c13e9c189a5"
+        ],
+        "revision": 36
+      },
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "d_df40567f-9b4e-4a7b-8d76-313d0ef634e4 결정 변경",
+        "ids": [
+          "d_df40567f-9b4e-4a7b-8d76-313d0ef634e4"
+        ],
+        "revision": 35
+      },
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6 결정 변경",
+        "ids": [
+          "d_fa9cfad8-bd9d-495b-922b-05f5a8e8a0a6"
+        ],
+        "revision": 34
+      },
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "d_86470a51-c03d-4f23-b888-db431a438509 결정 변경",
+        "ids": [
+          "d_86470a51-c03d-4f23-b888-db431a438509"
+        ],
+        "revision": 33
+      },
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "d_589ec55c-b30d-4c3e-9091-a7101eca20b3 결정 변경",
+        "ids": [
+          "d_589ec55c-b30d-4c3e-9091-a7101eca20b3"
+        ],
+        "revision": 32
+      },
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "d_e89745d6-fd5c-472c-b6a6-254eecfe2772 결정 변경",
+        "ids": [
+          "d_e89745d6-fd5c-472c-b6a6-254eecfe2772"
+        ],
+        "revision": 31
+      },
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "d_2aa73fb5-e434-415d-8afa-3a75e20988c7 결정 변경",
+        "ids": [
+          "d_2aa73fb5-e434-415d-8afa-3a75e20988c7"
+        ],
+        "revision": 30
+      },
+      {
+        "at": "2026-10-29T07:37:43.314Z",
+        "reason": "d_d6046dc5-aacd-436e-b9c7-98910e533b37 결정 변경",
+        "ids": [
+          "d_d6046dc5-aacd-436e-b9c7-98910e533b37"
+        ],
+        "revision": 29
+      },
+      {
+        "at": "2026-10-29T07:37:42.097Z",
+        "reason": "선택한 스타일이 프로젝트에 맞는 이유 확인",
+        "ids": [],
+        "revision": 28
+      },
+      {
+        "at": "2026-10-29T07:37:42.097Z",
+        "reason": "팔레트와 표현 규칙 예시 복제",
+        "ids": [],
+        "revision": 27
+      },
+      {
+        "at": "2026-10-29T07:37:42.097Z",
+        "reason": "fit 결정 변경",
+        "ids": [
+          "d_19c64e96-7cd3-4f27-8132-0b15b365fe57"
+        ],
+        "revision": 26
+      },
+      {
+        "at": "2026-10-29T07:37:42.096Z",
+        "reason": "d_93aba44d-a426-452f-80fe-b75bbafa121f 결정 변경",
+        "ids": [
+          "d_93aba44d-a426-452f-80fe-b75bbafa121f"
+        ],
+        "revision": 25
+      },
+      {
+        "at": "2026-10-29T07:37:41.713Z",
+        "reason": "컨셉 방향 선택",
+        "ids": [
+          "d_93aba44d-a426-452f-80fe-b75bbafa121f"
+        ],
+        "revision": 24
+      },
+      {
+        "at": "2026-10-29T07:37:40.913Z",
+        "reason": "화면에 보인 사용 순서·되돌아가기·실패 재시도 확인",
+        "ids": [],
+        "revision": 23
+      },
+      {
+        "at": "2026-10-29T07:37:40.913Z",
+        "reason": "d_6cb3af19-feee-4b98-934a-0849167697ea 결정 변경",
+        "ids": [
+          "d_6cb3af19-feee-4b98-934a-0849167697ea"
+        ],
+        "revision": 22
+      },
+      {
+        "at": "2026-10-29T07:37:40.913Z",
+        "reason": "d_22587bdc-9c45-4c0c-b45c-2d230683bf99 결정 변경",
+        "ids": [
+          "d_22587bdc-9c45-4c0c-b45c-2d230683bf99"
+        ],
+        "revision": 21
+      },
+      {
+        "at": "2026-10-29T07:37:40.913Z",
+        "reason": "d_77068565-0451-464f-b181-97a4b09c5063 결정 변경",
+        "ids": [
+          "d_77068565-0451-464f-b181-97a4b09c5063"
+        ],
+        "revision": 20
+      },
+      {
+        "at": "2026-10-29T07:37:40.913Z",
+        "reason": "d_a1afd5ca-5266-48a4-bee9-061e2c843ed2 결정 변경",
+        "ids": [
+          "d_a1afd5ca-5266-48a4-bee9-061e2c843ed2"
+        ],
+        "revision": 19
+      },
+      {
+        "at": "2026-10-29T07:37:40.913Z",
+        "reason": "d_2e090a70-06ac-4917-ae7e-4e3fafd07131 결정 변경",
+        "ids": [
+          "d_2e090a70-06ac-4917-ae7e-4e3fafd07131"
+        ],
+        "revision": 18
+      },
+      {
+        "at": "2026-10-29T07:37:40.114Z",
+        "reason": "만들 기능과 자료 준비 계획 확인",
+        "ids": [],
+        "revision": 17
+      },
+      {
+        "at": "2026-10-29T07:37:40.114Z",
+        "reason": "d_7b8c19a9-c7a3-475d-bba9-7bd5d78dd3c6 결정 변경",
+        "ids": [
+          "d_7b8c19a9-c7a3-475d-bba9-7bd5d78dd3c6"
+        ],
+        "revision": 16
+      },
+      {
+        "at": "2026-10-29T07:37:40.114Z",
+        "reason": "evidence 결정 변경",
+        "ids": [
+          "d_ce4398f6-06b8-4b2a-b077-319cafaf6a91"
+        ],
+        "revision": 15
+      },
+      {
+        "at": "2026-10-29T07:37:40.114Z",
+        "reason": "doubt 결정 변경",
+        "ids": [
+          "d_0d905587-038b-4e4d-8c46-ac2f18e4166d"
+        ],
+        "revision": 14
+      },
+      {
+        "at": "2026-10-29T07:37:40.114Z",
+        "reason": "scope 결정 변경",
+        "ids": [
+          "d_2336b198-b833-4b1f-a7e5-45b614e17050"
+        ],
+        "revision": 13
+      },
+      {
+        "at": "2026-10-29T07:37:39.314Z",
+        "reason": "제품 설명과 사용할 기기 확인",
+        "ids": [],
+        "revision": 12
+      },
+      {
+        "at": "2026-10-29T07:37:39.314Z",
+        "reason": "value 결정 변경",
+        "ids": [
+          "d_fd0b5be0-8071-403d-a89a-42bf5b2b6baf"
+        ],
+        "revision": 11
+      },
+      {
+        "at": "2026-10-29T07:37:39.314Z",
+        "reason": "decisionMaker 결정 변경",
+        "ids": [
+          "d_e9012bc2-96d4-4d1f-93c2-7c5932097a8f"
+        ],
+        "revision": 10
+      },
+      {
+        "at": "2026-10-29T07:37:39.314Z",
+        "reason": "environment 결정 변경",
+        "ids": [
+          "d_418c01f2-c3b2-40be-952d-0f5bdebf0e32"
+        ],
+        "revision": 9
+      },
+      {
+        "at": "2026-10-29T07:37:39.314Z",
+        "reason": "goal 결정 변경",
+        "ids": [
+          "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1"
+        ],
+        "revision": 8
+      },
+      {
+        "at": "2026-10-29T07:37:39.314Z",
+        "reason": "user 결정 변경",
+        "ids": [
+          "d_d72784b2-8823-4bea-977f-b3c633a9813a"
+        ],
+        "revision": 7
+      },
+      {
+        "at": "2026-10-29T07:37:39.314Z",
+        "reason": "product 결정 변경",
+        "ids": [
+          "d_ecff78fd-d25b-4354-b9e7-544d92b010c9"
+        ],
+        "revision": 6
+      },
+      {
+        "at": "2026-10-29T07:37:38.924Z",
+        "reason": "goal 결정 변경",
+        "ids": [
+          "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1"
+        ],
+        "revision": 5
+      },
+      {
+        "at": "2026-10-29T07:37:38.919Z",
+        "reason": "user 결정 변경",
+        "ids": [
+          "d_d72784b2-8823-4bea-977f-b3c633a9813a"
+        ],
+        "revision": 4
+      },
+      {
+        "at": "2026-10-29T07:37:38.900Z",
+        "reason": "d_ecff78fd-d25b-4354-b9e7-544d92b010c9 결정 변경",
+        "ids": [
+          "d_ecff78fd-d25b-4354-b9e7-544d92b010c9"
+        ],
+        "revision": 3
+      },
+      {
+        "at": "2026-10-29T07:37:36.780Z",
+        "reason": "goal 결정 변경",
+        "ids": [
+          "d_dc305903-863c-4d7a-8549-7b7b2f5c08a1"
+        ],
+        "revision": 2
+      }
+    ],
+    "intent": {
+      "choice": "match",
+      "reason": "사용자가 요약에 표시된 제품·사용자·기능·사용 순서·화면 스타일·확인 항목을 읽고 이 내용으로 요청하기를 선택함",
+      "revision": 38,
+      "at": "2026-10-29T07:37:43.696Z"
+    },
+    "handoff": null,
+    "progress": {
+      "tab": "review",
+      "guideStage": 0,
+      "returnTo": null,
+      "easy": {
+        "designStage": 1,
+        "featuresText": "앙케이트 질문 읽기\n참여 가능 시간 선택\n응답 검토와 제출\n응답 수정\n집계 결과 확인",
+        "laterText": "",
+        "help": "steps",
+        "materials": "질문 문구와 응답 선택지, 응답 집계 예시 데이터",
+        "flowText": "질문과 참여 방법 확인\n참여 가능 시간 선택\n응답 확인과 제출\n제출 완료 확인\n집계 결과 확인",
+        "flowSource": "example",
+        "flowPattern": "answer",
+        "back": "back",
+        "recovery": "previous",
+        "loop": false,
+        "fit": "reading",
+        "fitCustom": "",
+        "checks": [
+          "start",
+          "finish"
+        ],
+        "customCheck": "응답 제출 후 완료 안내와 응답 수정 방법을 바로 찾을 수 있다.",
+        "constraintEnabled": false,
+        "newFlow": false,
+        "reviewIndex": 3,
+        "environment": "컴퓨터와 모바일 웹 · 키보드·마우스·터치 · 한국어",
+        "type": "아직 미정",
+        "reviewWanted": "응답을 제출하면 완료 안내와 답변 수정 버튼이 바로 보이는 설문 화면",
+        "reviewProblem": "제출 전 안내만 있어 제출 후 응답 수정 위치를 알 수 없다.",
+        "baselines": {
+          "featuresText": "앙케이트 질문 읽기\n참여 가능 시간 선택\n응답 검토와 제출\n응답 수정\n집계 결과 확인",
+          "laterText": "",
+          "flowText": "질문과 참여 방법 확인\n참여 가능 시간 선택\n응답 확인과 제출\n제출 완료 확인\n집계 결과 확인"
+        }
+      }
+    },
+    "output": {
+      "purpose": "서비스 전체 UI UX 설계",
+      "format": "UI UX 설계 문서",
+      "scope": "서비스 전체",
+      "selection": {
+        "mode": "all",
+        "ids": []
+      },
+      "tech": "미정",
+      "extra": "",
+      "common": "사실·사용자 가설·제안을 구분한다. 실제 자료가 없으면 제작 계획으로 명시한다. 빈 상태·실패·대기에서 다음 행동을 설명한다. 실제 결과를 의도와 스타일에 대조하고 수정 후 같은 기준으로 재검토한다.",
+      "commonVersion": 1,
+      "procedure": "관찰 → 설계 → 제작 → 실제 결과 비교 → 수정과 재검토",
+      "procedureSource": "사용자 작업 절차",
+      "language": "한국어",
+      "version": 1
+    },
+    "settings": {
+      "density": "guide"
+    },
+    "lastImpact": {
+      "roots": [
+        "d_eb6dc121-ff87-45ab-baaf-757816f64c40"
+      ],
+      "decisionIds": [],
+      "reason": "criteria 결정 변경",
+      "at": "2026-10-29T07:37:43.314Z"
+    }
+  },
+  "files": [
+    {
+      "id": "file_9e1f5a7a-c461-4295-9119-85f86b5e3dbe",
+      "name": "survey-test-result.png",
+      "mime": "image/png",
+      "ext": ".png",
+      "sha256": "38f1148864371a537717dc6f5d37049a7b50640bd547b8e68a54e9f327746b70",
+      "size": 32613,
+      "data": "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IBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIBHCNwAAACARwjcAAAAgEcI3AAAAIJH/HwAA//87EKLrAAAABklEQVQDAC05P4B65muOAAAAAElFTkSuQmCC"
+    }
+  ]
+}

@@ -7,12 +7,14 @@
 *{box-sizing:border-box}body{margin:0;background:#20232b;color:#f5f2ee;font:15px system-ui,sans-serif;padding:24px}h1{font-size:24px;margin:0 0 8px}p{color:#b8bcc8;margin:0 0 16px}.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}button,select{background:#383f4f;color:white;border:1px solid #626d82;border-radius:6px;padding:8px 12px;font:inherit}table{border-collapse:separate;border-spacing:6px}th{font-size:13px;font-weight:500;color:#b8bcc8}td{padding:0}canvas{display:block;width:clamp(64px,calc((100vw - 108px) / 5),192px);height:auto;image-rendering:pixelated;background:#a09895;border-radius:4px}.table-wrap{overflow:auto}small{color:#b8bcc8}body.grid canvas{outline:1px solid #fff5}
 </style>
 <h1>캐릭터 프레임 미리보기</h1>
-<p>512×1024 · 2열 × 4행 · 256×256 프레임 · 불투명 배경</p>
+<p>512×1024 · 2열 × 4행 · 256×256 프레임 · 투명 배경 · walk A/B는 반대 발을 내딛는 실제 자세</p>
 <div class="controls"><button id="play">일시 정지</button><button id="a">프레임 A</button><button id="b">프레임 B</button><label>속도 <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><label><input type="checkbox" id="guide"> 셀 기준선</label><small id="status">이미지 로딩 중</small></div>
 <div class="table-wrap"><table><thead><tr><th>동작</th><th>char_0</th><th>char_1</th><th>char_2</th><th>char_3</th><th>char_4</th></tr></thead><tbody id="rows"></tbody></table></div>
+<h2>소품 전수 확인</h2><p>투명 여백, 온전한 화분과 잎, 비어 있는 책상, PC의 서로 다른 화면을 확인합니다.</p><div id="props" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px"></div>
 <script>
 const states=['idle','walk','work','think'], durations=[680,160,280,420];
-const images=Array.from({length:5},(_,i)=>{const image=new Image();image.src='../tools/generated-inputs/characters/char_'+i+'.png';return image});
+const assetBase=location.protocol==='file:'?'../public':'';
+const images=Array.from({length:5},(_,i)=>{const image=new Image();image.src=assetBase+'/generated-pixel-assets/characters/char_'+i+'.png';return image});
 const cells=[];let paused=matchMedia('(prefers-reduced-motion: reduce)').matches, fixed=0,elapsed=0,last=performance.now();
 states.forEach((state,row)=>{const tr=document.createElement('tr');const th=document.createElement('th');th.textContent=state;tr.append(th);images.forEach((image,col)=>{const td=document.createElement('td'),canvas=document.createElement('canvas');canvas.width=canvas.height=256;canvas.setAttribute('aria-label','char_'+col+' '+state);td.append(canvas);tr.append(td);cells.push({canvas,image,row})});document.querySelector('#rows').append(tr)});
 function label(){document.querySelector('#play').textContent=paused?'재생':'일시 정지'}label();
@@ -20,7 +22,9 @@ document.querySelector('#play').onclick=()=>{paused=!paused;label()};
 for(const [id,frame] of [['a',0],['b',1]])document.querySelector('#'+id).onclick=()=>{paused=true;fixed=frame;label()};
 let ready=false;
 Promise.all(images.map(image=>image.decode())).then(()=>{if(images.some(i=>i.naturalWidth!==512||i.naturalHeight!==1024))throw Error('이미지 규격 불일치');ready=true;document.querySelector('#status').textContent='5개 시트 · 40개 프레임 로드 완료'}).catch(error=>{document.querySelector('#status').textContent=error.message});
-function draw(now){if(!paused)elapsed+=(now-last)*Number(document.querySelector('#speed').value);last=now;if(ready)for(const {canvas,image,row} of cells){const frame=paused?fixed:Math.floor(elapsed/durations[row])%2,ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.drawImage(image,frame*256,row*256,256,256,0,0,256,256);canvas.dataset.frame=frame;if(document.querySelector('#guide').checked){ctx.strokeStyle='#ffffff80';ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(128,0);ctx.lineTo(128,256);ctx.moveTo(0,240);ctx.lineTo(256,240);ctx.stroke();ctx.strokeRect(12,12,232,232)}}requestAnimationFrame(draw)}requestAnimationFrame(draw);
+const props=['DESK/DESK_FRONT','PC/PC_FRONT_OFF','PC/PC_FRONT_ON_1','PC/PC_FRONT_ON_2','CUSHIONED_CHAIR/CUSHIONED_CHAIR_FRONT','SOFA/SOFA_FRONT','SOFA/SOFA_BACK','COFFEE_TABLE/COFFEE_TABLE','WHITEBOARD/WHITEBOARD','DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF','PLANT/PLANT','LARGE_PLANT/LARGE_PLANT','PLANT_2/PLANT_2','FLOWER/FLOWER','COFFEE/COFFEE','CLOCK/CLOCK'];
+for(const name of props){const card=document.createElement('figure'),image=new Image(),caption=document.createElement('figcaption');card.style='margin:0;padding:12px;background:#344149;border:1px solid #66757f;border-radius:8px';image.src=assetBase+'/generated-pixel-assets/furniture/'+name+'.png';image.style='display:block;height:128px;max-width:100%;object-fit:contain;margin:auto;image-rendering:pixelated';image.alt=name;caption.textContent=name;caption.style='font-size:12px;overflow-wrap:anywhere;margin-top:8px';card.append(image,caption);document.querySelector('#props').append(card)}
+function draw(now){if(!paused)elapsed+=(now-last)*Number(document.querySelector('#speed').value);last=now;if(ready)for(const {canvas,image,row} of cells){const frame=paused?fixed:Math.floor(elapsed/durations[row])%2,ctx=canvas.getContext('2d');ctx.clearRect(0,0,256,256);ctx.imageSmoothingEnabled=false;ctx.drawImage(image,frame*256,row*256,256,256,0,0,256,256);canvas.dataset.frame=frame;if(document.querySelector('#guide').checked){ctx.strokeStyle='#ffffff80';ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(128,0);ctx.lineTo(128,256);ctx.moveTo(0,240);ctx.lineTo(256,240);ctx.stroke();ctx.strokeRect(12,12,232,232)}}requestAnimationFrame(draw)}requestAnimationFrame(draw);
 </script>
 </html>
 

@@ -970,15 +970,15 @@ body {
 .large-result-heading h2 { margin: 6px 0 5px; color: #28454e; font-size: 25px; line-height: 1.2; }
 .large-result-heading p { margin: 0; color: #688187; font-size: 12px; }
 .large-result-copy { flex: none; min-height: 38px; padding: 0 12px; border: 2px solid #9a8bd9; border-radius: 7px; color: #624f9d; background: #fff; cursor: pointer; font-size: 12px; font-weight: 800; }
-.large-result-content { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 12px; padding: 18px; }
-.large-result-card { overflow: hidden; border: 2px solid #c6dbd4; border-radius: 7px; background: #fff; box-shadow: 3px 3px 0 rgba(64,98,95,.1); }
+.large-result-content { flex: 1; min-height: 0; overflow: auto; display: block; padding: 18px; scrollbar-gutter: stable; }
+.large-result-card { min-width: 0; margin-bottom: 14px; border: 2px solid #c6dbd4; border-radius: 7px; background: #fff; box-shadow: 3px 3px 0 rgba(64,98,95,.1); }
 .large-result-card.primary-result { border-color: #9a8bd9; }
-.large-result-card header { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-bottom: 2px solid #d4e3de; background: #f4fbf5; }
-.large-result-card header > span { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: 2px solid #517c71; color: #fff; background: #64b992; font-size: 16px; font-weight: 900; }
-.large-result-card header > div { min-width: 0; }
-.large-result-card header strong, .large-result-card header small { display: block; }
-.large-result-card header strong { color: #36545a; font-size: 16px; }
-.large-result-card header small { margin-top: 4px; color: #819392; font-size: 12px; }
+.large-result-card > header { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-bottom: 2px solid #d4e3de; background: #f4fbf5; }
+.large-result-card > header > span { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: 2px solid #517c71; color: #fff; background: #64b992; font-size: 16px; font-weight: 900; }
+.large-result-card > header > div { min-width: 0; }
+.large-result-card > header strong, .large-result-card > header small { display: block; }
+.large-result-card > header strong { color: #36545a; font-size: 16px; }
+.large-result-card > header small { margin-top: 4px; color: #819392; font-size: 12px; }
 .large-result-card pre { margin: 0; max-height: 450px; overflow: auto; padding: 20px; color: #294950; background: #fffef9; font: 15px/1.8 "Pretendard Variable", Pretendard, Inter, "Segoe UI", sans-serif; white-space: pre-wrap; word-break: break-word; }
 .large-result-empty { min-height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; border: 3px dashed #c4dad3; color: #829494; text-align: center; }
 .large-result-empty span { color: #8975df; font-size: 42px; }

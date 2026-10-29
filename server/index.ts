@@ -20,7 +20,6 @@ import type {
   TaskNode,
   WorkspaceMode,
   ConversationState,
-  ConversationSummary,
 } from "../shared/protocol.js";
 import { mapNotification } from "./activity-mapper.js";
 import {
@@ -46,6 +45,7 @@ import { fallbackTaskPlan, parseTaskPlan, TASK_PLAN_OUTPUT_SCHEMA } from "./task
 import { parseClientMessage } from "./client-message.js";
 import { approvalResponse, type ApprovalProtocol } from "./approval-response.js";
 import { parseTokenUsage } from "./token-usage.js";
+import { ConversationStore, type ConversationRecord } from "./conversation-store.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.AUTO_CODEX_PORT || 4781);
@@ -83,15 +83,6 @@ type SkillsListResponse = {
 
 type ThreadStartResponse = { thread?: { id?: string } };
 type TurnStartResponse = { turn?: { id?: string } };
-
-type ConversationRecord = ConversationSummary & {
-  threadId: string | null;
-  assistantText: string;
-  taskOutputs: Record<string, string>;
-  activities: ActivityEvent[];
-  activeRun: RunSnapshot | null;
-  contextSummary: string;
-};
 
 type ModelListResponse = {
   data?: Array<{
@@ -145,12 +136,15 @@ function createConversation(title = "새 대화"): ConversationRecord {
     updatedAt: now,
     preview: "",
     messageCount: 0,
+    projectPath,
+    workspaceMode,
     threadId: null,
     assistantText: "",
     taskOutputs: {},
     activities: [],
     activeRun: null,
     contextSummary: "",
+    messages: [],
   };
 }
 
@@ -158,6 +152,26 @@ const conversations = new Map<string, ConversationRecord>();
 const initialConversation = createConversation();
 conversations.set(initialConversation.id, initialConversation);
 let activeConversationId = initialConversation.id;
+const conversationStore = new ConversationStore(ROOT);
+let historyError: string | null = null;
+let historyWritable = true;
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+const loadedThreads = new Set<string>();
+
+function persistConversations(): void {
+  if (!historyWritable || saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = undefined;
+    void saveConversations().catch(() => {
+      historyError = "대화 기록을 저장하지 못했습니다. 로컬 저장 공간과 권한을 확인하세요.";
+      broadcastError(historyError);
+    });
+  }, 200);
+}
+
+function saveConversations(): Promise<void> {
+  return conversationStore.save({ version: 1, activeConversationId, conversations: [...conversations.values()] });
+}
 
 const ACTIVE_RUN_STATUSES = new Set(["planning", "running", "verifying"]);
 const REASONING_EFFORTS = new Set<ReasoningEffort>([
@@ -167,13 +181,15 @@ const REASONING_EFFORTS = new Set<ReasoningEffort>([
 function snapshot(connected = true): BridgeSnapshot {
   const summaries = [...conversations.values()]
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .map(({ id, title, createdAt, updatedAt, preview, messageCount }) => ({
+    .map(({ id, title, createdAt, updatedAt, preview, messageCount, projectPath, workspaceMode }) => ({
       id,
       title,
       createdAt,
       updatedAt,
       preview,
       messageCount,
+      projectPath,
+      workspaceMode,
     }));
   return {
     connected,
@@ -204,6 +220,7 @@ function broadcast(message: ServerMessage): void {
 }
 
 function broadcastState(): void {
+  persistConversations();
   broadcast({ type: "bridge.state", snapshot: snapshot() });
 }
 
@@ -220,6 +237,13 @@ function syncActiveConversation(): void {
   conversation.taskOutputs = Object.fromEntries(taskAssistantText.entries());
   conversation.activities = activities;
   conversation.activeRun = activeRun;
+  const reply = conversation.messages.at(-1);
+  if (reply?.role === "assistant" && reply.status === "streaming") {
+    reply.text = assistantText;
+    reply.run = activeRun;
+    reply.taskOutputs = { ...conversation.taskOutputs };
+  }
+  persistConversations();
 }
 
 function conversationState(): ConversationState {
@@ -227,6 +251,7 @@ function conversationState(): ConversationState {
   syncActiveConversation();
   return {
     id: conversation.id,
+    messages: conversation.messages,
     assistantText: conversation.assistantText,
     taskOutputs: conversation.taskOutputs,
     activities: conversation.activities,
@@ -263,12 +288,14 @@ function resetActiveConversationRuntime(): void {
   taskAssistantText.clear();
 }
 
-function resetConversationCollection(): void {
-  conversations.clear();
-  const conversation = createConversation();
+function restoreWorkspaceConversation(): void {
+  const previous = [...conversations.values()].filter((entry) => entry.projectPath === projectPath && entry.workspaceMode === workspaceMode)
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+  const conversation = previous ?? createConversation();
   conversations.set(conversation.id, conversation);
   activeConversationId = conversation.id;
   resetActiveConversationRuntime();
+  restoreConversationRuntime(conversation);
 }
 
 function startConversationPrompt(prompt: string): void {
@@ -277,6 +304,25 @@ function startConversationPrompt(prompt: string): void {
   conversation.preview = prompt.replace(/\s+/g, " ").trim().slice(0, 140);
   conversation.messageCount += 1;
   conversation.updatedAt = new Date().toISOString();
+  conversation.messages.push(
+    { id: randomUUID(), role: "user", text: prompt, timestamp: conversation.updatedAt, status: "completed" },
+    { id: randomUUID(), role: "assistant", text: "", timestamp: conversation.updatedAt, status: "streaming" },
+  );
+}
+
+function completeConversationReply(status: "completed" | "failed" | "interrupted"): void {
+  const reply = activeConversation().messages.at(-1);
+  if (reply?.role === "assistant" && reply.status === "streaming") {
+    reply.text = assistantText;
+    reply.status = status;
+  }
+  persistConversations();
+}
+
+function conversationContext(): string {
+  const history = activeConversation().messages.slice(0, -2);
+  return history.map((message) => `${message.role === "user" ? "사용자 요청" : "이전 응답"} (${message.status}):\n${message.text}`).join("\n\n").slice(-16_000)
+    || activeConversation().contextSummary;
 }
 
 function newConversation(): void {
@@ -289,23 +335,53 @@ function newConversation(): void {
   broadcastConversationState();
 }
 
-function selectConversation(conversationId: string): void {
-  if (turnId || runIsActive()) throw new Error("진행 중인 작업을 마친 뒤 대화를 바꿀 수 있습니다.");
-  const conversation = conversations.get(conversationId);
-  if (!conversation) throw new Error("선택한 대화를 찾을 수 없습니다.");
-  if (conversationId === activeConversationId) return;
-  syncActiveConversation();
-  activeConversationId = conversationId;
+function restoreConversationRuntime(conversation: ConversationRecord): void {
   threadId = conversation.threadId;
   turnId = null;
   assistantText = conversation.assistantText;
   activeRun = conversation.activeRun;
   activities = conversation.activities;
   lastActivity = activities[0] ?? null;
+  petState = "idle";
   runtimeRegistry.clear();
   taskAssistantText.clear();
   for (const [taskId, text] of Object.entries(conversation.taskOutputs)) taskAssistantText.set(taskId, text);
+}
+
+async function validateProject(inputPath: string): Promise<string> {
+  const resolved = await realpath(path.resolve(inputPath.trim()));
+  if (!(await stat(resolved)).isDirectory()) throw new Error("프로젝트 경로는 폴더여야 합니다.");
+  return resolved;
+}
+
+async function selectConversation(conversationId: string): Promise<void> {
+  if (turnId || runIsActive()) throw new Error("진행 중인 작업을 마친 뒤 대화를 바꿀 수 있습니다.");
+  const conversation = conversations.get(conversationId);
+  if (!conversation) throw new Error("선택한 대화를 찾을 수 없습니다.");
+  if (conversationId === activeConversationId) return;
+  let restoredPath: string | null = null;
+  let missingProject = false;
+  if (conversation.projectPath) {
+    try { restoredPath = await validateProject(conversation.projectPath); }
+    catch { missingProject = true; }
+  }
+  syncActiveConversation();
+  activeConversationId = conversationId;
+  projectPath = restoredPath;
+  workspaceMode = conversation.workspaceMode;
+  researchNetworkAccess = false;
+  projectTrust = restoredPath ? await readProjectTrust(restoredPath) : "untrusted";
+  selectedSkill = null;
+  activeRole = "general";
+  skills = [];
+  restoreConversationRuntime(conversation);
   broadcastConversationState();
+  if (missingProject) {
+    broadcast({ type: "skills.list", skills: [], errors: [] });
+    broadcastError("이 대화의 프로젝트 폴더를 찾을 수 없습니다. 기록은 열람할 수 있으며, 작업하려면 폴더를 다시 연결하세요.");
+    return;
+  }
+  await loadSkills(true);
 }
 
 function runIsActive(): boolean {
@@ -478,14 +554,12 @@ async function loadSkills(forceReload = true): Promise<void> {
 
 async function selectProject(inputPath: string): Promise<void> {
   if (turnId || runIsActive()) throw new Error("진행 중인 작업을 중단한 뒤 프로젝트를 바꿔주세요.");
-  const candidate = path.resolve(inputPath.trim());
-  const resolved = await realpath(candidate);
-  const info = await stat(resolved);
-  if (!info.isDirectory()) throw new Error("프로젝트 경로는 폴더여야 합니다.");
+  const resolved = await validateProject(inputPath);
+  syncActiveConversation();
   projectPath = resolved;
   workspaceMode = "project";
   projectTrust = await readProjectTrust(resolved);
-  resetConversationCollection();
+  restoreWorkspaceConversation();
   selectedSkill = null;
   activeRole = "general";
   skills = [];
@@ -498,20 +572,21 @@ async function selectProject(inputPath: string): Promise<void> {
 async function setWorkspaceMode(mode: WorkspaceMode): Promise<void> {
   if (turnId || runIsActive()) throw new Error("진행 중인 작업을 중단한 뒤 사용 모드를 바꿔주세요.");
   if (mode === workspaceMode) return;
+  syncActiveConversation();
   workspaceMode = mode;
   if (mode === "research") {
     projectPath = null;
     projectTrust = "untrusted";
     researchNetworkAccess = false;
     skills = [];
-    resetConversationCollection();
+    restoreWorkspaceConversation();
     await ensureAppServer();
     broadcast({ type: "skills.list", skills, errors: [] });
     broadcastConversationState();
     publishActivity(localActivity("idle", "조사 모드로 전환했습니다", "폴더 연결 없이 웹·시장 정보를 확인할 수 있습니다."));
     return;
   }
-  resetConversationCollection();
+  restoreWorkspaceConversation();
   broadcastConversationState();
   broadcast({ type: "skills.list", skills, errors: [] });
   publishActivity(localActivity("idle", "프로젝트 모드로 전환했습니다", "폴더를 연결하면 파일 작업을 사용할 수 있습니다."));
@@ -528,7 +603,6 @@ async function trustCurrentProject(): Promise<void> {
   if (turnId || runIsActive()) throw new Error("진행 중인 작업을 중단한 뒤 프로젝트를 신뢰하세요.");
   await trustProject(projectPath);
   projectTrust = "trusted";
-  resetActiveConversationRuntime();
   syncActiveConversation();
   selectedSkill = null;
   activeRole = "general";
@@ -553,18 +627,26 @@ async function pickAndSelectProject(socket: WebSocket): Promise<void> {
 }
 
 async function ensureThread(): Promise<string> {
-  if (threadId) return threadId;
+  if (threadId && loadedThreads.has(threadId)) return threadId;
   if (workspaceMode === "project" && !projectPath) throw new Error("먼저 프로젝트 폴더를 선택하세요.");
   const params: JsonObject = {
     approvalPolicy: "on-request",
     sandbox: workspaceMode === "research" ? "read-only" : "workspace-write",
     experimentalRawEvents: false,
+    ephemeral: false,
   };
   if (projectPath) params.cwd = projectPath;
-  const response = await appServer.request<ThreadStartResponse>("thread/start", params);
+  if (threadId) {
+    params.threadId = threadId;
+    params.excludeTurns = true;
+  }
+  // Resume failure leaves the saved thread intact; never silently start over.
+  const response = await appServer.request<ThreadStartResponse>(threadId ? "thread/resume" : "thread/start", params);
   const id = response.thread?.id;
   if (!id) throw new Error("Codex가 작업 스레드 ID를 반환하지 않았습니다.");
+  if (threadId && id !== threadId) throw new Error("저장한 대화와 재개된 스레드가 일치하지 않습니다.");
   threadId = id;
+  loadedThreads.add(id);
   syncActiveConversation();
   broadcastState();
   return id;
@@ -584,7 +666,7 @@ function coordinatorPrompt(prompt: string): string {
   if (workspaceMode === "research") {
     lines.splice(4, 0, "현재는 폴더 없는 조사 모드입니다. 파일을 읽거나 수정하는 작업은 계획에 넣지 말고 웹·시장 정보 조사만 하세요.");
   }
-  const previous = activeConversation().contextSummary;
+  const previous = conversationContext();
   if (previous) lines.push("", "이 대화의 이전 결과 참고:", previous.slice(0, 8_000));
   return lines.join("\n");
 }
@@ -643,7 +725,7 @@ function taskPrompt(run: RunSnapshot, task: TaskNode): string {
     "선행 작업 결과:",
     dependencyContext(run, task),
   ];
-  const previous = activeConversation().contextSummary;
+  const previous = conversationContext();
   if (previous && task.id !== "report") lines.push("", "이 대화의 이전 결과 참고:", previous.slice(0, 8_000));
   return lines.join("\n");
 }
@@ -687,6 +769,7 @@ function finalizeTeamRunIfDone(): void {
   conversation.messageCount += 1;
   updateConversationPreview(summary);
   syncActiveConversation();
+  completeConversationReply(activeRun.status === "completed" ? "completed" : activeRun.status === "interrupted" ? "interrupted" : "failed");
   broadcast({ type: "assistant.text", text: assistantText });
   petState = activeRun.status === "completed" ? "success" : activeRun.status === "interrupted" ? "idle" : "error";
   publishRun(activeRun);
@@ -739,6 +822,7 @@ async function launchTeamTask(runId: string, taskId: string): Promise<void> {
   let task = activeRun.tasks.find((candidate) => candidate.id === taskId);
   if (!task || task.status !== "running") return;
   try {
+    if (projectPath) await validateProject(projectPath);
     const threadParams: JsonObject = {
       approvalPolicy: "on-request",
       sandbox: workspaceMode === "research" || task.access === "read" ? "read-only" : "workspace-write",
@@ -849,7 +933,7 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
   if (turnId || runIsActive()) throw new Error("이미 작업이 진행 중입니다.");
   const prompt = message.prompt.trim();
   if (!prompt) throw new Error("Codex에 전달할 업무를 입력하세요.");
-  startConversationPrompt(prompt);
+  if (projectPath) await validateProject(projectPath);
   await ensureAppServer();
   if (message.model && models.length > 0 && !models.some((candidate) => candidate.model === message.model)) {
     throw new Error("선택한 모델을 현재 Codex App Server에서 사용할 수 없습니다.");
@@ -866,6 +950,7 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
   }
   activeModel = message.model ?? selectedModelInfo?.model ?? null;
   activeEffort = message.effort ?? selectedModelInfo?.defaultReasoningEffort ?? null;
+  startConversationPrompt(prompt);
   assistantText = "";
   if ((message.executionMode ?? "team") !== "team") {
     activeRun = null;
@@ -874,7 +959,8 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
     broadcast({ type: "run.state", run: null });
   }
   broadcast({ type: "assistant.text", text: assistantText });
-  broadcastState();
+  syncActiveConversation();
+  broadcastConversationState();
 
   let rationale: string;
   if (message.skillMode === "manual") {
@@ -902,9 +988,8 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
     return;
   }
 
-  const hadThread = Boolean(threadId);
   const activeThreadId = await ensureThread();
-  const previous = !hadThread ? activeConversation().contextSummary : "";
+  const previous = conversationContext();
   const contextualPrompt = previous
     ? `이전 대화의 마지막 결과를 참고하세요:\n${previous.slice(0, 8_000)}\n\n새 요청:\n${prompt}`
     : prompt;
@@ -1154,7 +1239,7 @@ async function handleClientMessage(socket: WebSocket, raw: string): Promise<void
       newConversation();
       break;
     case "conversation.select":
-      selectConversation(message.conversationId);
+      await selectConversation(message.conversationId);
       break;
     case "skills.refresh":
       await loadSkills(true);
@@ -1183,15 +1268,10 @@ appServer.on("ready", () => {
 appServer.on("exit", (error: Error) => {
   appServerReady = false;
   petState = "error";
-  // App Server thread IDs are scoped to the child process. Never reuse an ID
-  // after that process exits, otherwise the next turn can target a missing
-  // thread and surface "no thread with id" from Codex.
-  threadId = null;
+  // Persistent Solo threads must be resumed in the next child process.
+  loadedThreads.clear();
   turnId = null;
-  for (const conversation of conversations.values()) conversation.threadId = null;
   runtimeRegistry.clear();
-  taskAssistantText.clear();
-  assistantText = "";
   syncActiveConversation();
   cancelPendingApprovals(() => true);
   if (activeRun && runIsActive()) {
@@ -1199,6 +1279,7 @@ appServer.on("exit", (error: Error) => {
     publishRun(activeRun);
     finalizeTeamRunIfDone();
   }
+  completeConversationReply("interrupted");
   broadcastError(error, false);
   broadcastState();
 });
@@ -1272,6 +1353,8 @@ appServer.on("notification", (notification: ProtocolNotification) => {
     if (completedId && context) runtimeRegistry.completeTurn(completedId);
     else {
       turnId = null;
+      syncActiveConversation();
+      completeConversationReply(status === "completed" ? "completed" : status === "interrupted" ? "interrupted" : "failed");
       if (status === "completed" && assistantText.trim()) {
         const conversation = activeConversation();
         conversation.contextSummary = assistantText.slice(0, 10_000);
@@ -1359,6 +1442,7 @@ const httpServer = createServer((request, response) => {
 });
 
 const wsServer = new WebSocketServer({ noServer: true });
+let clientQueue: Promise<void> = Promise.resolve();
 httpServer.on("upgrade", (request, socket, head) => {
   if (request.url !== "/ws" || !isAllowedOrigin(request)) {
     socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
@@ -1372,6 +1456,7 @@ wsServer.on("connection", (socket) => {
   sockets.add(socket);
   send(socket, { type: "bridge.state", snapshot: snapshot(true) });
   send(socket, { type: "conversation.state", state: conversationState() });
+  if (historyError) send(socket, { type: "error", message: historyError, recoverable: true });
   send(socket, { type: "assistant.text", text: assistantText });
   for (const [taskId, text] of taskAssistantText) {
     const context = activeRun?.tasks.find((task) => task.id === taskId);
@@ -1388,13 +1473,41 @@ wsServer.on("connection", (socket) => {
   send(socket, { type: "models.list", models, errors: [] });
   for (const pending of pendingApprovals.values()) send(socket, { type: "approval.request", approval: pending.approval });
   socket.on("message", (data) => {
-    void handleClientMessage(socket, data.toString()).catch((error) => {
+    const raw = data.toString();
+    clientQueue = clientQueue.then(() => handleClientMessage(socket, raw)).catch((error) => {
+      if (!turnId && !runIsActive()) completeConversationReply("failed");
       send(socket, { type: "error", message: errorMessage(error), recoverable: true });
+      broadcastConversationState();
     });
   });
   socket.on("close", () => sockets.delete(socket));
   socket.on("error", () => sockets.delete(socket));
 });
+
+try {
+  const archive = await conversationStore.load();
+  if (archive) {
+    conversations.clear();
+    for (const conversation of archive.conversations) conversations.set(conversation.id, conversation);
+    activeConversationId = archive.activeConversationId;
+    const restored = activeConversation();
+    projectPath = restored.projectPath;
+    workspaceMode = restored.workspaceMode;
+    restoreConversationRuntime(restored);
+    if (projectPath) {
+      try {
+        await validateProject(projectPath);
+        projectTrust = await readProjectTrust(projectPath);
+      } catch {
+        projectPath = null;
+        historyError = "이전 프로젝트 폴더를 찾을 수 없습니다. 폴더를 다시 연결하세요. 저장된 기록은 유지됩니다.";
+      }
+    }
+  }
+} catch {
+  historyWritable = false;
+  historyError = "대화 기록을 읽지 못했습니다. 기존 .local-data/history.json은 덮어쓰지 않습니다. 파일과 저장 권한을 확인하세요.";
+}
 
 httpServer.listen(PORT, HOST, () => {
   const appUrl = `http://${HOST}:${PORT}`;
@@ -1417,13 +1530,20 @@ httpServer.listen(PORT, HOST, () => {
     }
     try {
       await loadModels();
+      await loadSkills(true);
     } catch (error) {
       broadcast({ type: "models.list", models: [], errors: [errorMessage(error)] });
     }
   })();
 });
 
-function shutdown(): void {
+async function shutdown(): Promise<void> {
+  if (saveTimer) clearTimeout(saveTimer);
+  syncActiveConversation();
+  if (saveTimer) clearTimeout(saveTimer);
+  if (historyWritable) {
+    try { await saveConversations(); } catch { console.error("대화 기록을 저장하지 못했습니다."); }
+  }
   for (const socket of sockets) socket.close(1001, "Server shutting down");
   appServer.stop();
   httpServer.close(() => process.exit(0));
