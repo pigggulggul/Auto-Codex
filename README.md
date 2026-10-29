@@ -2,6 +2,8 @@
 
 Codex Local 작업을 역할별 에이전트에게 자동 분배하고, 픽셀 아트 사무실에서 실행 상태를 보여주는 로컬 웹 앱입니다. Node Bridge가 `codex app-server`와 JSONL로 통신하면서 실제 thread, turn, 도구, 파일 변경, 명령 실행, 승인 요청만 화면 상태로 변환합니다.
 
+기본 화면은 Atelier 디자인의 공통 작업실입니다. 일반 작업·대화/결과·활동 센터·픽셀 화면·설정은 기존 기능에 연결되어 있으며, 메뉴나 설정에서 `기존 화면으로 전환`할 수 있습니다. 디자인 편집 UI·AI 생성은 아직 준비 중입니다. 브리지의 별도 SQLite·파일·WS 저장소와 백업은 [3단계 기록](docs/atelier/STAGE3_IMPLEMENTATION.md)처럼 구현했으며, 수동 작업실 UI 연결은 다음 단계입니다.
+
 ## 현재 범위
 
 - localhost 전용 React/Vite UI
@@ -39,9 +41,9 @@ Manual에서 지정한 캐릭터는 선택한 프로젝트 경로별로 브라�
 
 필수 조건:
 
-- Node.js 20 이상
-- Codex CLI가 PATH에 설치되어 있고 로그인되어 있어야 함
-- `codex app-server`를 지원하는 Codex CLI 버전
+- Node.js 22.13 이상 (`node:sqlite` 실제 기능을 시작 전에 검사)
+- Codex 작업 실행에는 PATH의 로그인된 Codex CLI와 `codex app-server` 지원이 필요함
+- CLI가 없어도 브리지의 Atelier 저장소·WS는 작동함. 현재 디자인 편집 UI는 아직 준비 중
 
 가장 간단한 실행 방법은 프로젝트 폴더의 `START_AUTO_CODEX.cmd`를 더블클릭하는 것입니다. 빌드와 로컬 브리지를 시작한 뒤 기본 브라우저로 대시보드를 엽니다. Auto Codex를 사용하는 동안 함께 열린 터미널 창을 닫지 마세요.
 
@@ -94,6 +96,13 @@ npm start
 npm run typecheck
 npm test
 npm run build
+```
+
+`npm test`는 `src/`, `server/`, `shared/`의 Vitest 테스트를 실행합니다. [2단계 도메인](docs/atelier/STAGE2_IMPLEMENTATION.md), [3단계 저장소](docs/atelier/STAGE3_IMPLEMENTATION.md), [4단계 수동 작업실](docs/atelier/STAGE4_IMPLEMENTATION.md), [5단계 읽기 전용 제안](docs/atelier/STAGE5_IMPLEMENTATION.md)을 참고하세요. AI 없이 설계·원본/크롭/서체·프롬프트/ZIP·수동 결과·검토·수정을 저장할 수 있습니다. AI 제안은 기존 Codex App Server 연결이 필요하며 후보를 사용자가 선택 적용합니다. 제작 실행은 후속 단계입니다. 빌드 후 `node tools/verify-atelier-storage.mjs`, `node tools/verify-atelier-proposals.mjs`로 실제 격리된 WS 검사(후자는 합성 App Server, 실제 모델 호출 없음)를 재현할 수 있습니다. 새 데이터는 `.local-data/atelier/`에만 저장하며 기존 history.json·원본 Atelier DB를 이전하거나 덮어쓰지 않습니다. 원본 Atelier의 테스트는 Node 내장 테스트 러너를 사용하므로 별도로 실행합니다.
+
+```powershell
+npm --prefix atelier/atelier run check
+npm --prefix atelier/atelier test
 ```
 
 ## 보안 경계

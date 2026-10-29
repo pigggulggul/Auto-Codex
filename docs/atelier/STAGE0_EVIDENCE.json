@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "stage": 0,
+  "recordedAt": "2026-10-29T19:58:15.3575147+09:00",
+  "timezone": "Asia/Seoul",
+  "branch": "main",
+  "initialHead": "e66837b6f9ee74b7fbb4a1c0fbaad2034765540b",
+  "verificationHead": "2fed4b606f6fafad3d2859bf48edfd9d63a6a655",
+  "initialDirtyEntries": 174,
+  "sourceIntegrity": {
+    "manifest": "STAGE0_SOURCE_MANIFEST.json",
+    "files": 192,
+    "changedFiles": [],
+    "matched": true
+  },
+  "environment": {
+    "os": "Windows",
+    "node": "v22.20.0",
+    "npm": "11.6.2",
+    "sqlite": "3.50.4",
+    "sqliteProbe": "in-memory DatabaseSync only",
+    "runtimeMinimumProposed": "22.13.0",
+    "minimumVersionActuallyTested": false
+  },
+  "checks": [
+    {
+      "id": "typecheck",
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "startedAt": "2026-10-29T19:46:34.9500296+09:00",
+      "elapsedSeconds": 4.0882694,
+      "execution": null,
+      "localLog": ".cache/atelier-stage0-20261029/typecheck.log",
+      "logSha256": "07c5697a8b8adbf0153834d3dde0047b48fd882455aca7ca533d914a5c7de3de"
+    },
+    {
+      "id": "root-test",
+      "command": "npm test",
+      "exitCode": 1,
+      "startedAt": "2026-10-29T19:46:40.5281596+09:00",
+      "elapsedSeconds": 8.7127355,
+      "execution": null,
+      "localLog": ".cache/atelier-stage0-20261029/root-test.log",
+      "logSha256": "f763db47dfc35d2ca5f72367c2cdb0630a7d998143ec23328cc47e1818de32dc"
+    },
+    {
+      "id": "root-test-workspace-temp",
+      "command": "npm test",
+      "exitCode": 1,
+      "startedAt": "2026-10-29T19:47:28.9231464+09:00",
+      "elapsedSeconds": 7.8577049,
+      "execution": null,
+      "localLog": ".cache/atelier-stage0-20261029/root-test-workspace-temp.log",
+      "logSha256": "c63cad311d34d6b9651fc48daad19db7081eba4654b80fc87ac90c0db0a09cc1"
+    },
+    {
+      "id": "atelier-check",
+      "command": "npm --prefix atelier/atelier run check",
+      "exitCode": 0,
+      "startedAt": "2026-10-29T19:46:50.825527+09:00",
+      "elapsedSeconds": 4.4378298,
+      "execution": null,
+      "localLog": ".cache/atelier-stage0-20261029/atelier-check.log",
+      "logSha256": "246c4380532258ffb1811f4487505d471c3ac7033c611e928e571b506d3f1737"
+    },
+    {
+      "id": "build",
+      "command": "npm run build",
+      "exitCode": 0,
+      "startedAt": "2026-10-29T19:47:28.8633088+09:00",
+      "elapsedSeconds": 10.0958899,
+      "execution": null,
+      "localLog": ".cache/atelier-stage0-20261029/build.log",
+      "logSha256": "a2f1ecf8a6590f3a357fe678bc5c87389d18d09f8fd203a655d25a40dbdca5ac"
+    },
+    {
+      "id": "root-test-authorized",
+      "command": "npm test",
+      "exitCode": 1,
+      "startedAt": "2026-10-29T19:48:40.1840234+09:00",
+      "elapsedSeconds": 3.6464504,
+      "execution": "expanded local test permissions",
+      "localLog": ".cache/atelier-stage0-20261029/root-test-authorized.log",
+      "logSha256": "f0b38af8e362dd001dd8c396b70956fb4ddb6df0768be2713615b1abdac84048"
+    },
+    {
+      "id": "root-test-scoped",
+      "command": "npm test -- src server",
+      "exitCode": 1,
+      "startedAt": "2026-10-29T19:48:56.4561756+09:00",
+      "elapsedSeconds": 3.2292222,
+      "execution": "expanded local test permissions",
+      "localLog": ".cache/atelier-stage0-20261029/root-test-scoped.log",
+      "logSha256": "a86cbc0fbbe71235ebc680cb516f30a4eeabca2df463147d8360ff49b68d1159"
+    },
+    {
+      "id": "atelier-test-authorized",
+      "command": "npm --prefix atelier/atelier test",
+      "exitCode": 0,
+      "startedAt": "2026-10-29T19:48:59.7322292+09:00",
+      "elapsedSeconds": 1.5266638,
+      "execution": "expanded local test permissions",
+      "localLog": ".cache/atelier-stage0-20261029/atelier-test-authorized.log",
+      "logSha256": "6d756cd547ae3c0f60bb9890dcd7900343f52461b6d956b8f6e0bf1ccca4d283"
+    },
+    {
+      "id": "restart",
+      "command": "node tools/verify-conversation-restart.mjs",
+      "exitCode": 1,
+      "startedAt": "2026-10-29T19:48:01.6186782+09:00",
+      "elapsedSeconds": 1.0189698,
+      "execution": null,
+      "localLog": ".cache/atelier-stage0-20261029/restart.log",
+      "logSha256": "e607cac85a6c45e380a8cb4b02c1e80ac0c7978b1398b789dc43fdf786806531"
+    },
+    {
+      "id": "restart-authorized",
+      "command": "node tools/verify-conversation-restart.mjs",
+      "exitCode": 0,
+      "startedAt": "2026-10-29T19:49:01.2730167+09:00",
+      "elapsedSeconds": 2.6531226,
+      "execution": "expanded local test permissions",
+      "localLog": ".cache/atelier-stage0-20261029/restart-authorized.log",
+      "logSha256": "87443fdd384e26579261370e318010e2c48e6854e8becee44d2e6ebd7576b186"
+    },
+    {
+      "id": "root-test-separated",
+      "command": "npm test -- --exclude 'atelier/**'",
+      "exitCode": 0,
+      "startedAt": "2026-10-29T19:49:15.6153296+09:00",
+      "elapsedSeconds": 3.1253933,
+      "execution": "expanded local test permissions; diagnostic runner separation",
+      "localLog": ".cache/atelier-stage0-20261029/root-test-separated.log",
+      "logSha256": "5c883f2e57a541eeb6637b7cc6dbece76cd16e1b045cfecf2908b7ef40d200b8"
+    }
+  ],
+  "interruptedChecks": [
+    {
+      "id": "atelier-test",
+      "command": "npm --prefix atelier/atelier test",
+      "execution": "default sandbox",
+      "outcome": "interrupted after loopback fixture failure/wait; superseded by sequential authorized run",
+      "localLog": ".cache/atelier-stage0-20261029/atelier-test.log",
+      "logSha256": "5471d54ae84836c45903ac411d936fc892f94abffa1fc3971d6abd9d429c2aa9"
+    }
+  ],
+  "observedResults": {
+    "defaultRootTest": "failed: node:test suites collected by Vitest",
+    "authorizedRootVitestPassed": 81,
+    "authorizedRootFilesPassed": 18,
+    "authorizedRootForeignSuitesFailed": 5,
+    "separatedRootTestsPassed": 81,
+    "separatedRootSkipped": 0,
+    "atelierTestsPassed": 53,
+    "atelierSkipped": 0,
+    "atelierSyntaxModules": 14,
+    "syntheticRestart": "passed",
+    "sourceFilesChanged": 0
+  },
+  "coverageLimits": [
+    "No live Codex/model/tool invocation",
+    "No live UI/accessibility/mobile verification",
+    "No Node 22.13.0 host run",
+    "No new contracts implemented or tested",
+    "No existing user data migration"
+  ]
+}

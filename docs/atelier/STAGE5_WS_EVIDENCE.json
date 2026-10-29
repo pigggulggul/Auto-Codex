@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "synthetic": true,
+  "liveModel": false,
+  "sharedAppServer": true,
+  "readOnlyNetworkOff": true,
+  "earlyCompletion": true,
+  "invalidOutput": true,
+  "modelFailure": true,
+  "policyDenied": true,
+  "staleApply": true,
+  "interrupt": true,
+  "globalLockBothDirections": true,
+  "startFailureRecovery": true,
+  "activeDeleteDenied": true,
+  "interruptCorrelation": true,
+  "conversationUnchangedByProposal": true,
+  "proposalTurns": 9
+}

@@ -13,6 +13,7 @@ import type {
   ConversationMessage,
 } from "../../shared/protocol";
 import { loadTokenUsage, mergeTokenUsage, saveTokenUsage, summarizeTokenUsage } from "../lib/tokenUsage";
+import { AtelierApi } from '../features/atelier/api';
 
 const EMPTY_SNAPSHOT: BridgeSnapshot = {
   connected: false,
@@ -44,6 +45,9 @@ function bridgeUrl(): string {
 }
 
 export function useBridge() {
+  const atelierRef = useRef<AtelierApi | null>(null);
+  if (!atelierRef.current) atelierRef.current = new AtelierApi();
+  const atelierApi = atelierRef.current;
   const socketRef = useRef<WebSocket | null>(null);
   const retryRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
@@ -73,13 +77,16 @@ export function useBridge() {
       const socket = new WebSocket(bridgeUrl());
       socketRef.current = socket;
       socket.addEventListener("open", () => {
+        atelierApi.connect(text => socket.send(text));
         retryCountRef.current = 0;
         setLastError(null);
       });
       socket.addEventListener("message", (event) => {
         let message: ServerMessage;
         try {
-          message = JSON.parse(String(event.data)) as ServerMessage;
+          const decoded: unknown = JSON.parse(String(event.data));
+          if (atelierApi.receive(decoded)) return;
+          message = decoded as ServerMessage;
         } catch {
           setLastError("브리지에서 해석할 수 없는 메시지를 받았습니다.");
           return;
@@ -163,6 +170,7 @@ export function useBridge() {
       socket.addEventListener("close", () => {
         if (socketRef.current !== socket) return;
         socketRef.current = null;
+        atelierApi.disconnect();
         setSnapshot((current) => ({ ...current, connected: false, appServerReady: false, petState: "connecting" }));
         setApprovals([]);
         setTurnStatus("idle");
@@ -181,6 +189,7 @@ export function useBridge() {
       disposed = true;
       if (retryRef.current !== null) window.clearTimeout(retryRef.current);
       socketRef.current?.close();
+      atelierApi.disconnect();
     };
   }, []);
 
@@ -196,6 +205,7 @@ export function useBridge() {
   }, []);
 
   return {
+    atelierApi,
     snapshot,
     skills,
     skillErrors,

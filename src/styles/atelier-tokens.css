@@ -1,0 +1,37 @@
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/atelier-assets/instrument-serif.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("/atelier-assets/instrument-sans.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+.atelier-app {
+  color-scheme: light;
+  --atelier-ink: #343432;
+  --atelier-muted: #767671;
+  --atelier-line: #e9e9e4;
+  --atelier-paper: #fff;
+  --atelier-wash: #f7f7f4;
+  --atelier-accent: #ff365d;
+  --atelier-rose: #fff0f2;
+  --atelier-serif: "Instrument Serif", Georgia, serif;
+  --atelier-sans: "Instrument Sans", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+  --surface: var(--atelier-paper);
+  --surface-raised: var(--atelier-wash);
+  --line: var(--atelier-line);
+  --muted: var(--atelier-muted);
+  --violet: #c32e4d;
+  --mint: #33765c;
+  --amber: #9b631f;
+  --coral: #bb3447;
+  --blue: #436690;
+  color: var(--atelier-ink);
+  background: var(--atelier-paper);
+  font: 14px/1.75 var(--atelier-sans);
+  font-synthesis: none;
+}

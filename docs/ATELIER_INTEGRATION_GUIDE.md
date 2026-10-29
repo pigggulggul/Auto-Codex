@@ -4,6 +4,8 @@
 
 이 문서는 이후 코딩 에이전트에게 단계별 구현을 지시하기 위한 설계·작업 가이드다. **통합 후 제품은 Atelier의 디자인과 설계 작업 흐름을 기본으로 사용하며, Auto-Codex의 기존 실행·대화·승인·시각화 기능을 모두 포함한다.** UI/UX 디자인 생성은 여기에 추가되는 기능이다. 이 문서를 작성한 시점에는 해당 통합을 구현하거나 실행 검증하지 않았다.
 
+진행 기록: [0단계 기준선](atelier/STAGE0_BASELINE.md), [기능·메시지·테스트 보존표](atelier/FEATURE_PRESERVATION.md), [단계별 계약 v1](atelier/CONTRACTS.md), [1단계 공통 셸](atelier/STAGE1_IMPLEMENTATION.md), [2단계 도메인](atelier/STAGE2_IMPLEMENTATION.md), [3단계 저장소·WS·백업](atelier/STAGE3_IMPLEMENTATION.md), [4단계 수동 React 작업실](atelier/STAGE4_IMPLEMENTATION.md), [5단계 읽기 전용 AI 제안](atelier/STAGE5_IMPLEMENTATION.md). 공통 셸·순수 도메인·저장소·수동 작업실과 네 목적의 명시적 제안 적용을 구현했다. 실제 모델 호출은 미검증이며 합성 프로토콜 검증과 구분한다. 제작·산출물 연결과 통합 AI 백업은 후속 제안이다. [로컬 도메인 계약](atelier/DOMAIN_CONTRACT.md)과 각 단계의 지원 필드·한도·검증 기록을 따른다. 기본 npm test의 러너 검색 범위 충돌은 해결했다.
+
 ## 1. 제품 방향과 완료 모습
 
 ### 1.1 통합 원칙

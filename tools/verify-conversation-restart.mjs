@@ -118,5 +118,12 @@ try {
   assert.equal(last("bridge.state").snapshot.activeConversationId, chatB);
   assert.equal(last("bridge.state").snapshot.projectPath, null);
   assert.equal(last("conversation.state").state.id, chatB);
-  console.log("PASS: project switching, transcript restore, durable thread resume, partial team recovery, expired approval rejection, network disabled.");
+  await exchange({ type: "project.select", path: projectA }, (message) => message.type === "project.selected", "project A for stop during start");
+  const interruptBoundary = received.length;
+  send({type:"turn.start",prompt:"HOLD_START_FOR_INTERRUPT",skillMode:"auto",executionMode:"solo"});
+  send({type:"turn.interrupt"});
+  await until(() => received.slice(interruptBoundary).some(message => message.type === "turn.state" && message.status === "interrupted"), "stop during delayed turn start");
+  const finalCalls = (await readFile(requests,"utf8")).trim().split("\n").map(JSON.parse);
+  assert(finalCalls.some(call => call.method === "turn/interrupt"));
+  console.log("PASS: project switching, transcript restore, durable thread resume, partial team recovery, expired approval rejection, network disabled, interrupt during delayed start.");
 } finally { await stop(); }

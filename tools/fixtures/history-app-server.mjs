@@ -13,7 +13,15 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     : message.method === "turn/start" ? { turn: { id: randomUUID() } }
     : message.method === "model/list" ? { data: [] }
     : message.method === "skills/list" ? { data: [] } : {};
+  if (message.method === "turn/start" && JSON.stringify(message.params.input).includes("HOLD_START_FOR_INTERRUPT")) {
+    setTimeout(() => {
+      send({id:message.id,result});
+      send({method:"turn/started",params:{threadId:message.params.threadId,turn:result.turn}});
+    },150);
+    return;
+  }
   send({ id: message.id, result });
+  if (message.method === "turn/interrupt") send({method:"turn/completed",params:{threadId:message.params.threadId,turn:{id:message.params.turnId,status:"interrupted"}}});
   if (message.method !== "turn/start") return;
   const threadId = message.params.threadId;
   const turn = result.turn;

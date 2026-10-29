@@ -5,6 +5,8 @@ import "./styles.css";
 import "./metaverse.css";
 import "./pixel-world.css";
 import "./results.css";
+import "./styles/atelier-tokens.css";
+import "./styles/atelier-shell.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

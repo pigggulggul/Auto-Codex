@@ -1,0 +1,776 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "SHA-256",
+  "pathBase": "repository-root",
+  "count": 192,
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "ed6c30c4d3dbd46b6b595846fbb148299b7d7e93beff8eb33ea90c7e4ffa102d"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "debe9c504e85f61e62e3942f10569f2278dda23deceaf180661cdcd660aa0e30"
+    },
+    {
+      "path": "atelier/atelier/.gitignore",
+      "sha256": "bffee0f0c0585db38d14dd7cedbbab5b2fb5688d52e22fe324c4d39520cf0320"
+    },
+    {
+      "path": "atelier/atelier/사용가이드.md",
+      "sha256": "3676a323b817ead0062a7bce2d0e7415ef820251522e3751d5a1df927841a433"
+    },
+    {
+      "path": "atelier/atelier/contracts.d.ts",
+      "sha256": "ba7914b70003306e4c5ac5f36a0b23118de8b3a036928025de0c159e2467f5e4"
+    },
+    {
+      "path": "atelier/atelier/docs/01-home.png",
+      "sha256": "d90ccca738ded7d229b805ee7f046a8b149a32b4d196b8e56ca01ea7607da557"
+    },
+    {
+      "path": "atelier/atelier/docs/02-design.png",
+      "sha256": "f14bc279ee3953cdf238ec9ec3e885b93d6d19eda9f7b4882d00964382ebf6e4"
+    },
+    {
+      "path": "atelier/atelier/docs/03-concepts.png",
+      "sha256": "37c0954c4f61b153756502c4da6bc22dbca2a9337a968099c059cbc86ce3da8d"
+    },
+    {
+      "path": "atelier/atelier/docs/04-reference.png",
+      "sha256": "4f34baac0ff5e15e6109cc5f40769cb0aa3cc0bd9300f95dd581f708a48de948"
+    },
+    {
+      "path": "atelier/atelier/docs/05-review.png",
+      "sha256": "1f8df849e2bfaf86a793f56585be62b7226336695463ab030b63807b5af96679"
+    },
+    {
+      "path": "atelier/atelier/docs/06-mobile-review.png",
+      "sha256": "d9e3deb3eb49ec558b19d6195f2a6dcee5ef163bbd6385a1457d4b6849641ac7"
+    },
+    {
+      "path": "atelier/atelier/docs/07-mobile-style.png",
+      "sha256": "2cbaf2049dca5eed2d70f783fabc3fbda3052e557a7b7d13fca7ef7b192bfdb5"
+    },
+    {
+      "path": "atelier/atelier/docs/08-flow-graph.png",
+      "sha256": "4b8df127a318e443077aa5b0ef607d49b6212a8136268f54abd21eca763f7035"
+    },
+    {
+      "path": "atelier/atelier/docs/09-scoped-output.png",
+      "sha256": "92c8d4c1bdb8ef6583e712cf6c63ceb7d742ae909abe9c96ed88a7149028e17d"
+    },
+    {
+      "path": "atelier/atelier/docs/10-mobile-scope.png",
+      "sha256": "b3e8b7e6bf98cfaa1da0900eef055feb438b1185060e7f45dc3222b3f8816f3b"
+    },
+    {
+      "path": "atelier/atelier/docs/11-local-font.png",
+      "sha256": "a50fa4bd5c96215a01b41bda37bf824dfce4ed08708c24728a7f84140f1c364f"
+    },
+    {
+      "path": "atelier/atelier/docs/12-generic-flow.png",
+      "sha256": "8c7da0ebb6a8b3f9263cd5894713f253619945fce37f6cb71f9e82c5a67d0915"
+    },
+    {
+      "path": "atelier/atelier/docs/13-di-style.png",
+      "sha256": "0dd5942e8e53e4df638410557cadaffe9ccfad924f7c8ae8d6cff8d6e8c6786e"
+    },
+    {
+      "path": "atelier/atelier/docs/14-liar-reference.png",
+      "sha256": "40ef0a13651cfe8d7a4cba16961b313b8499ec446f4de2949eb12f10b7c65588"
+    },
+    {
+      "path": "atelier/atelier/docs/15-survey-review.png",
+      "sha256": "df60fefb05e59a42300a3fda42d3882ede342c5b17cc5a13e29be892dc78b57f"
+    },
+    {
+      "path": "atelier/atelier/docs/16-liar-prompt.png",
+      "sha256": "f73eef6e2dfc5990679b6115a8787d121005c47157205bec66d84f1232f28558"
+    },
+    {
+      "path": "atelier/atelier/docs/17-worldcup-prompt.png",
+      "sha256": "97d93b66f10cabc1c83eacf33690d518d576af68304a72650171100662abd190"
+    },
+    {
+      "path": "atelier/atelier/docs/18-survey-prompt.png",
+      "sha256": "f755be6b2a33fee2786de260d8b7855c4965df5a6c6a1619fa7a8aded286d4b0"
+    },
+    {
+      "path": "atelier/atelier/docs/19-di-recheck.png",
+      "sha256": "02d04110319ea631be8e52c9740f28f01df6ef558143028e257ceddce8bd46f0"
+    },
+    {
+      "path": "atelier/atelier/docs/20-first-task.png",
+      "sha256": "3896aba6599b8fa0b0214e67e4f2bc6a44a1306c0f12867e1e95bccb73cb7584"
+    },
+    {
+      "path": "atelier/atelier/docs/21-mobile-first-task.png",
+      "sha256": "d280eda1f4cb5fef49b08d277b22d76de93963aa2bb039559ceb3e12487b642b"
+    },
+    {
+      "path": "atelier/atelier/docs/22-mobile-style.png",
+      "sha256": "4d97fde19276f6804d8240644dba6b35391b94129ee394c1982fbf77dfd199f9"
+    },
+    {
+      "path": "atelier/atelier/docs/서비스_명세_v1_3.md",
+      "sha256": "2dbb3536d6f4d061a36f4fb5cbba9821c8420756127aff114cb489544b50cd2d"
+    },
+    {
+      "path": "atelier/atelier/docs/ACCEPTANCE.md",
+      "sha256": "913c78bb3cce4808f0ac5fa586bb8a4e1e8797bf544020c7a2324a93e2a6e939"
+    },
+    {
+      "path": "atelier/atelier/docs/AI_UI_디자인_실무_가이드.docx",
+      "sha256": "c7df0c8998bfe39241e3da2bcf6cc5236bb1d5fee7e9449bb82e05bb5d770457"
+    },
+    {
+      "path": "atelier/atelier/docs/BOUNDARIES.md",
+      "sha256": "560287b7f5452389485f1aac9e3855a74e782d27741cf035056de4633d48cb06"
+    },
+    {
+      "path": "atelier/atelier/docs/DESIGN.md",
+      "sha256": "77c957da15f2191c1db4c72cb97df967e329d5673449a4812e84f051687d0e94"
+    },
+    {
+      "path": "atelier/atelier/docs/EXTENSION.md",
+      "sha256": "a7c0524418166fea508bb65cadaf1d62b4b39930f064476fbcb6ae8cf82128a8"
+    },
+    {
+      "path": "atelier/atelier/docs/LICENSES.md",
+      "sha256": "dc6399078cccb40198cf1c6443d907e9d7a98032aa577677cd2f9aa47721ea0a"
+    },
+    {
+      "path": "atelier/atelier/docs/test-summary.json",
+      "sha256": "e77e5d7e4207f4af8a89d37505bbdd208ae3e22e207b3b03c879e700501d6f88"
+    },
+    {
+      "path": "atelier/atelier/docs/UX-1.2.md",
+      "sha256": "5431f6e1fdbef9b2da1d66b8ccaba3535c995dba8d20f9e05ec28b2f99441f61"
+    },
+    {
+      "path": "atelier/atelier/docs/ux-scenarios.json",
+      "sha256": "f26cf4b6c28263e562884f8d71585efc4bf60908a6efd10b25d0d12a4fb7ad06"
+    },
+    {
+      "path": "atelier/atelier/docs/VALIDATION.md",
+      "sha256": "d3eb599d4eb4ac2d5e033ea565b2fcea7dc83edab1a753cbeec80ebbbc830cd1"
+    },
+    {
+      "path": "atelier/atelier/examples/게임_설계예시.atelier.json",
+      "sha256": "513123956f33b0e60f86c7965c8b0a407ab429930f1a63774efb29b05c51f781"
+    },
+    {
+      "path": "atelier/atelier/examples/네컷_수정_통합프롬프트.md",
+      "sha256": "c057980d59596615d929c29127ac13876ff3dbaab8c3aba5c08a4da9c8a96c3f"
+    },
+    {
+      "path": "atelier/atelier/examples/네컷_수정흐름_검증예시.atelier.json",
+      "sha256": "1201be60053fbf6654b969e763c018870910e015e5fdca4bc8b890caea5c8113"
+    },
+    {
+      "path": "atelier/atelier/examples/범위_서체_파일_검증예시.atelier.json",
+      "sha256": "ba9d24c2725f08b61daf5301c9ad05e45a84987d44018e66ea3588903a4b6616"
+    },
+    {
+      "path": "atelier/atelier/examples/DI-DO-prompt.md",
+      "sha256": "4070b5a2808aba6f95d6f740cdfe476cbcb48011a9a58761a7c9b285f6d98c83"
+    },
+    {
+      "path": "atelier/atelier/examples/DI-DO.atelier.json",
+      "sha256": "7c45dc9a837bf69feb0143e0384102e57c8717ae79b72af5b1748f10216d4860"
+    },
+    {
+      "path": "atelier/atelier/examples/liar-prompt.md",
+      "sha256": "fd70d043d220921ceb109ca3e28342dd23d60f91b5797da8bad75456bfcb7184"
+    },
+    {
+      "path": "atelier/atelier/examples/liar.atelier.json",
+      "sha256": "dbc1a3348a4e49ad0e8a7822adb7419edc66d2d4d6ba771238fdab810580c6a9"
+    },
+    {
+      "path": "atelier/atelier/examples/README.md",
+      "sha256": "e660f292b2c8ed2694601c53b18a691cf749fad97e321f3f312b0a9df0bbec40"
+    },
+    {
+      "path": "atelier/atelier/examples/survey-prompt.md",
+      "sha256": "5c0c112d3434ecb1d810975e2ad03cd8b6e4f464c07836ff3814f5f3256dff79"
+    },
+    {
+      "path": "atelier/atelier/examples/survey.atelier.json",
+      "sha256": "47e85fe9422e191b438f030753dd6ec71400017f3d7da0e4be76d71bf4f24128"
+    },
+    {
+      "path": "atelier/atelier/examples/worldcup-prompt.md",
+      "sha256": "050439820604269332f49af81d4b70796c14078718d19edb7cf0f4915c3c010f"
+    },
+    {
+      "path": "atelier/atelier/examples/worldcup.atelier.json",
+      "sha256": "f62f5497aab29e852fc8f32ead6ef9fc8fef595892b8cac6757f668f39b1362a"
+    },
+    {
+      "path": "atelier/atelier/package.json",
+      "sha256": "a136402abd8abf7d8ec3e47b9ccaf9bba2eae0a767174d25f2818178da5ad386"
+    },
+    {
+      "path": "atelier/atelier/public/app.js",
+      "sha256": "04edb3104a81be883971da746e34087acafec5fa59874681c1e570a587924950"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/brief.svg",
+      "sha256": "aabc626d10ddbc0df84c3427456382ddd3d6ce9e3a80dee1e478a1ba79aec0f9"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/concept.svg",
+      "sha256": "2f42234b337ec7ab7bc78726a9701c03a41a326fb99fdcebe3be80564f604a3d"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/download.svg",
+      "sha256": "00a3f248ea3b51d68d7829e84183a68ca5ae1c0b7018e20f53cc1314fbb2d561"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/edit.svg",
+      "sha256": "c9e08e44794cecea724657151c5a0f20f032997b659ec5102207fa3db91d3cc2"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/flow.svg",
+      "sha256": "35f4682aa4cc3a876f703f5e1643fa0ac4005b4b326b05c98abd659dc75343dd"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/folder.svg",
+      "sha256": "080a43d5e04f08d8b46f8b2b02decdb3029d42892fc1e4e347a4721a2e752ea4"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/help.svg",
+      "sha256": "4a7c609f3be731278b6f5f7d8610f62b71a4cd17c41a98cae139aeeb32e19dae"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/image.svg",
+      "sha256": "f5d8325153b126a03c9bc3f8498888f1471dbaa207fab9c6f0ace4d53901d5fa"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/prompt.svg",
+      "sha256": "7e812604e730f28ba584e042d6b2fab9a77f394ef23cf6eff9336d5b65faadc6"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/review.svg",
+      "sha256": "62efbf825942057cd52682605e625329889eee8aa41746512c7972e4c9a340b3"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/save.svg",
+      "sha256": "69c6aeb59671af680a6e92319feffcbd70dfb03a5d8f44259d1a15c2936adcd7"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/settings.svg",
+      "sha256": "b49b8ff58edd3e042f18ffc193a9286d945cf7975d477138abd45e5a2c80678e"
+    },
+    {
+      "path": "atelier/atelier/public/assets/icons/style.svg",
+      "sha256": "73d21788bda1e8c6381eea278a28c409c26054b6262237860b9b0932a274736a"
+    },
+    {
+      "path": "atelier/atelier/public/assets/instrument-sans.woff2",
+      "sha256": "6219bc4bfdfc5d9b2201dcdf046218b122a758f932e25ed5f168f929b7ca2311"
+    },
+    {
+      "path": "atelier/atelier/public/assets/instrument-serif.woff2",
+      "sha256": "60c06664b5a95c7de6cc3e00d1f9034d78bd1e40b564016b241674449a067d4d"
+    },
+    {
+      "path": "atelier/atelier/public/assets/instrumentsans-OFL.txt",
+      "sha256": "9e27a72ed30eb49a08678f6a5d6ed98ec7ba5368f541637ee0683ec9134ef966"
+    },
+    {
+      "path": "atelier/atelier/public/assets/instrumentserif-OFL.txt",
+      "sha256": "129ed7618959716959f2941fdd5b49e0ad6e6c1d78726761786a00253d865521"
+    },
+    {
+      "path": "atelier/atelier/public/domain.js",
+      "sha256": "172c1cb882cf7d06934a4e56ceaa22c6b56b528edb6e016ecca828a018c1df62"
+    },
+    {
+      "path": "atelier/atelier/public/easy-guide.js",
+      "sha256": "24c975294b6a8c1e5629431bae09fb86bb6bab18480fb48ec7ad9c4ad1fa48e7"
+    },
+    {
+      "path": "atelier/atelier/public/guide.js",
+      "sha256": "6e8bad5b6ab228ba2c34294071c92631da88f037d5be5366726a99bf10eebbf4"
+    },
+    {
+      "path": "atelier/atelier/public/index.html",
+      "sha256": "b047d9170cc89e00e806e4bb456ad993f7c45dfb4f2a6f5845aefd92f6405528"
+    },
+    {
+      "path": "atelier/atelier/public/panels.js",
+      "sha256": "78a1e5bc64207111cceaeef1efa96bb072d7eb2ebe1fa34915354b917c64b724"
+    },
+    {
+      "path": "atelier/atelier/public/resource-types.js",
+      "sha256": "da84eb15c584ef31135e0462814223034e245460938a97cbfe8eecdf6d61974a"
+    },
+    {
+      "path": "atelier/atelier/public/structure.js",
+      "sha256": "67001590d004eb2a2fe37132a63c709fd17ae7fd5b5131b0ee555faec9890f53"
+    },
+    {
+      "path": "atelier/atelier/public/styles.css",
+      "sha256": "6c3ca9ee4a9c28c78a36dbcd07c54b2b1de94f93830931b10eedea2081cceebb"
+    },
+    {
+      "path": "atelier/atelier/README.md",
+      "sha256": "67d3fc6b35082f8531d020036f865dc1d6a276d29976578b4b0d7b14284bed73"
+    },
+    {
+      "path": "atelier/atelier/scripts/check.mjs",
+      "sha256": "36d81b37405098f178d49c9b93f23c082c017af004fc79dc974db7f44051b368"
+    },
+    {
+      "path": "atelier/atelier/server.mjs",
+      "sha256": "90909c47f9b3b137fce073bbff8bf5b04838245ad5953ec8096f97cae7b293d7"
+    },
+    {
+      "path": "atelier/atelier/src/project-validation.mjs",
+      "sha256": "ee7d8d90810ce9af2f0baa5024170b917a05dad0c143708158e9de8b5829942f"
+    },
+    {
+      "path": "atelier/atelier/src/resources.mjs",
+      "sha256": "6b2dc27af09286fc387b94f8a503243616f31028315f27f3e8ef7e1ab237df55"
+    },
+    {
+      "path": "atelier/atelier/src/validation-image.mjs",
+      "sha256": "ddc3b9062dce2132ba59a6f68696d33ee66ba2e392fbf7f4434e9f4323851da2"
+    },
+    {
+      "path": "atelier/atelier/src/validation.mjs",
+      "sha256": "7fcb0bff8903c74f403f50c9acc7f6a609a633462507e1bd000e82c03654f760"
+    },
+    {
+      "path": "atelier/atelier/src/zip.mjs",
+      "sha256": "0d1d4444900dab583a558c4d383bad6f226f839396194a0b96a509cee25cc78f"
+    },
+    {
+      "path": "atelier/atelier/start.cmd",
+      "sha256": "6739cc5454612e2838f0ed72b59f21d930bc9e457d467be5793ff79649b08029"
+    },
+    {
+      "path": "atelier/atelier/tests/browser-extension.js",
+      "sha256": "5e56eef7796f057d7c66e4f2ce066f9a25c39a64a799c25b42ecd6c02de87d5b"
+    },
+    {
+      "path": "atelier/atelier/tests/browser-journey.js",
+      "sha256": "03d34da0977c6c03b21ffbad41ae723939b6ae9717ee31bd81146fa2e68a7f31"
+    },
+    {
+      "path": "atelier/atelier/tests/browser-ux-revision.js",
+      "sha256": "bb614b8a1b1a55ca54b8a38707cc93a3ab84e61b998577bb5cfffbc91456a76d"
+    },
+    {
+      "path": "atelier/atelier/tests/browser-ux.js",
+      "sha256": "58c1a792ce4789ef80349037098712509c087636fc5a907255356c235b280e5f"
+    },
+    {
+      "path": "atelier/atelier/tests/domain.test.mjs",
+      "sha256": "de3375060a0703ced552e23421f14cf628b7b3eb929562ebeae27294a0fd8b19"
+    },
+    {
+      "path": "atelier/atelier/tests/easy-guide.test.mjs",
+      "sha256": "1e2872282d270d66b07a45fdf77dbb7f13d908c4e1b0c3101bf537f182da0a2b"
+    },
+    {
+      "path": "atelier/atelier/tests/extension.test.mjs",
+      "sha256": "8475566549ebf6ea56acea56714dee74cb9c34001daefaf5de1c71db6bf30b5f"
+    },
+    {
+      "path": "atelier/atelier/tests/local-server.mjs",
+      "sha256": "6ffc8337a6bbdd9a6a750ce290b0bec9447420f350ddbb8b50b2f2e37578366d"
+    },
+    {
+      "path": "atelier/atelier/tests/resources.test.mjs",
+      "sha256": "3480457c4fe1eea62bcf5be9bc479799a11f5c4ace706080265f730e1365e5cc"
+    },
+    {
+      "path": "atelier/atelier/tests/server.test.mjs",
+      "sha256": "62bc6edbf694c7a2658fa263f6dd801c181666844927f7638f512118e1ad702e"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "2352041093e03dcb7f4fae1ed4901d79b1aacd61412db38d87f26a27b573b46a"
+    },
+    {
+      "path": "package.json",
+      "sha256": "c3d808bebc16ae0aee04f86d01b2a849c10f54975a9ad8d4460e9cf1f8b94053"
+    },
+    {
+      "path": "README.md",
+      "sha256": "ddb98ce21e1962b1ca81e7b523f8506095e3c490596f4835e57ec2d00027ac06"
+    },
+    {
+      "path": "server/activity-mapper.test.ts",
+      "sha256": "c7c191b89fc112cea8534629d2e0fa21ea22804f8bc24288ed52c7feb3ac4d91"
+    },
+    {
+      "path": "server/activity-mapper.ts",
+      "sha256": "671275b29ce86b330cfb27e6a0014b429110653baab5a548d3ef36e93c6e59e3"
+    },
+    {
+      "path": "server/approval-response.test.ts",
+      "sha256": "e1a1a4e44c5a4e902120e55aee5cb0165daec7c27cdf5dbbe49520ebdbccd116"
+    },
+    {
+      "path": "server/approval-response.ts",
+      "sha256": "1c55a8762f5a15a63560d5dc63cda2bc56210d9e3475eb7c953330c9c2785b9d"
+    },
+    {
+      "path": "server/client-message.test.ts",
+      "sha256": "bf2fc72e7426b7bbdfa4a3e6df2c92992bff9297620912fb5a9c20978301f9d4"
+    },
+    {
+      "path": "server/client-message.ts",
+      "sha256": "11001d804bd9129c824096326bb89e1f9935e31398a59b614815ff4cba1ae847"
+    },
+    {
+      "path": "server/codex-app-server.test.ts",
+      "sha256": "7e42909d3d551963b97cb2a6bfc7a84d446555f86edeb7204fd753177de78eb8"
+    },
+    {
+      "path": "server/codex-app-server.ts",
+      "sha256": "adf0e33fe08d9efaee71025620dd7b2e02be3ab1fd32137a16e3510803405501"
+    },
+    {
+      "path": "server/conversation-store.test.ts",
+      "sha256": "b227b4dea3ae9bf314b9ed758c88933486590681934691764f3711312ae74a3b"
+    },
+    {
+      "path": "server/conversation-store.ts",
+      "sha256": "05b51b27e778426de322fcfa00a1482472f26a9be9aff8c9518986d10cd9ec86"
+    },
+    {
+      "path": "server/folder-picker.ts",
+      "sha256": "167ec1fdc1dd8475e111c299a0dad6ab79e11b649278169ab65e914fc7355396"
+    },
+    {
+      "path": "server/index.ts",
+      "sha256": "8d68303b0fba1aacf117ddceeec430ddde852b618a186858b50feeb566d1107f"
+    },
+    {
+      "path": "server/orchestration.test.ts",
+      "sha256": "1fea3682c7a9d7917cd8157e33c9bd63d8fb26d8c529447ba4be146a6047adc7"
+    },
+    {
+      "path": "server/orchestration.ts",
+      "sha256": "792350cf9c69d4582769ed70f229f0a40d504affdad698546d46093f70b3ecab"
+    },
+    {
+      "path": "server/pixel-assets.test.ts",
+      "sha256": "aa6b535794b666f25029ee74bd94600d19d70847418592ca69cc06e3f07fe3be"
+    },
+    {
+      "path": "server/project-trust.test.ts",
+      "sha256": "1079597f00525e7d5145262e99da66ff34c8ae7dcfc620c0466cba285d7a0e24"
+    },
+    {
+      "path": "server/project-trust.ts",
+      "sha256": "cfc3306f7d4496ca98950fb88aba43e4574c8cc1902fb98383d2a8250100ac99"
+    },
+    {
+      "path": "server/runtime-registry.test.ts",
+      "sha256": "0dd527744184cfbfef05dc7f12d3dfe9346b752df7e49c5a0596c7ba1e85915e"
+    },
+    {
+      "path": "server/runtime-registry.ts",
+      "sha256": "59d4a9bfed98a5dba55806b03150822e235334ec3990c5123aa324873f6779b8"
+    },
+    {
+      "path": "server/skill-router.test.ts",
+      "sha256": "50c5d90b7b88e0b26d173ee1b3dca2741ea7c669d8c84324493eefc54a47d315"
+    },
+    {
+      "path": "server/skill-router.ts",
+      "sha256": "fbb92c8ac39b34f4dc71c2c0ed82801e74489d4f1dc6172a0e1ede09122252ca"
+    },
+    {
+      "path": "server/task-planner.test.ts",
+      "sha256": "b80a003c2c154704b4e7e1f1c56d7554cbc0cf51785098499d158582bfbfc31d"
+    },
+    {
+      "path": "server/task-planner.ts",
+      "sha256": "7af694e7644cad15c356bf794ed4b009f685332f0425d001e32176be130999a8"
+    },
+    {
+      "path": "server/token-usage.test.ts",
+      "sha256": "7171d40df46707009a6ebd69fe740167ed7f1f176963cbd679c450b296d06b3a"
+    },
+    {
+      "path": "server/token-usage.ts",
+      "sha256": "8326c05ac86a7d8e38a0b3d7bc28ee60806acb06b6656da55d6d76099fbb0874"
+    },
+    {
+      "path": "shared/protocol.ts",
+      "sha256": "1a2dc1a4837e86f9d06bf24eb33920c78de5272a80ce590b594f7d693aa73bf0"
+    },
+    {
+      "path": "shared/skill-catalog.ts",
+      "sha256": "f68df35e95cad335035151d14d732a575df936725b49e9de81d0b0d24fe0822f"
+    },
+    {
+      "path": "src/App.tsx",
+      "sha256": "e725a2cf0874b9d97076bc2d173933d650af88b484feeb3b56c29ba30e572858"
+    },
+    {
+      "path": "src/assets/pixel-classroom-bg.png",
+      "sha256": "fa0f120d4a14685b30a9d4cbba0f3920466adb086803f81911c14a74a4abb96e"
+    },
+    {
+      "path": "src/components/ActivityTimeline.tsx",
+      "sha256": "ee8b839aa2a7b25738af0582cb9ac7e0e41a0a566deb181e6af162de735078ef"
+    },
+    {
+      "path": "src/components/ApprovalDialog.tsx",
+      "sha256": "7bf9952066dd55e86245ceaa705b09763d98105eb598a1ab8ea13f5386c9b147"
+    },
+    {
+      "path": "src/components/ConversationPicker.tsx",
+      "sha256": "d65f98f22829ec26474607a4feb4d237ffd4da168729dec6cf427bd24e2a4015"
+    },
+    {
+      "path": "src/components/MarkdownText.test.tsx",
+      "sha256": "6da9747f1f857d0af94bb26deb129717966e748c3a9187ef9214d8c98b54f7cc"
+    },
+    {
+      "path": "src/components/MarkdownText.tsx",
+      "sha256": "693b08a755f3a95d9cdbc77df7f18a3f7ee2a2b3f2f766edf1357e891dbca2be"
+    },
+    {
+      "path": "src/components/ModelPicker.tsx",
+      "sha256": "cebdc33811b1595226026fbde52cfda91b8fd093251a5e5c9649a4262bba0f9d"
+    },
+    {
+      "path": "src/components/OperationsPanel.test.tsx",
+      "sha256": "035ad2c52c4434d801bf87e44191f4a26420c7f96491da2c1b006e5710e35903"
+    },
+    {
+      "path": "src/components/OperationsPanel.tsx",
+      "sha256": "1b7c71235a42d8b81b0de4f5ba8a78357232f48f66ed16aa6dc16f73f406538d"
+    },
+    {
+      "path": "src/components/PetStage.tsx",
+      "sha256": "d8f812ab2254afc7b4b82fdfc673209c4e798a325af0d4fdbe9f44a820af0aa9"
+    },
+    {
+      "path": "src/components/PixelOffice.tsx",
+      "sha256": "07044a823ca2fdb228175ed302ef7d54f8f74fc9bb071b0717e979acf5b7fc10"
+    },
+    {
+      "path": "src/components/ProjectPanel.tsx",
+      "sha256": "d445bd41bf4c042c6127f4d146a75b1f439b49ede74e07e48a1cc76af96a24fb"
+    },
+    {
+      "path": "src/components/ResponsePanel.tsx",
+      "sha256": "ae9bf60a9c29d205ab734232b4c6a3a4f3a20817ae0076a7dc17d2cb364be6c4"
+    },
+    {
+      "path": "src/components/ResultText.tsx",
+      "sha256": "6d99cfb136ddcc48906f322d51a68fd024a0deab391aba1d2e77697134c280ea"
+    },
+    {
+      "path": "src/components/ResultView.test.tsx",
+      "sha256": "286ff89797e55ea649577871cd0149806742951205fa2c68cac298bc0baef569"
+    },
+    {
+      "path": "src/components/ResultView.tsx",
+      "sha256": "373b3785661a9dd9c8eb9597ceb556fab25248d95d083be337146098dd9c9b6e"
+    },
+    {
+      "path": "src/components/SkillPicker.tsx",
+      "sha256": "789fc355af9801cb6f18c6ac3fa250520d331c7beda3a71800ecf38c4ed75928"
+    },
+    {
+      "path": "src/components/SpritePet.tsx",
+      "sha256": "b722e7134963cf6b8e2dfa9298f9a5634e6136685fba7767bead3a8375eafb81"
+    },
+    {
+      "path": "src/components/TaskBoard.tsx",
+      "sha256": "ca2344f06ae74c9909e9f0cae8911b04d7bcd406380216fab6645f78e4170b5c"
+    },
+    {
+      "path": "src/components/WorldCharacter.tsx",
+      "sha256": "05121db490c3ec150bcd79d93e07c2b604aaa295d62006e5d06189f33104ba56"
+    },
+    {
+      "path": "src/hooks/useBridge.ts",
+      "sha256": "6b9b25558662b206a9991d6980a93783a3a8ea3ca5dc8a21d189b76ae832d12d"
+    },
+    {
+      "path": "src/lib/characterCatalog.ts",
+      "sha256": "c8af8cd2aa3108766d4b82614533b2eecf1581aebe3af109522694788b53ef14"
+    },
+    {
+      "path": "src/lib/petCatalog.ts",
+      "sha256": "057bdc92081b94ddeab000cb79f1d7c5d4f51466517e5469a734f1020069cbd5"
+    },
+    {
+      "path": "src/lib/tokenUsage.test.ts",
+      "sha256": "f73456b79c0519e0775dda9898999bf48be14e1d163bab931ed3eea4126c4bf2"
+    },
+    {
+      "path": "src/lib/tokenUsage.ts",
+      "sha256": "96807ab434b6e120199293e23c8e5d2f5c8392f4bf2cf34f92df9350e40573f2"
+    },
+    {
+      "path": "src/lib/worldCharacters.ts",
+      "sha256": "97afddc97ad610197174d49e16ed9588b57b7738f45bd39309a875acafb32680"
+    },
+    {
+      "path": "src/main.tsx",
+      "sha256": "75f5f571fac763288f50f2c6dee20a955067b597fddbb55bf499339dfa71d89f"
+    },
+    {
+      "path": "src/metaverse.css",
+      "sha256": "338fc142b8c84463355d102121e509f4fb994059f06a02d3724db122d219683c"
+    },
+    {
+      "path": "src/pixel-world.css",
+      "sha256": "6a77dd078aa9c906ef3f4bee494b03b446c1b54f990b4786aab3b4a82a4f6dc7"
+    },
+    {
+      "path": "src/results.css",
+      "sha256": "6e61849d1291e248bd43094a5691e8bb7ce826fd0c3fb970aed10739c2b6b622"
+    },
+    {
+      "path": "src/styles.css",
+      "sha256": "dcf0caf4fc2fc4f04748f31f89764bc58fbc2566e540cfa293cdf42ce559d81c"
+    },
+    {
+      "path": "src/world/pixelWorld.test.ts",
+      "sha256": "6f49ff95af0eacb630c7e2227ed7313ff4cf83211154609fdc6f15ec66f54d03"
+    },
+    {
+      "path": "src/world/pixelWorld.ts",
+      "sha256": "fc4bc993258cd5a6532cc4194f70600ca75d54f72081b87a043e3122e9531816"
+    },
+    {
+      "path": "src/world/spriteRendering.test.ts",
+      "sha256": "39a183a62650ac81301c34f7b4e6aa45535f08f8a674b83d71f0d03f611d1cfa"
+    },
+    {
+      "path": "src/world/spriteRendering.ts",
+      "sha256": "23dd7f15c352d01274269c012cf3698e334f7b94468ef120111e6eb06d484952"
+    },
+    {
+      "path": "START_AUTO_CODEX.cmd",
+      "sha256": "f1be4d1d4967a17e26020f0ba25ff7c410ba49f8d367f027b38575a85d02c9e0"
+    },
+    {
+      "path": "tools/build-character-sprites.py",
+      "sha256": "3b2d1f6faad9801d9f29b61dd349c5ba10d2497ad47496dc0cd30e34726fcf9f"
+    },
+    {
+      "path": "tools/build-generated-pixel-assets.ps1",
+      "sha256": "f18562bda09d79abaf24c3f2d50993610e7d6edd69c1d3c7a836c09051d6c6e4"
+    },
+    {
+      "path": "tools/export-pixel-review.ps1",
+      "sha256": "1e5f26f7af0d460eceef6b707c5826771c20d2a7fc80742ce0140b525dfb55ae"
+    },
+    {
+      "path": "tools/finalize-character-sheets.ps1",
+      "sha256": "b741681b80edf0e4152e3480772f5bd7ba9ee9fe1076769c12ee9600310115ee"
+    },
+    {
+      "path": "tools/fixtures/history-app-server.mjs",
+      "sha256": "1d13ffa075abbee2a8470cc93796346f72682d1b751a814a9f213bdd2334047b"
+    },
+    {
+      "path": "tools/generated-inputs/character-family.png",
+      "sha256": "9da74ac0d13537ceae1e7bc47e0a12550639922201f17132a9c95b2ffc3fde4f"
+    },
+    {
+      "path": "tools/generated-inputs/characters/char_0.png",
+      "sha256": "039d620f0dacc7b033686946b61fab5358cdcaa5f8394eeeefd89be5cec83740"
+    },
+    {
+      "path": "tools/generated-inputs/characters/char_1.png",
+      "sha256": "397e31b982855aaecf0ec35123f6e7e4400fb23e365efc34574d14fe52dd458b"
+    },
+    {
+      "path": "tools/generated-inputs/characters/char_2.png",
+      "sha256": "0a739532fb1924789ece01a27563c71562cf34f85897cbff2f85b032c57ad10c"
+    },
+    {
+      "path": "tools/generated-inputs/characters/char_3.png",
+      "sha256": "28bf0d795a3cbe22bea159b53a464e48f25b701e3bf89553c8167ab9aa44355c"
+    },
+    {
+      "path": "tools/generated-inputs/characters/char_4.png",
+      "sha256": "899865403c971ec0661e802adb4be3d1bd5fb675a7e8e15cb91d93c7673cc0b5"
+    },
+    {
+      "path": "tools/generated-inputs/decor-atlas-v2.png",
+      "sha256": "bab8891bd0aaac7de9739b511ab7367c79553af5e720f11ed520d01f7bb83ed8"
+    },
+    {
+      "path": "tools/generated-inputs/decor-atlas.png",
+      "sha256": "b336da9968e92f0095e5de9eeca16890b2f558d1be88128c5f347071227ee7ef"
+    },
+    {
+      "path": "tools/generated-inputs/furniture-atlas-v2.png",
+      "sha256": "d80abf550091ff3dd46f699b977395f6ead815f74b093ef3a8117f7b2533c01e"
+    },
+    {
+      "path": "tools/generated-inputs/furniture-atlas.png",
+      "sha256": "5ed598953b2dd64d1210568c251e10e70a34804ed308ef3369ab79c4fa971c3f"
+    },
+    {
+      "path": "tools/generated-inputs/pet-atlas.png",
+      "sha256": "4206d46358590d733a0230de43bfc7a01cd771305d81dfcc349414c58c23dd0d"
+    },
+    {
+      "path": "tools/generated-inputs/props-v2-regions.json",
+      "sha256": "c675cd33fb054e106253ad66b1cb6cc8a8e8953f5063f9c06c4e17e437d4fa8a"
+    },
+    {
+      "path": "tools/generated-inputs/tile-atlas.png",
+      "sha256": "08fd4cf11a67b682c2ecf60bf16054beb4788055c7162194e12234648c3317d4"
+    },
+    {
+      "path": "tools/import-walk-frames.ps1",
+      "sha256": "6799de0e623958a382bb6978273e3f9873b6df254916d0225c9f4ad94dc652f7"
+    },
+    {
+      "path": "tools/lib/read-png.mjs",
+      "sha256": "cf473b1eff1908579a6dab8211973f6d17d369c5d606063fc7b62c0597205887"
+    },
+    {
+      "path": "tools/normalize-character-sheets.py",
+      "sha256": "7257684a7c16435597360639c309b1d4bc290e010ecf72fb9e511baeebc649a7"
+    },
+    {
+      "path": "tools/release-local-ports.ps1",
+      "sha256": "5987d25b7e87f0a6f105806235cd2b47985b9b8f384a99f13896b89392059ce1"
+    },
+    {
+      "path": "tools/verify-conversation-restart.mjs",
+      "sha256": "1b72ceed09d3720d437829e19841c52f3a15b414068041293fe7ed39e7d3f678"
+    },
+    {
+      "path": "tools/verify-pixel-assets.mjs",
+      "sha256": "13449583028a495e22d91846c5b85b8a02b312d0708cf4119b773e1bb2aef6d4"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "19c34bb2b00666d459f527033937e5babce9c233675a8b7efbd32c691f672b3f"
+    },
+    {
+      "path": "tsconfig.node.json",
+      "sha256": "e1f96b437d9602fbafde30c961a7c6948fbed776d272b8823f74a8ab743b34f6"
+    },
+    {
+      "path": "tsconfig.server-build.json",
+      "sha256": "e4cf6c62e42d23f851fbcf830cfabd3e9340d3fc0d30d45c049e09aac4bb5ad6"
+    },
+    {
+      "path": "vite.config.ts",
+      "sha256": "4a98362cda64d5db126fdcd4b401e0c334bffdde1eaa3a7f1b2f58a45e8cc842"
+    }
+  ]
+}

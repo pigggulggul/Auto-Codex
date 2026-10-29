@@ -46,6 +46,8 @@ import { parseClientMessage } from "./client-message.js";
 import { approvalResponse, type ApprovalProtocol } from "./approval-response.js";
 import { parseTokenUsage } from "./token-usage.js";
 import { ConversationStore, type ConversationRecord } from "./conversation-store.js";
+import { AtelierClient } from "./atelier/client.js";
+import {AtelierProposalRuntime} from "./atelier/proposal-runtime.js";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.AUTO_CODEX_PORT || 4781);
@@ -55,6 +57,9 @@ const ROOT = path.basename(MODULE_PARENT) === "build-server" ? path.resolve(MODU
 const DIST = path.join(ROOT, "dist");
 const SERVE_UI = process.argv.includes("--serve");
 const OPEN_UI = process.argv.includes("--open");
+const atelier = new AtelierClient(ROOT, (event) => {
+  for (const socket of sockets) if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
+});
 
 type RequestId = number | string;
 
@@ -118,6 +123,7 @@ let turnId: string | null = null;
 let assistantText = "";
 let projectTrust: ProjectTrust = "untrusted";
 let petState: PetState = "connecting";
+let startupCliError: string | null = null;
 let selectedSkill: SkillInfo | null = null;
 let activeRole: NonNullable<BridgeSnapshot["activeRole"]> = "general";
 let activeModel: string | null = null;
@@ -929,6 +935,7 @@ async function startTeamRun(prompt: string): Promise<void> {
 }
 
 async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>): Promise<void> {
+  if (proposalRuntime.busy) throw new Error("Atelier proposal is active; finish or interrupt it first.");
   if (workspaceMode === "project" && !projectPath) throw new Error("프로젝트 모드에서는 먼저 프로젝트 폴더를 선택하세요.");
   if (turnId || runIsActive()) throw new Error("이미 작업이 진행 중입니다.");
   const prompt = message.prompt.trim();
@@ -1022,6 +1029,7 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
 }
 
 async function interruptTurn(): Promise<void> {
+  if(proposalRuntime.busy){await proposalRuntime.interrupt();return;}
   if (activeRun && runIsActive()) {
     cancelPendingApprovals((pending) => pending.approval.runId === activeRun?.id);
     const activeTasks = activeRun.tasks.filter((task) =>
@@ -1145,6 +1153,7 @@ function approvalFromRequest(request: ProtocolServerRequest): PendingApproval | 
 }
 
 function handleServerRequest(request: ProtocolServerRequest): void {
+  if(proposalRuntime.serverRequest(request))return;
   const pending = approvalFromRequest(request);
   if (!pending) {
     appServer.respondError(request.id, -32601, `Unsupported server request: ${request.method}`);
@@ -1267,6 +1276,7 @@ appServer.on("ready", () => {
 
 appServer.on("exit", (error: Error) => {
   appServerReady = false;
+  proposalRuntime.exited();
   petState = "error";
   // Persistent Solo threads must be resumed in the next child process.
   loadedThreads.clear();
@@ -1291,6 +1301,7 @@ appServer.on("diagnostic", (message: string) => {
 appServer.on("request", (request: ProtocolServerRequest) => handleServerRequest(request));
 
 appServer.on("notification", (notification: ProtocolNotification) => {
+  if(proposalRuntime.notification(notification))return;
   if (notification.method === "item/reasoning/textDelta") return;
   broadcast({ type: "protocol.event", method: notification.method });
   const params = notification.params;
@@ -1376,12 +1387,13 @@ appServer.on("notification", (notification: ProtocolNotification) => {
 });
 
 function isAllowedOrigin(request: IncomingMessage): boolean {
+  if (![`${HOST}:${PORT}`, `localhost:${PORT}`].includes(request.headers.host ?? "")) return false;
   const origin = request.headers.origin;
   if (!origin) return true;
   try {
     const parsed = new URL(origin);
     const localHost = parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost";
-    return localHost && (parsed.port === "4780" || parsed.port === String(PORT));
+    return parsed.protocol === "http:" && origin === parsed.origin && localHost && (parsed.port === "4780" || parsed.port === String(PORT));
   } catch {
     return false;
   }
@@ -1394,6 +1406,10 @@ function contentType(filePath: string): string {
     case ".css": return "text/css; charset=utf-8";
     case ".svg": return "image/svg+xml";
     case ".png": return "image/png";
+    case ".woff2": return "font/woff2";
+    case ".woff": return "font/woff";
+    case ".txt":
+    case ".md": return "text/plain; charset=utf-8";
     case ".json": return "application/json; charset=utf-8";
     default: return "application/octet-stream";
   }
@@ -1443,6 +1459,13 @@ const httpServer = createServer((request, response) => {
 
 const wsServer = new WebSocketServer({ noServer: true });
 let clientQueue: Promise<void> = Promise.resolve();
+let queuedTurnStarts = 0;
+let interruptQueuedStarts = false;
+const proposalRuntime=new AtelierProposalRuntime(appServer,atelier,{
+  cwd:()=>validateProject(ROOT),ensure:ensureAppServer,models:()=>models,
+  busy:()=>queuedTurnStarts>0||!!turnId||runIsActive()||pendingApprovals.size>0,
+  emit:event=>{for(const socket of sockets)if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(event));}
+});
 httpServer.on("upgrade", (request, socket, head) => {
   if (request.url !== "/ws" || !isAllowedOrigin(request)) {
     socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
@@ -1453,10 +1476,16 @@ httpServer.on("upgrade", (request, socket, head) => {
 });
 
 wsServer.on("connection", (socket) => {
+  if (sockets.size >= 32) { socket.close(1013, "Local connection limit"); return; }
+  const atelierOwner = randomUUID();
+  let atelierDownloadPaused = false;
+  let priorityTokens = 10;
+  let priorityAt = Date.now();
   sockets.add(socket);
   send(socket, { type: "bridge.state", snapshot: snapshot(true) });
   send(socket, { type: "conversation.state", state: conversationState() });
   if (historyError) send(socket, { type: "error", message: historyError, recoverable: true });
+  if (!appServerReady && startupCliError) send(socket, {type:"error",message:startupCliError,recoverable:true});
   send(socket, { type: "assistant.text", text: assistantText });
   for (const [taskId, text] of taskAssistantText) {
     const context = activeRun?.tasks.find((task) => task.id === taskId);
@@ -1474,13 +1503,55 @@ wsServer.on("connection", (socket) => {
   for (const pending of pendingApprovals.values()) send(socket, { type: "approval.request", approval: pending.approval });
   socket.on("message", (data) => {
     const raw = data.toString();
-    clientQueue = clientQueue.then(() => handleClientMessage(socket, raw)).catch((error) => {
+    let type = "";
+    try { const input: unknown = JSON.parse(raw); if (input && typeof input === "object" && "type" in input && typeof input.type === "string") type = input.type; } catch { /* Existing parser reports malformed legacy input. */ }
+    if (type.startsWith("atelier.")) {
+      if(type==='atelier.project.delete'){
+        const request=JSON.parse(raw) as {clientRequestId?:unknown;payload?:{designProjectId?:unknown}};
+        if(proposalRuntime.ownsProject(request.payload?.designProjectId)){
+          socket.send(JSON.stringify({type:'atelier.response',v:1,clientRequestId:typeof request.clientRequestId==='string'?request.clientRequestId.slice(0,64):'',ok:false,error:{code:'BUSY',message:'실제 설계 제안이 종료된 뒤 프로젝트를 삭제하세요.',retryable:true}}));return;
+        }
+      }
+      // Separate worker/queue: file I/O and large backup parsing cannot block pending approvals.
+      if (socket.bufferedAmount > 1024 * 1024) atelierDownloadPaused = true;
+      if (atelierDownloadPaused && socket.bufferedAmount <= 256 * 1024) atelierDownloadPaused = false;
+      if (atelierDownloadPaused && type === "atelier.transfer.read") {
+        let clientRequestId = ""; try { clientRequestId = String(JSON.parse(raw).clientRequestId ?? "").slice(0,64); } catch { /* Invalid request. */ }
+        socket.send(JSON.stringify({ type:"atelier.response", v:1, clientRequestId, ok:false, error:{code:"BUSY",message:"다운로드 수신을 완료한 뒤 다음 chunk를 요청하세요.",retryable:true} }));
+        return;
+      }
+      void atelier.handle(atelierOwner, raw,()=>proposalRuntime.request(raw)).then((reply) => { if(reply.ok&&reply.result.kind==='capabilities')Object.assign(reply.result,{ai:appServerReady,aiPurposes:['brief','flow','concept','style'],imageInput:false,proposalPolicy:{sandbox:'readOnly',networkAccess:false}}); if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(reply)); });
+      return;
+    }
+    if (type === "approval.resolve" || type === "turn.interrupt") {
+      priorityTokens = Math.min(10, priorityTokens + (Date.now() - priorityAt) / 100);
+      priorityAt = Date.now();
+      if (priorityTokens < 1) { send(socket, {type:"error",message:"승인·중단 요청 속도 한도입니다. 잠시 후 다시 시도하세요.",recoverable:true}); return; }
+      priorityTokens--;
+      if (type === "turn.interrupt" && queuedTurnStarts > 0) interruptQueuedStarts = true;
+      // These controls bypass both the design worker and long existing runtime requests.
+      void handleClientMessage(socket, raw).catch((error) => send(socket, {type:"error",message:errorMessage(error),recoverable:true}));
+      return;
+    }
+    if (type === "turn.start") queuedTurnStarts++;
+    clientQueue = clientQueue.then(async () => {
+      try { await handleClientMessage(socket, raw); }
+      finally {
+        if (type === "turn.start") {
+          queuedTurnStarts--;
+          // Preserve stop-during-start semantics while the App Server has not returned a turn ID yet.
+          const interruptAfterStart = interruptQueuedStarts;
+          if (!queuedTurnStarts) interruptQueuedStarts = false;
+          if (interruptAfterStart) await interruptTurn();
+        }
+      }
+    }).catch((error) => {
       if (!turnId && !runIsActive()) completeConversationReply("failed");
       send(socket, { type: "error", message: errorMessage(error), recoverable: true });
       broadcastConversationState();
     });
   });
-  socket.on("close", () => sockets.delete(socket));
+  socket.on("close", () => { sockets.delete(socket); void atelier.disconnect(atelierOwner).catch(() => {}); });
   socket.on("error", () => sockets.delete(socket));
 });
 
@@ -1521,8 +1592,10 @@ httpServer.listen(PORT, HOST, () => {
   void (async () => {
     try {
       await ensureAppServer();
+      startupCliError = null;
     } catch (error) {
       appServerReady = false;
+      startupCliError = "Codex CLI에 연결하지 못했습니다. CLI 설치·로그인을 확인하세요. Atelier 설계 저장소는 별도로 사용할 수 있습니다.";
       petState = "error";
       broadcastError(error, false);
       broadcastState();
@@ -1546,6 +1619,7 @@ async function shutdown(): Promise<void> {
   }
   for (const socket of sockets) socket.close(1001, "Server shutting down");
   appServer.stop();
+  await atelier.close().catch(() => {});
   httpServer.close(() => process.exit(0));
 }
 

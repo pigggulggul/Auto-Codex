@@ -6,18 +6,23 @@ title Auto Codex Local
 if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
 if exist "%APPDATA%\npm" set "PATH=%APPDATA%\npm;%PATH%"
 
-echo [Auto Codex] Releasing any previous local bridge or Vite process...
-powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0tools\release-local-ports.ps1"
+where node >nul 2>&1
 if errorlevel 1 (
-  echo [Auto Codex] Could not release local ports 4780/4781.
+  echo [Auto Codex] Node.js 22.13 or newer is required.
+  echo Install Node.js, then run this file again.
+  pause
+  exit /b 1
+)
+node tools\check-node.mjs
+if errorlevel 1 (
   pause
   exit /b 1
 )
 
-where node >nul 2>&1
+echo [Auto Codex] Releasing any previous local bridge or Vite process...
+powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0tools\release-local-ports.ps1"
 if errorlevel 1 (
-  echo [Auto Codex] Node.js 20 or newer is required.
-  echo Install Node.js, then run this file again.
+  echo [Auto Codex] Could not release local ports 4780/4781.
   pause
   exit /b 1
 )
@@ -30,9 +35,7 @@ if not defined CODEX_BIN (
 )
 if not defined CODEX_BIN (
   echo [Auto Codex] Codex CLI was not found in PATH.
-  echo Install and sign in to Codex CLI, then run this file again.
-  pause
-  exit /b 1
+  echo [Auto Codex] Design storage remains available. Install and sign in to Codex CLI for execution.
 )
 
 if not exist "node_modules\react\package.json" (

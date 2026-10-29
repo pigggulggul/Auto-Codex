@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AtelierNavigation, PAGE_INFO, type AtelierPage } from "./components/layout/AtelierNavigation";
+import { AtelierHome, AtelierNotes } from "./components/layout/AtelierPages";
+import {AtelierWorkspace} from './features/atelier/Workspace';
+import type {Entry,Tab} from '../shared/atelier/types';
 import { ApprovalDialog } from "./components/ApprovalDialog";
 import { ModelPicker } from "./components/ModelPicker";
 import { OperationsPanel } from "./components/OperationsPanel";
@@ -25,6 +29,7 @@ import {
 const MODEL_KEY = "auto-codex.model";
 const EFFORT_KEY = "auto-codex.reasoning-effort";
 const MOTION_KEY = "auto-codex.animation-enabled";
+const SHELL_KEY = "auto-codex.shell";
 type LeftPanel = "workspace" | "operations";
 type MainView = "pixel" | "results";
 
@@ -36,6 +41,15 @@ function formatTokenCount(value: number): string {
 
 export default function App() {
   const bridge = useBridge();
+  const [shellMode, setShellMode] = useState<"atelier" | "legacy">(() => window.localStorage.getItem(SHELL_KEY) === "legacy" ? "legacy" : "atelier");
+  const [page, setPage] = useState<AtelierPage>("home");
+  const [designEntry,setDesignEntry]=useState<{entry:Entry;nonce:number}|null>(null);
+  const [designTabRequest,setDesignTabRequest]=useState<{tab:Tab;nonce:number}|null>(null);
+  const [designTab,setDesignTab]=useState<Tab>('design');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pageHeading = useRef<HTMLHeadingElement>(null);
+  const atelier = shellMode === "atelier";
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
   const [prompt, setPrompt] = useState("");
   const [leftPanel, setLeftPanel] = useState<LeftPanel>("workspace");
   const [mainView, setMainView] = useState<MainView>("pixel");
@@ -72,6 +86,25 @@ export default function App() {
       : bridge.snapshot.petState === "error"
         ? "codex unavailable"
         : "codex starting";
+
+  const navigate = (next: AtelierPage) => {
+    setPage(next);
+    if (next === "work" || next === "settings") setLeftPanel("workspace");
+    if (next === "operations") setLeftPanel("operations");
+    if (next === "results" || next === "work") setMainView("results");
+    if (next === "pixel") setMainView("pixel");
+  };
+  const openResults = () => { setMainView("results"); if (atelier) navigate("results"); };
+  const changeShell = (next: "atelier" | "legacy") => {
+    setShellMode(next);
+    window.localStorage.setItem(SHELL_KEY, next);
+    setMobileMenuOpen(false);
+  };
+  const showControls = !atelier ? leftPanel === "workspace" : page === "work" || page === "settings";
+  const showOperations = !atelier ? leftPanel === "operations" : page === "operations";
+  const showWorld = !atelier || page === "work" || page === "pixel" || page === "results";
+
+  useEffect(() => { if (atelier) pageHeading.current?.focus({ preventScroll: true }); }, [page, atelier]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -165,11 +198,15 @@ export default function App() {
   };
 
   return (
-    <main className={`app-shell metaverse-app ${animationEnabled ? "motion-enabled" : "motion-disabled"}`}>
+    <div className={atelier ? "atelier-app" : "legacy-frame"} data-page={page}>
+    <AtelierNavigation page={page} onNavigate={navigate} mobileOpen={mobileMenuOpen} onMobileClose={closeMobileMenu} onLegacy={() => changeShell("legacy")} hidden={!atelier} designTab={designTab} onDesignTab={tab=>{setDesignTabRequest({tab,nonce:Date.now()});navigate('design');}} />
+    <main id="workspace-main" className={`app-shell ${atelier ? "atelier-main" : "metaverse-app"} ${animationEnabled ? "motion-enabled" : "motion-disabled"}`}>
+      <a className="atelier-skip-link" href="#workspace-heading" hidden={!atelier}>작업 내용으로 건너뛰기</a>
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Auto Codex 홈">
+        {atelier && <button type="button" className="atelier-menu-toggle" aria-label="작업실 메뉴 열기" aria-haspopup="dialog" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}>☰ 메뉴</button>}
+        <a className="brand" href="/" aria-label="Auto Codex 홈" onClick={(event) => { event.preventDefault(); if (atelier) navigate("home"); else { setLeftPanel("workspace"); setMainView("pixel"); } }}>
           <span className="brand-mark">AC</span>
-          <span><strong>AUTO CODEX WORLD</strong><small>local pixel agent studio</small></span>
+          <span><strong>{atelier ? "나의 작업실" : "AUTO CODEX WORLD"}</strong><small>{atelier ? PAGE_INFO[page].title : "local pixel agent studio"}</small></span>
         </a>
         <div className="topbar-meta">
           <span className="top-model">{selectedModelInfo?.displayName || selectedModel || "Codex model"}{selectedEffort ? ` · ${selectedEffort}` : ""}</span>
@@ -181,8 +218,12 @@ export default function App() {
             <i /> {connectionLabel}
           </span>
           <span className="local-only">127.0.0.1 · LOCAL ONLY</span>
+          {atelier && busy && <button type="button" className="atelier-global-stop" onClick={bridge.interruptTurn}>■ 작업 중단</button>}
         </div>
       </header>
+      {!atelier && <div className="atelier-return-bar"><span>기존 Auto-Codex 화면</span><button type="button" onClick={() => changeShell("atelier")}>Atelier 화면으로 돌아가기 →</button></div>}
+
+      {atelier && <div className="atelier-workspace-heading"><div><p className="atelier-kicker">AUTO CODEX / LOCAL WORKSPACE</p><h1 id="workspace-heading" tabIndex={-1} ref={pageHeading}>{PAGE_INFO[page].title}</h1><p>{PAGE_INFO[page].description}</p></div><span className={`atelier-run-indicator ${busy ? "is-active" : ""}`} role="status">{bridge.approvals.length ? `승인 대기 ${bridge.approvals.length}건` : busy ? "작업 진행 중" : "진행 작업 없음"}</span></div>}
 
       {bridge.lastError && (
         <div className="error-banner" role="alert">
@@ -197,9 +238,14 @@ export default function App() {
         </div>
       )}
 
-      <div className="metaverse-layout">
-        <div className="left-rail">
-          <nav className="left-rail-switch" aria-label="좌측 패널 선택" role="tablist">
+      {atelier && page==='home'&&<div className="atelier-introduction"><AtelierHome onNavigate={navigate} conversations={bridge.conversations} busy={busy} onStartDesign={entry=>{setDesignEntry({entry,nonce:Date.now()});navigate('design');}} onSelectConversation={(id) => { if (bridge.selectConversation(id)) navigate("results"); }} /><AtelierNotes connected={bridge.snapshot.connected} appServerReady={bridge.snapshot.appServerReady} busy={busy} awaitingApproval={bridge.approvals.length > 0} projectPath={projectPath} /></div>}
+      <AtelierWorkspace aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'} entryRequest={designEntry} tabRequest={designTabRequest} onTab={setDesignTab}/>
+
+      {atelier && page === "settings" && <section className="atelier-display-settings" aria-labelledby="display-settings-title"><h2 id="display-settings-title">화면 표시</h2><p>화면을 전환해도 현재 입력·실행·대화 연결은 유지됩니다.</p><div><button type="button" onClick={() => changeShell("legacy")}>기존 화면으로 전환 ↗</button><button type="button" aria-pressed={animationEnabled} onClick={toggleAnimation}>캐릭터 애니메이션 {animationEnabled ? "켜짐" : "꺼짐"}</button></div><p><a href="/atelier-assets/LICENSES.md" target="_blank" rel="noreferrer">폰트·아이콘 출처와 라이선스</a></p></section>}
+
+      <div className="metaverse-layout" hidden={atelier && (page === "home" || page === "design")}>
+        <div className="left-rail" hidden={!showControls && !showOperations}>
+          <nav className="left-rail-switch" aria-label="좌측 패널 선택" role="tablist" hidden={atelier}>
             <button
               type="button"
               role="tab"
@@ -224,8 +270,7 @@ export default function App() {
             </button>
           </nav>
 
-          {leftPanel === "workspace" ? (
-            <aside className="control-card">
+            <aside className="control-card" hidden={!showControls} aria-label="프로젝트와 실행 설정">
               <ConversationPicker
                 conversations={bridge.conversations}
                 activeConversationId={bridge.snapshot.activeConversationId}
@@ -283,6 +328,7 @@ export default function App() {
                   </div>
                   <label className="prompt-field">
                   <textarea
+                    aria-label="Codex 업무 지시"
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
                     onKeyDown={(event) => {
@@ -306,7 +352,7 @@ export default function App() {
                 </div>
               </details>
             </aside>
-          ) : (
+          <div className="atelier-operations-slot" hidden={!showOperations}>
             <OperationsPanel
               activities={bridge.activities}
               run={activeRun}
@@ -315,17 +361,17 @@ export default function App() {
               characterAssignments={worldCharacterAssignments}
               animationEnabled={animationEnabled}
               streaming={busy}
-              onOpenResults={() => setMainView("results")}
+              onOpenResults={openResults}
             />
-          )}
+          </div>
         </div>
 
-        <div className="world-column">
+        <div className="world-column" hidden={!showWorld}>
           <div className="main-view-switch" role="tablist" aria-label="메인 화면 선택">
-            <button type="button" role="tab" aria-selected={mainView === "pixel"} className={mainView === "pixel" ? "active" : ""} onClick={() => setMainView("pixel")}>▦ 픽셀 화면</button>
-            <button type="button" role="tab" aria-selected={mainView === "results"} className={mainView === "results" ? "active" : ""} onClick={() => setMainView("results")}>▤ 결과 화면</button>
+            <button type="button" role="tab" aria-selected={mainView === "pixel"} className={mainView === "pixel" ? "active" : ""} onClick={() => atelier ? navigate("pixel") : setMainView("pixel")}>▦ 픽셀 화면</button>
+            <button type="button" role="tab" aria-selected={mainView === "results"} className={mainView === "results" ? "active" : ""} onClick={() => atelier ? navigate("results") : setMainView("results")}>▤ 결과 화면</button>
           </div>
-          {mainView === "pixel" ? (
+          <div hidden={mainView !== "pixel"}>
             <PixelOffice
               run={activeRun}
               bridgeConnected={bridge.snapshot.connected}
@@ -340,9 +386,10 @@ export default function App() {
               onAssignCharacter={assignWorldCharacter}
               animationEnabled={animationEnabled}
               onToggleAnimation={toggleAnimation}
-              onOpenResults={() => setMainView("results")}
+              onOpenResults={openResults}
             />
-          ) : (
+          </div>
+          <div hidden={mainView !== "results"}>
             <ResultView
               messages={bridge.messages}
               conversationTitle={bridge.conversations.find((conversation) => conversation.id === bridge.snapshot.activeConversationId)?.title || "새 대화"}
@@ -351,7 +398,7 @@ export default function App() {
               assistantText={bridge.assistantText}
               taskOutputs={bridge.taskOutputs}
             />
-          )}
+          </div>
         </div>
 
       </div>
@@ -361,5 +408,6 @@ export default function App() {
         <ApprovalDialog approval={bridge.approvals[0]} onResolve={(decision) => bridge.resolveApproval(bridge.approvals[0].approvalId, decision)} />
       )}
     </main>
+    </div>
   );
 }

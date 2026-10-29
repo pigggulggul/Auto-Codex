@@ -174,6 +174,20 @@ export class CodexAppServer extends EventEmitter {
     child.kill();
   }
 
+  /** For exclusive proposal admission: do not release it while a timed-out child may still execute. */
+  async stopAndWait(): Promise<void> {
+    const child=this.child;if(!child)return;
+    const exited=new Promise<void>((resolve,reject)=>{
+      const timer=setTimeout(()=>reject(new Error('App Server termination was not confirmed. Restart the bridge.')),10000);
+      child.once('exit',()=>{clearTimeout(timer);resolve();});
+    });
+    this.stop();await exited;
+    // stop() detaches the child before its exit callback. Notify subscribers after termination is confirmed.
+    const error=new Error('Exclusive Atelier proposal runtime was stopped after failure.');
+    for(const pending of this.pending.values()){clearTimeout(pending.timer);pending.reject(error);}this.pending.clear();
+    this.emit('exit',error);
+  }
+
   private write(message: unknown): void {
     if (!this.child || this.child.killed || !this.child.stdin.writable) {
       throw new Error("codex app-server stdin is unavailable");

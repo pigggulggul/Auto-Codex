@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "SHA-256",
+  "pathBase": "repository-root",
+  "files": [
+    {
+      "path": "atelier/atelier/public/domain.js",
+      "sha256": "172c1cb882cf7d06934a4e56ceaa22c6b56b528edb6e016ecca828a018c1df62"
+    },
+    {
+      "path": "atelier/atelier/public/structure.js",
+      "sha256": "67001590d004eb2a2fe37132a63c709fd17ae7fd5b5131b0ee555faec9890f53"
+    },
+    {
+      "path": "atelier/atelier/public/guide.js",
+      "sha256": "6e8bad5b6ab228ba2c34294071c92631da88f037d5be5366726a99bf10eebbf4"
+    },
+    {
+      "path": "atelier/atelier/contracts.d.ts",
+      "sha256": "ba7914b70003306e4c5ac5f36a0b23118de8b3a036928025de0c159e2467f5e4"
+    },
+    {
+      "path": "atelier/atelier/src/project-validation.mjs",
+      "sha256": "ee7d8d90810ce9af2f0baa5024170b917a05dad0c143708158e9de8b5829942f"
+    },
+    {
+      "path": "atelier/atelier/public/app.js",
+      "sha256": "04edb3104a81be883971da746e34087acafec5fa59874681c1e570a587924950"
+    },
+    {
+      "path": "atelier/atelier/public/panels.js",
+      "sha256": "78a1e5bc64207111cceaeef1efa96bb072d7eb2ebe1fa34915354b917c64b724"
+    },
+    {
+      "path": "atelier/atelier/tests/domain.test.mjs",
+      "sha256": "de3375060a0703ced552e23421f14cf628b7b3eb929562ebeae27294a0fd8b19"
+    },
+    {
+      "path": "atelier/atelier/tests/extension.test.mjs",
+      "sha256": "8475566549ebf6ea56acea56714dee74cb9c34001daefaf5de1c71db6bf30b5f"
+    },
+    {
+      "path": "atelier/atelier/examples/DI-DO.atelier.json",
+      "sha256": "7c45dc9a837bf69feb0143e0384102e57c8717ae79b72af5b1748f10216d4860"
+    },
+    {
+      "path": "atelier/atelier/examples/liar.atelier.json",
+      "sha256": "dbc1a3348a4e49ad0e8a7822adb7419edc66d2d4d6ba771238fdab810580c6a9"
+    },
+    {
+      "path": "atelier/atelier/examples/survey.atelier.json",
+      "sha256": "47e85fe9422e191b438f030753dd6ec71400017f3d7da0e4be76d71bf4f24128"
+    },
+    {
+      "path": "atelier/atelier/examples/worldcup.atelier.json",
+      "sha256": "f62f5497aab29e852fc8f32ead6ef9fc8fef595892b8cac6757f668f39b1362a"
+    },
+    {
+      "path": "atelier/atelier/examples/게임_설계예시.atelier.json",
+      "sha256": "513123956f33b0e60f86c7965c8b0a407ab429930f1a63774efb29b05c51f781"
+    },
+    {
+      "path": "atelier/atelier/examples/네컷_수정흐름_검증예시.atelier.json",
+      "sha256": "1201be60053fbf6654b969e763c018870910e015e5fdca4bc8b890caea5c8113"
+    },
+    {
+      "path": "atelier/atelier/examples/범위_서체_파일_검증예시.atelier.json",
+      "sha256": "ba9d24c2725f08b61daf5301c9ad05e45a84987d44018e66ea3588903a4b6616"
+    }
+  ]
+}
