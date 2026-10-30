@@ -17,7 +17,7 @@ export class AtelierTransfers {
   constructor(public readonly files: AtelierFiles, private readonly now = Date.now) {}
   private async slot(owner: string,bytes: number) {
     await this.sweep();
-    check(this.items.size < 8 && [...this.items.values()].filter(t=>t.owner===owner).length < 2,'동시 전송 한도를 초과했습니다.','LIMIT_EXCEEDED');
+    check(this.items.size < 8 && [...this.items.values()].filter(t=>t.owner===owner).length < 2,'다른 파일을 전송 중이에요. 준비한 다운로드를 저장하거나 닫은 뒤 다시 시도해 주세요.','LIMIT_EXCEEDED');
     const reserved = [...this.items.values()].reduce((sum,t)=>sum+t.total,0);
     await this.files.store.paths.reserve(reserved+bytes);
   }

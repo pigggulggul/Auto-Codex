@@ -2,10 +2,11 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { cp, mkdir, mkdtemp, readFile, rename } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rename, rmdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocket } from "ws";
+import {randomUUID} from 'node:crypto';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 await mkdir(path.join(root, ".cache"), { recursive: true });
@@ -71,18 +72,29 @@ try {
   await exchange({ type: "project.select", path: projectA }, (message) => message.type === "project.selected", "project A");
   const chatA = last("bridge.state").snapshot.activeConversationId;
   await turn("첫 번째 합성 요청");
+  assert.equal(last('bridge.state').snapshot.conversations.find(c=>c.id===chatA).title,'첫 번째 합성 요청');
+  const renameId=randomUUID();await exchange({type:'conversation.rename',conversationId:chatA,title:'사용자가 정한 프로젝트 이름',expectedTitle:'첫 번째 합성 요청',clientRequestId:renameId},m=>m.type==='conversation.rename.result'&&m.clientRequestId===renameId&&m.ok,'durable custom title');
+  await saved(a=>a.conversations.find(c=>c.id===chatA)?.title==='사용자가 정한 프로젝트 이름');
+  const staleId=randomUUID();await exchange({type:'conversation.rename',conversationId:chatA,title:'stale overwrite',expectedTitle:'첫 번째 합성 요청',clientRequestId:staleId},m=>m.type==='conversation.rename.result'&&m.clientRequestId===staleId&&!m.ok,'stale title rejected');
+  const missingId=randomUUID();await exchange({type:'conversation.rename',conversationId:'missing-chat',title:'not saved',expectedTitle:'',clientRequestId:missingId},m=>m.type==='conversation.rename.result'&&m.clientRequestId===missingId&&!m.ok,'foreign conversation rejected');
+  await new Promise(r=>setTimeout(r,350));
+  const historyFile=path.join(scratch,'.local-data','history.json'),historySaved=path.join(scratch,'.local-data','history-saved.json');assert.equal(path.dirname(historyFile),path.join(scratch,'.local-data'));await rename(historyFile,historySaved);await mkdir(historyFile);
+  const failedId=randomUUID();await exchange({type:'conversation.rename',conversationId:chatA,title:'must not claim saved',expectedTitle:'사용자가 정한 프로젝트 이름',clientRequestId:failedId},m=>m.type==='conversation.rename.result'&&m.clientRequestId===failedId&&!m.ok,'storage failure is not success');assert.equal(last('bridge.state').snapshot.conversations.find(c=>c.id===chatA).title,'사용자가 정한 프로젝트 이름');await rmdir(historyFile);await rename(historySaved,historyFile);
   const threadA = last("bridge.state").snapshot.threadId;
   await exchange({ type: "project.select", path: projectB }, (message) => message.type === "project.selected", "project B");
   const chatB = last("bridge.state").snapshot.activeConversationId;
   assert.notEqual(chatA, chatB);
+  const defaultId=randomUUID();await exchange({type:'conversation.rename',conversationId:chatB,title:'새 대화',expectedTitle:'새 대화',clientRequestId:defaultId},m=>m.type==='conversation.rename.result'&&m.clientRequestId===defaultId&&m.ok,'user default-label name');await turn('이 요청이 사용자 제목을 덮어쓰지 않음');assert.equal(last('bridge.state').snapshot.conversations.find(c=>c.id===chatB).title,'새 대화');
   await exchange({ type: "conversation.select", conversationId: chatA }, (message) => message.type === "conversation.state" && message.state.id === chatA, "restore project A");
   assert.equal(last("bridge.state").snapshot.projectPath, projectA);
   assert.equal(last("conversation.state").state.messages.length, 2);
   await turn("두 번째 합성 요청");
+  assert.equal(last('bridge.state').snapshot.conversations.find(c=>c.id===chatA).title,'사용자가 정한 프로젝트 이름');
   await saved((archive) => archive.conversations.find((chat) => chat.id === chatA)?.messages.length === 4);
   await stop();
   await start();
   assert.equal(last("bridge.state").snapshot.activeConversationId, chatA);
+  assert.equal(last('bridge.state').snapshot.conversations.find(c=>c.id===chatA).title,'사용자가 정한 프로젝트 이름');
   assert.equal(last("bridge.state").snapshot.threadId, threadA);
   assert.equal(last("conversation.state").state.messages.length, 4);
   await turn("재시작 후 이어가기");
@@ -125,5 +137,5 @@ try {
   await until(() => received.slice(interruptBoundary).some(message => message.type === "turn.state" && message.status === "interrupted"), "stop during delayed turn start");
   const finalCalls = (await readFile(requests,"utf8")).trim().split("\n").map(JSON.parse);
   assert(finalCalls.some(call => call.method === "turn/interrupt"));
-  console.log("PASS: project switching, transcript restore, durable thread resume, partial team recovery, expired approval rejection, network disabled, interrupt during delayed start.");
+  console.log("PASS: durable custom titles, stale/missing rename rejection, project switching, transcript restore, durable thread resume, partial team recovery, expired approval rejection, network disabled, interrupt during delayed start.");
 } finally { await stop(); }

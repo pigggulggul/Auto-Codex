@@ -18,6 +18,7 @@ coverage/
 
 # Local runtime files
 .local-data/
+.auto-codex/atelier-inputs/
 # Atelier SQLite/WAL/files/transfers stay under .local-data/atelier/.
 *.log
 *.pid

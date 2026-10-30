@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import {titleFromPrompt} from '../shared/conversation-title.js';
 import { spawn } from "node:child_process";
 import { realpath, stat, readFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -48,6 +49,9 @@ import { parseTokenUsage } from "./token-usage.js";
 import { ConversationStore, type ConversationRecord } from "./conversation-store.js";
 import { AtelierClient } from "./atelier/client.js";
 import {AtelierProposalRuntime} from "./atelier/proposal-runtime.js";
+import {AtelierExecutionRuntime} from "./atelier/execution-runtime.js";
+import {check as atelierCheck} from "./atelier/errors.js";
+import {defaultModel} from '../shared/model-selection.js';
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.AUTO_CODEX_PORT || 4781);
@@ -120,6 +124,7 @@ let skills: SkillInfo[] = [];
 let models: ModelInfo[] = [];
 let threadId: string | null = null;
 let turnId: string | null = null;
+const completedSoloTurns=new Set<string>();
 let assistantText = "";
 let projectTrust: ProjectTrust = "untrusted";
 let petState: PetState = "connecting";
@@ -162,10 +167,11 @@ const conversationStore = new ConversationStore(ROOT);
 let historyError: string | null = null;
 let historyWritable = true;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
+let renameSave:Promise<void>|null=null;
 const loadedThreads = new Set<string>();
 
 function persistConversations(): void {
-  if (!historyWritable || saveTimer) return;
+  if (!historyWritable || saveTimer || renameSave) return;
   saveTimer = setTimeout(() => {
     saveTimer = undefined;
     void saveConversations().catch(() => {
@@ -176,6 +182,7 @@ function persistConversations(): void {
 }
 
 function saveConversations(): Promise<void> {
+  if(renameSave)return renameSave.catch(()=>{}).then(()=>conversationStore.save({version:1,activeConversationId,conversations:[...conversations.values()]}));
   return conversationStore.save({ version: 1, activeConversationId, conversations: [...conversations.values()] });
 }
 
@@ -222,6 +229,7 @@ function send(socket: WebSocket, message: ServerMessage): void {
 }
 
 function broadcast(message: ServerMessage): void {
+  executionRuntime.observe(message);
   for (const socket of sockets) send(socket, message);
 }
 
@@ -270,11 +278,6 @@ function broadcastConversationState(): void {
   broadcastState();
 }
 
-function conversationTitle(prompt: string): string {
-  const firstLine = prompt.split(/\r?\n/, 1)[0]?.trim() || "새 대화";
-  return firstLine.length > 48 ? `${firstLine.slice(0, 48)}…` : firstLine;
-}
-
 function updateConversationPreview(value: string): void {
   const conversation = activeConversation();
   const preview = value.replace(/\s+/g, " ").trim();
@@ -306,7 +309,7 @@ function restoreWorkspaceConversation(): void {
 
 function startConversationPrompt(prompt: string): void {
   const conversation = activeConversation();
-  if (conversation.title === "새 대화") conversation.title = conversationTitle(prompt);
+  if (conversation.title === "새 대화"&&conversation.titleSource!=='user') {conversation.title = titleFromPrompt(prompt);conversation.titleSource='prompt';}
   conversation.preview = prompt.replace(/\s+/g, " ").trim().slice(0, 140);
   conversation.messageCount += 1;
   conversation.updatedAt = new Date().toISOString();
@@ -326,6 +329,7 @@ function completeConversationReply(status: "completed" | "failed" | "interrupted
 }
 
 function conversationContext(): string {
+  if(executionRuntime.busy)return '';
   const history = activeConversation().messages.slice(0, -2);
   return history.map((message) => `${message.role === "user" ? "사용자 요청" : "이전 응답"} (${message.status}):\n${message.text}`).join("\n\n").slice(-16_000)
     || activeConversation().contextSummary;
@@ -827,8 +831,9 @@ async function launchTeamTask(runId: string, taskId: string): Promise<void> {
   if (!activeRun || activeRun.id !== runId) return;
   let task = activeRun.tasks.find((candidate) => candidate.id === taskId);
   if (!task || task.status !== "running") return;
+  let turnDispatched=false;
   try {
-    if (projectPath) await validateProject(projectPath);
+    if (projectPath) {const resolved=await validateProject(projectPath);if(executionRuntime.busy&&resolved!==projectPath)throw new Error('Generation workspace target changed');}
     const threadParams: JsonObject = {
       approvalPolicy: "on-request",
       sandbox: workspaceMode === "research" || task.access === "read" ? "read-only" : "workspace-write",
@@ -839,12 +844,14 @@ async function launchTeamTask(runId: string, taskId: string): Promise<void> {
     const threadResponse = await appServer.request<ThreadStartResponse>("thread/start", threadParams);
     const taskThreadId = threadResponse.thread?.id;
     if (!taskThreadId) throw new Error("Codex가 에이전트 스레드 ID를 반환하지 않았습니다.");
+    if (!activeRun || activeRun.id !== runId || !['running','waitingApproval'].includes(activeRun.tasks.find(t=>t.id===taskId)?.status||'')) return;
     runtimeRegistry.bindThread({ runId, taskId, agentId: task.agentId, threadId: taskThreadId });
-    if (!activeRun || activeRun.id !== runId) return;
     activeRun = updateTask(activeRun, taskId, { threadId: taskThreadId });
     publishRun(activeRun);
     task = activeRun.tasks.find((candidate) => candidate.id === taskId)!;
+    if(executionRuntime.busy&&projectPath)atelierCheck(await validateProject(projectPath)===projectPath,'제작 workspace가 변경되었습니다.','WORKSPACE_INVALID');
 
+    turnDispatched=true;
     const response = await appServer.request<TurnStartResponse>("turn/start", {
       threadId: taskThreadId,
       input: taskInput(task, taskPrompt(activeRun, task)),
@@ -855,12 +862,16 @@ async function launchTeamTask(runId: string, taskId: string): Promise<void> {
     });
     const taskTurnId = response.turn?.id;
     if (!taskTurnId) throw new Error("Codex가 에이전트 작업 ID를 반환하지 않았습니다.");
+    if(!activeRun||activeRun.id!==runId||activeRun.tasks.find(t=>t.id===taskId)?.status==='interrupted'){
+      await appServer.request('turn/interrupt',{threadId:taskThreadId,turnId:taskTurnId});return;
+    }
     const context = runtimeRegistry.bindTurn(taskThreadId, taskTurnId);
     if (!activeRun || activeRun.id !== runId) return;
     activeRun = updateTask(activeRun, taskId, { turnId: taskTurnId });
     broadcast({ type: "turn.state", turnId: taskTurnId, status: "inProgress", ...contextFields(context) });
     publishRun(activeRun);
   } catch (error) {
+    if(executionRuntime.busy&&turnDispatched){await appServer.stopAndWait();return;}
     if (!activeRun || activeRun.id !== runId) return;
     const current = activeRun.tasks.find((candidate) => candidate.id === taskId);
     if (current && (current.status === "running" || current.status === "waitingApproval")) {
@@ -934,7 +945,8 @@ async function startTeamRun(prompt: string): Promise<void> {
   await dispatchTeamTasks();
 }
 
-async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>): Promise<void> {
+async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>, designExecution=false): Promise<void> {
+  if(executionRuntime.busy&&!designExecution)throw new Error('Atelier generation is active; finish or interrupt it first.');
   if (proposalRuntime.busy) throw new Error("Atelier proposal is active; finish or interrupt it first.");
   if (workspaceMode === "project" && !projectPath) throw new Error("프로젝트 모드에서는 먼저 프로젝트 폴더를 선택하세요.");
   if (turnId || runIsActive()) throw new Error("이미 작업이 진행 중입니다.");
@@ -947,7 +959,7 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
   }
   const selectedModelInfo = message.model
     ? models.find((candidate) => candidate.model === message.model)
-    : models.find((candidate) => candidate.isDefault);
+    : defaultModel(models);
   if (
     message.effort
     && selectedModelInfo
@@ -990,12 +1002,14 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
     ),
   );
 
+  if(designExecution)await executionRuntime.beforeDispatch(activeConversation().messages.slice(-2).map(m=>m.id));
   if ((message.executionMode ?? "team") === "team") {
     await startTeamRun(prompt);
     return;
   }
 
   const activeThreadId = await ensureThread();
+  if(designExecution)await executionRuntime.soloThread(activeThreadId);
   const previous = conversationContext();
   const contextualPrompt = previous
     ? `이전 대화의 마지막 결과를 참고하세요:\n${previous.slice(0, 8_000)}\n\n새 요청:\n${prompt}`
@@ -1003,6 +1017,7 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
   const text = selectedSkill ? `$${selectedSkill.name}\n\n${contextualPrompt}` : contextualPrompt;
   const input: Array<JsonObject> = [{ type: "text", text, text_elements: [] }];
   if (selectedSkill) input.push({ type: "skill", name: selectedSkill.name, path: selectedSkill.path });
+  if(designExecution&&projectPath)atelierCheck(await validateProject(projectPath)===projectPath,'제작 workspace가 변경되었습니다.','WORKSPACE_INVALID');
 
   const sandboxPolicy: JsonObject = workspaceMode === "research"
     ? { type: "readOnly", networkAccess: researchNetworkAccess }
@@ -1022,13 +1037,19 @@ async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>
   });
   const id = response.turn?.id;
   if (!id) throw new Error("Codex가 작업 ID를 반환하지 않았습니다.");
+  if(completedSoloTurns.has(id))return;
   turnId = id;
+  if(designExecution){for(const event of await executionRuntime.soloTurn(id))handleRuntimeNotification(event);if(completedSoloTurns.has(id))return;}
   syncActiveConversation();
   broadcast({ type: "turn.state", turnId, status: "inProgress" });
   broadcastState();
 }
 
 async function interruptTurn(): Promise<void> {
+  if(executionRuntime.busy){await executionRuntime.interrupt();return;}
+  await interruptExistingTurn();
+}
+async function interruptExistingTurn(): Promise<void> {
   if(proposalRuntime.busy){await proposalRuntime.interrupt();return;}
   if (activeRun && runIsActive()) {
     cancelPendingApprovals((pending) => pending.approval.runId === activeRun?.id);
@@ -1154,6 +1175,7 @@ function approvalFromRequest(request: ProtocolServerRequest): PendingApproval | 
 
 function handleServerRequest(request: ProtocolServerRequest): void {
   if(proposalRuntime.serverRequest(request))return;
+  if(executionRuntime.busy&&!executionRuntime.accepts(request.params?.threadId,request.params?.turnId)){appServer.respondError(request.id,-32003,'Request does not belong to active generation.');return;}
   const pending = approvalFromRequest(request);
   if (!pending) {
     appServer.respondError(request.id, -32601, `Unsupported server request: ${request.method}`);
@@ -1228,6 +1250,7 @@ function cancelPendingApprovals(predicate: (pending: PendingApproval) => boolean
 
 async function handleClientMessage(socket: WebSocket, raw: string): Promise<void> {
   const message = parseClientMessage(raw);
+  if(executionRuntime.busy&&!['turn.interrupt','approval.resolve','models.refresh'].includes(message.type))throw new Error('Atelier generation is active; finish or interrupt it first.');
   switch (message.type) {
     case "workspace.mode":
       await setWorkspaceMode(message.mode);
@@ -1250,6 +1273,21 @@ async function handleClientMessage(socket: WebSocket, raw: string): Promise<void
     case "conversation.select":
       await selectConversation(message.conversationId);
       break;
+    case 'conversation.rename':{
+      try{
+        if(turnId||runIsActive()||proposalRuntime.busy)throw new Error('진행 중인 작업을 마친 뒤 이름을 저장하세요.');
+        if(!historyWritable||historyError)throw new Error('대화 기록 저장을 복구한 뒤 이름을 저장하세요.');
+        const record=conversations.get(message.conversationId);if(!record)throw new Error('대화를 찾을 수 없습니다.');
+        if(record.title!==message.expectedTitle)throw new Error('다른 창에서 이름이 변경됐습니다. 최신 이름을 확인하고 다시 저장하세요.');
+        // Keep the published title unchanged until its serialized disk write commits.
+        if(saveTimer){clearTimeout(saveTimer);saveTimer=undefined;}
+        const patch={title:message.title,titleSource:'user' as const,updatedAt:new Date().toISOString()};
+        renameSave=conversationStore.save({version:1,activeConversationId,conversations:[...conversations.values()].map(r=>r===record?{...r,...patch}:r)}).then(()=>{Object.assign(record,patch);});
+        try{await renameSave;}catch{throw new Error('대화 이름을 저장하지 못했습니다. 입력을 보존하고 저장 공간·권한을 확인하세요.');}finally{renameSave=null;persistConversations();}
+        broadcastState();send(socket,{type:'conversation.rename.result',clientRequestId:message.clientRequestId,ok:true,title:record.title});
+      }catch(error){send(socket,{type:'conversation.rename.result',clientRequestId:message.clientRequestId,ok:false,error:errorMessage(error)});}
+      break;
+    }
     case "skills.refresh":
       await loadSkills(true);
       break;
@@ -1277,6 +1315,7 @@ appServer.on("ready", () => {
 appServer.on("exit", (error: Error) => {
   appServerReady = false;
   proposalRuntime.exited();
+  executionRuntime.exited();
   petState = "error";
   // Persistent Solo threads must be resumed in the next child process.
   loadedThreads.clear();
@@ -1300,12 +1339,21 @@ appServer.on("diagnostic", (message: string) => {
 
 appServer.on("request", (request: ProtocolServerRequest) => handleServerRequest(request));
 
-appServer.on("notification", (notification: ProtocolNotification) => {
+function handleRuntimeNotification(notification: ProtocolNotification): void {
   if(proposalRuntime.notification(notification))return;
+  if(executionRuntime.bufferNotification(notification))return;
   if (notification.method === "item/reasoning/textDelta") return;
   broadcast({ type: "protocol.event", method: notification.method });
   const params = notification.params;
   const context = runtimeRegistry.resolve(params);
+  const eventTurn = typeof params?.turnId==='string'?params.turnId:(params?.turn as JsonObject|undefined)?.id;
+  if(context){const task=activeRun?.id===context.runId?activeRun.tasks.find(t=>t.id===context.taskId):undefined;if(!task||['completed','failed','blocked','interrupted'].includes(task.status))return;}
+  if(!context&&typeof eventTurn==='string'&&completedSoloTurns.has(eventTurn))return;
+  if(executionRuntime.busy&&!executionRuntime.accepts(params?.threadId,eventTurn))return;
+  // Unowned late Team/Solo events must never become the current conversation's response.
+  if(!context&&typeof params?.threadId==='string'&&params.threadId!==threadId)return;
+  if(!context&&turnId&&typeof eventTurn==='string'&&eventTurn!==turnId)return;
+  executionRuntime.evidence(notification,context?.taskId);
   const usage = parseTokenUsage(notification, context?.turnId ?? turnId);
   if (usage) broadcast({ type: "token.usage", usage });
   if (notification.method === "item/agentMessage/delta") {
@@ -1363,6 +1411,7 @@ appServer.on("notification", (notification: ProtocolNotification) => {
     if (context) handleTeamTurnCompleted(context, status, turnErrorMessage);
     if (completedId && context) runtimeRegistry.completeTurn(completedId);
     else {
+      if(completedId){completedSoloTurns.add(completedId);if(completedSoloTurns.size>4096)completedSoloTurns.delete(completedSoloTurns.values().next().value!);}
       turnId = null;
       syncActiveConversation();
       completeConversationReply(status === "completed" ? "completed" : status === "interrupted" ? "interrupted" : "failed");
@@ -1384,7 +1433,8 @@ appServer.on("notification", (notification: ProtocolNotification) => {
     }
     publishActivity({ ...activity, ...contextFields(context) });
   }
-});
+}
+appServer.on('notification',handleRuntimeNotification);
 
 function isAllowedOrigin(request: IncomingMessage): boolean {
   if (![`${HOST}:${PORT}`, `localhost:${PORT}`].includes(request.headers.host ?? "")) return false;
@@ -1415,6 +1465,15 @@ function contentType(filePath: string): string {
   }
 }
 
+async function staticBody(filePath:string){
+  const equal=(a:string,b:string)=>process.platform==='win32'?a.toLowerCase()===b.toLowerCase():a===b;
+  const base=await realpath(DIST),actual=await realpath(filePath),relative=path.relative(base,actual);
+  const denied=()=>Object.assign(new Error('정적 파일의 실제 경로가 허용 범위를 벗어났습니다.'),{code:'EACCES'});
+  if(!equal(base,DIST)||path.isAbsolute(relative)||relative==='..'||relative.startsWith('..'+path.sep))throw denied();
+  const body=await readFile(actual);
+  if(!equal(await realpath(DIST),base)||!equal(await realpath(filePath),actual))throw denied();
+  return body;
+}
 async function serveStatic(request: IncomingMessage, response: ServerResponse): Promise<void> {
   if (request.url === "/healthz") {
     response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -1436,12 +1495,13 @@ async function serveStatic(request: IncomingMessage, response: ServerResponse): 
   try {
     const info = await stat(filePath);
     if (info.isDirectory()) filePath = path.join(filePath, "index.html");
-    const body = await readFile(filePath);
+    const body = await staticBody(filePath);
     response.writeHead(200, { "content-type": contentType(filePath) });
     response.end(body);
-  } catch {
+  } catch(error) {
+    if((error as NodeJS.ErrnoException).code==='EACCES'){response.writeHead(403).end();return;}
     try {
-      const body = await readFile(path.join(DIST, "index.html"));
+      const body = await staticBody(path.join(DIST, "index.html"));
       response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       response.end(body);
     } catch {
@@ -1460,10 +1520,32 @@ const httpServer = createServer((request, response) => {
 const wsServer = new WebSocketServer({ noServer: true });
 let clientQueue: Promise<void> = Promise.resolve();
 let queuedTurnStarts = 0;
+let queuedClientOperations = 0;
 let interruptQueuedStarts = false;
 const proposalRuntime=new AtelierProposalRuntime(appServer,atelier,{
   cwd:()=>validateProject(ROOT),ensure:ensureAppServer,models:()=>models,
-  busy:()=>queuedTurnStarts>0||!!turnId||runIsActive()||pendingApprovals.size>0,
+  busy:()=>queuedTurnStarts>0||executionRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
+  emit:event=>{for(const socket of sockets)if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(event));}
+});
+const executionRuntime=new AtelierExecutionRuntime(atelier,{
+  busy:()=>queuedClientOperations>0||proposalRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
+  context:async b=>{
+    atelierCheck(workspaceMode==='project'&&projectPath,'제작에는 선택한 실제 프로젝트 폴더가 필요합니다.','WORKSPACE_INVALID');
+    const workspacePath=await validateProject(projectPath);
+    atelierCheck(workspacePath===projectPath,'프로젝트 실제 대상이 변경되었습니다.','WORKSPACE_INVALID');
+    atelierCheck(await readProjectTrust(workspacePath)==='trusted','기존 프로젝트 신뢰 설정에서 이 폴더를 명시적으로 신뢰하세요.','WORKSPACE_INVALID');
+    atelierCheck(historyWritable&&!historyError,'대화 기록 저장을 복구한 뒤 제작하세요.','STORAGE_UNAVAILABLE');
+    if(!b.snapshotId)return {workspacePath,conversationId:activeConversationId,model:''};
+    await ensureAppServer();await loadModels();await loadSkills(true);
+    const model=b.model?models.find(m=>m.model===b.model):defaultModel(models);
+    atelierCheck(model&&model.inputModalities.includes('text'),'제작 모델을 현재 App Server에서 확인할 수 없습니다.','CAPABILITY_UNAVAILABLE');
+    atelierCheck(!b.effort||model.supportedReasoningEfforts.some(e=>e.reasoningEffort===b.effort),'지원하지 않는 추론 강도입니다.','CAPABILITY_UNAVAILABLE');
+    const skill=b.skillMode==='manual'&&b.skillPath?skills.find(s=>s.enabled&&s.path===b.skillPath):null;
+    atelierCheck(!b.skillPath||(b.skillMode==='manual'&&skill),'현재 프로젝트에서 활성화된 스킬만 선택하세요.','CAPABILITY_UNAVAILABLE');
+    return {workspacePath,conversationId:activeConversationId,model:model.model,skills,...(b.effort?{effort:b.effort as ReasoningEffort}:model.defaultReasoningEffort?{effort:model.defaultReasoningEffort}:{}),...(skill?{skillPath:skill.path}:{})};
+  },
+  start:message=>startTurn(message,true),interrupt:interruptExistingTurn,stop:()=>appServer.stopAndWait(),
+  flush:async()=>{syncActiveConversation();if(!historyWritable)throw new Error('History is read only');await saveConversations();},
   emit:event=>{for(const socket of sockets)if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(event));}
 });
 httpServer.on("upgrade", (request, socket, head) => {
@@ -1506,6 +1588,11 @@ wsServer.on("connection", (socket) => {
     let type = "";
     try { const input: unknown = JSON.parse(raw); if (input && typeof input === "object" && "type" in input && typeof input.type === "string") type = input.type; } catch { /* Existing parser reports malformed legacy input. */ }
     if (type.startsWith("atelier.")) {
+      if(type==='atelier.generation.interrupt'){
+        priorityTokens=Math.min(10,priorityTokens+(Date.now()-priorityAt)/100);priorityAt=Date.now();
+        if(priorityTokens<1){socket.send(JSON.stringify({type:'atelier.response',v:1,clientRequestId:String((JSON.parse(raw) as {clientRequestId?:unknown}).clientRequestId||'').slice(0,64),ok:false,error:{code:'LIMIT_EXCEEDED',message:'중단 요청 속도 한도입니다.',retryable:true}}));return;}priorityTokens--;
+        void executionRuntime.request(raw).then(reply=>{if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(reply));});return;
+      }
       if(type==='atelier.project.delete'){
         const request=JSON.parse(raw) as {clientRequestId?:unknown;payload?:{designProjectId?:unknown}};
         if(proposalRuntime.ownsProject(request.payload?.designProjectId)){
@@ -1520,7 +1607,7 @@ wsServer.on("connection", (socket) => {
         socket.send(JSON.stringify({ type:"atelier.response", v:1, clientRequestId, ok:false, error:{code:"BUSY",message:"다운로드 수신을 완료한 뒤 다음 chunk를 요청하세요.",retryable:true} }));
         return;
       }
-      void atelier.handle(atelierOwner, raw,()=>proposalRuntime.request(raw)).then((reply) => { if(reply.ok&&reply.result.kind==='capabilities')Object.assign(reply.result,{ai:appServerReady,aiPurposes:['brief','flow','concept','style'],imageInput:false,proposalPolicy:{sandbox:'readOnly',networkAccess:false}}); if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(reply)); });
+      void atelier.handle(atelierOwner, raw,()=>type.startsWith('atelier.ai.')?proposalRuntime.request(raw):executionRuntime.request(raw)).then((reply) => { if(reply.ok&&reply.result.kind==='capabilities')Object.assign(reply.result,{execution:appServerReady,ai:appServerReady,aiPurposes:['blueprint','brief','flow','concept','style'],imageInput:false,proposalPolicy:{sandbox:'readOnly',networkAccess:false},executionPolicy:{sandbox:'workspaceWrite',networkAccess:false}}); if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(reply)); });
       return;
     }
     if (type === "approval.resolve" || type === "turn.interrupt") {
@@ -1534,9 +1621,11 @@ wsServer.on("connection", (socket) => {
       return;
     }
     if (type === "turn.start") queuedTurnStarts++;
+    queuedClientOperations++;
     clientQueue = clientQueue.then(async () => {
       try { await handleClientMessage(socket, raw); }
       finally {
+        queuedClientOperations--;
         if (type === "turn.start") {
           queuedTurnStarts--;
           // Preserve stop-during-start semantics while the App Server has not returned a turn ID yet.
@@ -1546,7 +1635,7 @@ wsServer.on("connection", (socket) => {
         }
       }
     }).catch((error) => {
-      if (!turnId && !runIsActive()) completeConversationReply("failed");
+      if (!executionRuntime.busy && !turnId && !runIsActive()) completeConversationReply("failed");
       send(socket, { type: "error", message: errorMessage(error), recoverable: true });
       broadcastConversationState();
     });

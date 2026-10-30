@@ -6,6 +6,10 @@ import { object } from './schema.js';
 
 /** Only Atelier work goes through this worker. Existing execution/approval queues stay independent. */
 export class AtelierClient {
+  async executionCall(method:string,payload:Record<string,unknown>):Promise<Record<string,unknown>>{
+    await this.ready;if(this.failure)throw new AtelierError('STORAGE_UNAVAILABLE',this.failure.message);
+    return await this.call('',{executionInternal:{method,payload}}) as unknown as Record<string,unknown>;
+  }
   async proposalCall(method:'prepare'|'running'|'complete'|'fail',payload:Record<string,unknown>):Promise<Record<string,unknown>>{
     await this.ready;if(this.failure)throw new AtelierError('STORAGE_UNAVAILABLE',this.failure.message);
     const result=await this.call('',{proposalInternal:{method,payload}});return result as unknown as Record<string,unknown>;
@@ -46,7 +50,7 @@ export class AtelierClient {
         await this.ready;
         if(this.failure)return {type:'atelier.response',v:1,clientRequestId,ok:false,error:this.failure};
         if(this.pending.size>=8)throw new AtelierError('BUSY','설계 저장소 요청 한도입니다. 잠시 후 다시 시도하세요.');
-        if(propose&&object(request)&&['atelier.ai.propose','atelier.ai.interrupt'].includes(String(request.type)))return await propose();
+        if(propose&&object(request)&&['atelier.ai.propose','atelier.ai.interrupt','atelier.binding.set','atelier.generation.start','atelier.generation.interrupt'].includes(String(request.type)))return await propose();
         const result=await this.call(owner,{raw});
         if(result.changed)this.emit({type:'atelier.project.changed',v:1,serverEpoch:this.epoch,seq:++this.seq,designProjectId:result.changed.id,payload:{version:result.changed.version,revision:result.changed.revision}});
         return result.reply;

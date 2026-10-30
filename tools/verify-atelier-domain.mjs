@@ -6,7 +6,9 @@ import {readFile, readdir} from 'node:fs/promises';
 import {createDomain, SCHEMA_VERSION, TEMPLATE_VERSION} from '../build-server/shared/atelier/index.js';
 
 const root = new URL('../', import.meta.url);
-const manifest = JSON.parse(await readFile(new URL('docs/atelier/STAGE2_SOURCE_MANIFEST.json', root), 'utf8'));
+const flag=process.argv.indexOf('--manifest'),manifestPath=flag>=0?process.argv[flag+1]:'docs/atelier/STAGE2_SOURCE_MANIFEST.json';
+assert(['docs/atelier/STAGE2_SOURCE_MANIFEST.json','docs/atelier/STAGE8_SOURCE_MANIFEST.json'].includes(manifestPath),'Choose an explicitly recorded repository baseline.');
+const manifest = JSON.parse(await readFile(new URL(manifestPath, root), 'utf8'));
 const sourcePaths = [
   'atelier/atelier/public/domain.js', 'atelier/atelier/public/structure.js', 'atelier/atelier/public/guide.js',
   'atelier/atelier/contracts.d.ts', 'atelier/atelier/src/project-validation.mjs',
@@ -20,7 +22,9 @@ for (const path of sourcePaths) {
   const entry = manifest.files.find(file => file.path === path);
   assert(entry, `Source manifest missing: ${path}`);
   const bytes = await readFile(new URL(path, root));
-  assert.equal(createHash('sha256').update(bytes).digest('hex'), entry.sha256, `Source changed: ${path}`);
+  const digest=value=>createHash('sha256').update(value).digest('hex');
+  if(entry.lfSha256)assert.equal(digest(bytes.toString('utf8').replace(/\r\n/g,'\n')),entry.lfSha256,`Source content changed: ${path}`);
+  else assert.equal(digest(bytes), entry.sha256, `Source changed: ${path}`);
 }
 
 let sequence = 0;

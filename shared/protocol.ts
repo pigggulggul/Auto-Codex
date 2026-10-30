@@ -243,6 +243,7 @@ export type ClientMessage =
   | { type: "project.trust" }
   | { type: "conversation.new" }
   | { type: "conversation.select"; conversationId: string }
+  | { type: "conversation.rename"; conversationId: string; title: string; expectedTitle: string; clientRequestId: string }
   | { type: "skills.refresh" }
   | { type: "models.refresh" }
   | {
@@ -264,6 +265,7 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: "bridge.state"; snapshot: BridgeSnapshot }
   | { type: "conversation.state"; state: ConversationState }
+  | { type: "conversation.rename.result"; clientRequestId: string; ok: boolean; title?: string; error?: string }
   | { type: "project.picker"; status: "opened" | "cancelled" }
   | { type: "project.selected"; path: string }
   | { type: "project.trust"; path: string; status: "trusted" | "untrusted" }

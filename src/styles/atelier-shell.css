@@ -60,9 +60,9 @@ html:has(.atelier-app), body:has(.atelier-app) { background: #fff; background-im
 .atelier-nav-dialog { position: fixed; inset: 0 auto 0 0; margin: 0; width: min(300px, 88vw); height: 100dvh; max-height: none; max-width: none; border: 0; border-right: 1px solid var(--atelier-line); background: #fff; color: var(--atelier-ink); padding: 24px 16px; font: 14px/1.75 var(--atelier-sans); }
 .atelier-nav-dialog::backdrop { background: #34343270; }
 .atelier-dialog-close { display: block; margin: 0 0 18px auto; padding: 7px 10px; border: 1px solid var(--atelier-line); background: #fff; border-radius: 5px; }
-.atelier-introduction { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 36px; }
+.atelier-introduction { display: block; }
 .atelier-introduction > div { min-width: 0; }
-.atelier-home-hero { display: grid; grid-template-columns: 1.2fr 1fr; align-items: center; gap: 15px; padding: 28px 0 50px; }
+.atelier-home-hero { display: flex; align-items: center; padding: 8px 0 20px; }
 .atelier-home-hero h1 { font: 400 clamp(50px, 5.3vw, 82px)/1.03 var(--atelier-serif); letter-spacing: -.03em; margin: 22px 0; }
 .atelier-home-hero h1 em { font-weight: 400; color: var(--atelier-accent); }
 .atelier-home-hero > div > p:last-of-type { font-size: 12px; color: var(--atelier-muted); line-height: 1.9; margin: 0 0 22px; }
@@ -150,6 +150,7 @@ html:has(.atelier-app), body:has(.atelier-app) { background: #fff; background-im
 .atelier-app .trust-confirmed { color: #33765c; font-size: 11px; }.atelier-app .trust-button { color: #7d5c22; background: #fff5df; border: 1px solid #e4cf9e; border-radius: 5px; }
 .atelier-app .bridge-offline-help { background: #fff7f8; border: 1px solid #efd0d6; border-radius: 5px; padding: 12px; }.atelier-app .bridge-offline-help strong { color: #b72b47; }.atelier-app .bridge-offline-help span { color: var(--atelier-muted); font-size: 11px; }
 .atelier-app .conversation-picker select { width: 100%; padding: 10px; }
+.atelier-app .conversation-name-actions button { min-height: 36px; padding: 8px 10px; border: 1px solid var(--atelier-line); border-radius: 5px; background: #fff; color: var(--atelier-ink); font-size: 11px; }
 .atelier-app .conversation-picker { border: 0; border-bottom: 1px solid var(--atelier-line); border-radius: 6px 6px 0 0; background: var(--atelier-wash); box-shadow: none; padding: 18px; }
 .atelier-app .conversation-picker-heading strong { color: var(--atelier-ink); font-size: 13px; font-weight: 500; }.atelier-app .conversation-picker-heading small { color: var(--atelier-muted); font-size: 10px; }
 .atelier-app .conversation-picker-heading button { color: var(--atelier-ink); background: #fff; border: 1px solid var(--atelier-line); border-radius: 5px; box-shadow: none; font-size: 11px; }

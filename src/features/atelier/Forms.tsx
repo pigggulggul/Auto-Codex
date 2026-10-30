@@ -1,7 +1,8 @@
-import {useRef,useState} from 'react';
+import {useId,useRef,useState} from 'react';
 import type {ReactNode} from 'react';
 import {AtelierDrafts} from './drafts';
 import type {Data} from './api';
+import {FIELD_HELP} from './guidance';
 
 export const stable=(value:unknown):string=>JSON.stringify(value,(_key,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 function draftStorage():Pick<Storage,'getItem'|'setItem'|'removeItem'>{try{return window.localStorage;}catch{return {getItem:()=>null,setItem:()=>{throw new Error('임시 보관 불가');},removeItem:()=>{}};}}
@@ -30,12 +31,18 @@ export function DraftForm({draftKey,initial,title,children,onSave,disabled,onDir
  </form>;
 }
 export interface Choice {id:string;label:string}
-export interface Field {key:string;label:string;type?:'text'|'area'|'select'|'multi'|'checkbox'|'number';options?:Choice[];help?:string}
+export interface Field {key:string;label:string;type?:'text'|'area'|'select'|'multi'|'checkbox'|'number';options?:Choice[];help?:string;placeholder?:string}
 export function Inputs({fields,values,set}:{fields:Field[];values:Data;set:(k:string,v:unknown)=>void}){
+ const prefix=useId();
  return <div className="design-fields">{fields.map(field=>{
-  const value=values[field.key];const label=<span>{field.label}</span>;
-  if(field.type==='checkbox')return <label key={field.key}>{label}<input type="checkbox" checked={value===true} onChange={e=>set(field.key,e.target.checked)}/></label>;
-  if(field.type==='select'||field.type==='multi')return <label key={field.key}>{label}<select multiple={field.type==='multi'} value={field.type==='multi'?(Array.isArray(value)?value.map(String):[]):String(value??'')} onChange={e=>set(field.key,field.type==='multi'?[...e.target.selectedOptions].map(o=>o.value):e.target.value)}>{field.type==='select'&&<option value="">선택 없음</option>}{field.options?.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}</select>{field.help&&<small>{field.help}</small>}</label>;
-  return <label key={field.key}>{label}{field.type==='area'?<textarea rows={3} value={String(value??'')} onChange={e=>set(field.key,e.target.value)}/>:<input type={field.type==='number'?'number':'text'} value={String(value??'')} onChange={e=>set(field.key,field.type==='number'?Number(e.target.value):e.target.value)}/ >}{field.help&&<small>{field.help}</small>}</label>;
+  const value=values[field.key],help=field.help??FIELD_HELP[field.key],hint=help?prefix+field.key:undefined;
+  const label=<span>{field.label}</span>,description=help&&<small id={hint} className="design-field-help">{help}</small>;
+  if(field.type==='multi'){
+   const selected=Array.isArray(value)?value.map(String):[];
+   return <fieldset key={field.key} className="design-choices" aria-describedby={hint}><legend>{field.label}</legend>{description}{!field.options?.length&&<p>아직 연결할 항목이 없어요. 해당 항목을 먼저 추가한 뒤 여기에서 연결할 수 있어요. 지금은 비워 두어도 돼요.</p>}{field.options?.map(o=><label key={o.id}><input type="checkbox" checked={selected.includes(o.id)} onChange={e=>set(field.key,e.target.checked?[...selected,o.id]:selected.filter(id=>id!==o.id))}/><span>{o.label}</span></label>)}</fieldset>;
+  }
+  if(field.type==='checkbox')return <label key={field.key}>{label}<input type="checkbox" aria-describedby={hint} checked={value===true} onChange={e=>set(field.key,e.target.checked)}/>{description}</label>;
+  if(field.type==='select')return <label key={field.key}>{label}<select aria-describedby={hint} value={String(value??'')} onChange={e=>set(field.key,e.target.value)}><option value="">아직 정하지 않았어요</option>{field.options?.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}</select>{description}</label>;
+  return <label key={field.key}>{label}{field.type==='area'?<textarea rows={3} aria-describedby={hint} placeholder={field.placeholder} value={String(value??'')} onChange={e=>set(field.key,e.target.value)}/>:<input type={field.type==='number'?'number':'text'} aria-describedby={hint} placeholder={field.placeholder} value={String(value??'')} onChange={e=>set(field.key,field.type==='number'?Number(e.target.value):e.target.value)}/ >}{description}</label>;
  })}</div>;
 }

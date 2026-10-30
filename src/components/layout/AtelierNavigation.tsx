@@ -1,14 +1,11 @@
 import { useEffect, useRef } from "react";
 import type {Tab} from '../../../shared/atelier/types';
 import {TABS} from '../../../shared/atelier/guide';
+import {TAB_LABELS} from '../../features/atelier/guidance';
 
 export type AtelierPage = "home" | "work" | "results" | "operations" | "pixel" | "settings" | "design";
 
-export const DESIGN_STEPS = [
-  ["edit", "프로젝트 설계"], ["flow", "사용자 흐름"], ["image", "레퍼런스 연구"],
-  ["concept", "컨셉 탐색"], ["style", "스타일과 리소스"], ["brief", "디자인 브리프"],
-  ["prompt", "프롬프트 스튜디오"], ["review", "자가 진단과 수정"],
-] as const;
+export const DESIGN_STEPS = TABS.map(([id,,icon])=>[icon,TAB_LABELS[id]] as const);
 
 export const PAGE_INFO: Record<AtelierPage, { title: string; english: string; description: string }> = {
   home: { title: "나의 작업실", english: "A little space for your next idea.", description: "생각을 정리하고, Codex와 함께 다음 작업을 시작하세요." },
@@ -17,7 +14,7 @@ export const PAGE_INFO: Record<AtelierPage, { title: string; english: string; de
   operations: { title: "Codex 활동 센터", english: "See the work as it happens.", description: "실제 실행 이벤트와 작업 상태를 확인합니다. 화면 이동은 실행 상태를 바꾸지 않습니다." },
   pixel: { title: "픽셀 화면", english: "A small world, real activity.", description: "역할별 캐릭터와 픽셀 공간에서 실제 작업 흐름을 살펴보세요." },
   settings: { title: "작업실 설정", english: "A workspace that fits you.", description: "프로젝트·모델·스킬을 설정하고 화면 표시 방식을 선택하세요." },
-  design: { title: "디자인 작업실", english: "Intention before decoration.", description: "설계·원본·흐름·고정 프롬프트·실제 결과와 검토를 로컬 저장소에서 연결합니다." },
+  design: { title: "디자인 작업실", english: "Intention before decoration.", description: "아이디어를 정리하고, 원하는 분위기와 화면을 하나씩 구체화해요." },
 };
 
 const MAIN_PAGES = [

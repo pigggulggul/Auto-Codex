@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "SHA-256",
+  "pathBase": "repository-root",
+  "recordedAt": "2026-10-30T02:18:29.142Z",
+  "gitHead": "ced016939fc2a04864132454a3b55e5aa464a933",
+  "originalSourcesMatchHeadWithLFNormalization": true,
+  "historicalManifestPreserved": "STAGE2_SOURCE_MANIFEST.json",
+  "files": [
+    {
+      "path": "atelier/atelier/public/domain.js",
+      "sha256": "380e4864489d9ee1c1638084a845db7221544d55f14d5a622aadebc90fe09caa",
+      "lfSha256": "7175e56b7698b761b0f73737697cf8d8b719024c89e521d63f4ca79841672fb1",
+      "historicalStage2Sha256": "172c1cb882cf7d06934a4e56ceaa22c6b56b528edb6e016ecca828a018c1df62",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/public/structure.js",
+      "sha256": "901741078058a57c952ad6d8d4282240515fb733d6c502312ccebe1b1963bee6",
+      "lfSha256": "eda899d6c01029f8ac3969975dbb14c5e64a8aafa43c31b78f872b31d50314f4",
+      "historicalStage2Sha256": "67001590d004eb2a2fe37132a63c709fd17ae7fd5b5131b0ee555faec9890f53",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/public/guide.js",
+      "sha256": "810edcc7356f5256fac694ee56f0d345895c3ee3b9f3f5cb871d8f9c13427b99",
+      "lfSha256": "2fde535154ce5dfa8441d413999dcf3bb0433a7898c7422eb363baae00d546be",
+      "historicalStage2Sha256": "6e8bad5b6ab228ba2c34294071c92631da88f037d5be5366726a99bf10eebbf4",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/contracts.d.ts",
+      "sha256": "f7935e19560bdc393dc0f18dcf8b31a61885b3a7de442dd6c7db9432eb1f74a3",
+      "lfSha256": "ba7914b70003306e4c5ac5f36a0b23118de8b3a036928025de0c159e2467f5e4",
+      "historicalStage2Sha256": "ba7914b70003306e4c5ac5f36a0b23118de8b3a036928025de0c159e2467f5e4",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/src/project-validation.mjs",
+      "sha256": "c5c4be17f2b7cb88f6f8101881756e288bc9ad01419dc3662e0c3cdf2eeba4ff",
+      "lfSha256": "ee7d8d90810ce9af2f0baa5024170b917a05dad0c143708158e9de8b5829942f",
+      "historicalStage2Sha256": "ee7d8d90810ce9af2f0baa5024170b917a05dad0c143708158e9de8b5829942f",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/public/app.js",
+      "sha256": "0e4ba9d99397a32e0a69319b8606fa1cf3e1889f79432b4b7b6a7017c4a2e6ac",
+      "lfSha256": "d68c27b7f2306a2321315cfa6ce6ab8b3bb36d523859d5c5bbae88c0ad80b5a8",
+      "historicalStage2Sha256": "04edb3104a81be883971da746e34087acafec5fa59874681c1e570a587924950",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/public/panels.js",
+      "sha256": "a8540a10f58fbd5a10fd532d714c5a0998a5efbb7c0dedfea5e4915057664324",
+      "lfSha256": "70de93bb369318dafe5f6777afa346f1a20a8d2d739b5cd2fbfd9553471aca22",
+      "historicalStage2Sha256": "78a1e5bc64207111cceaeef1efa96bb072d7eb2ebe1fa34915354b917c64b724",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/tests/domain.test.mjs",
+      "sha256": "ee3388f4a554717a126239b696ce82b55f49836f702431809aba5ece2a7b4449",
+      "lfSha256": "52a5a2c519334a11ac5d60a2c5567bfc477b0956fba9b1452d1061f7c9393221",
+      "historicalStage2Sha256": "de3375060a0703ced552e23421f14cf628b7b3eb929562ebeae27294a0fd8b19",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/tests/extension.test.mjs",
+      "sha256": "2b1f37acb71a91a314bfad31ca03f13333797ec42b8034cb60548976565f46dd",
+      "lfSha256": "8475566549ebf6ea56acea56714dee74cb9c34001daefaf5de1c71db6bf30b5f",
+      "historicalStage2Sha256": "8475566549ebf6ea56acea56714dee74cb9c34001daefaf5de1c71db6bf30b5f",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/examples/DI-DO.atelier.json",
+      "sha256": "76e4f2c0afd2d4f9f4e6b6f7d212c99af92d7a349955cd984ebb7eda2f32b6cd",
+      "lfSha256": "7c45dc9a837bf69feb0143e0384102e57c8717ae79b72af5b1748f10216d4860",
+      "historicalStage2Sha256": "7c45dc9a837bf69feb0143e0384102e57c8717ae79b72af5b1748f10216d4860",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/examples/liar.atelier.json",
+      "sha256": "681580ee97424f33b7a4cecbfd7c94c20fd75dd1340257c865d794753d07966e",
+      "lfSha256": "dbc1a3348a4e49ad0e8a7822adb7419edc66d2d4d6ba771238fdab810580c6a9",
+      "historicalStage2Sha256": "dbc1a3348a4e49ad0e8a7822adb7419edc66d2d4d6ba771238fdab810580c6a9",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/examples/survey.atelier.json",
+      "sha256": "319ae01c95bab02520ea1ab3da8f478752fb3599a9a61c730e7bfaf7b110786d",
+      "lfSha256": "47e85fe9422e191b438f030753dd6ec71400017f3d7da0e4be76d71bf4f24128",
+      "historicalStage2Sha256": "47e85fe9422e191b438f030753dd6ec71400017f3d7da0e4be76d71bf4f24128",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/examples/worldcup.atelier.json",
+      "sha256": "d582206d68e4b6c5f99468049f788fb66ac255c93afb81c54e5d5e5733114e0e",
+      "lfSha256": "f62f5497aab29e852fc8f32ead6ef9fc8fef595892b8cac6757f668f39b1362a",
+      "historicalStage2Sha256": "f62f5497aab29e852fc8f32ead6ef9fc8fef595892b8cac6757f668f39b1362a",
+      "exactHistoricalMatch": false
+    },
+    {
+      "path": "atelier/atelier/examples/게임_설계예시.atelier.json",
+      "sha256": "513123956f33b0e60f86c7965c8b0a407ab429930f1a63774efb29b05c51f781",
+      "lfSha256": "513123956f33b0e60f86c7965c8b0a407ab429930f1a63774efb29b05c51f781",
+      "historicalStage2Sha256": "513123956f33b0e60f86c7965c8b0a407ab429930f1a63774efb29b05c51f781",
+      "exactHistoricalMatch": true
+    },
+    {
+      "path": "atelier/atelier/examples/네컷_수정흐름_검증예시.atelier.json",
+      "sha256": "1201be60053fbf6654b969e763c018870910e015e5fdca4bc8b890caea5c8113",
+      "lfSha256": "1201be60053fbf6654b969e763c018870910e015e5fdca4bc8b890caea5c8113",
+      "historicalStage2Sha256": "1201be60053fbf6654b969e763c018870910e015e5fdca4bc8b890caea5c8113",
+      "exactHistoricalMatch": true
+    },
+    {
+      "path": "atelier/atelier/examples/범위_서체_파일_검증예시.atelier.json",
+      "sha256": "ba9d24c2725f08b61daf5301c9ad05e45a84987d44018e66ea3588903a4b6616",
+      "lfSha256": "ba9d24c2725f08b61daf5301c9ad05e45a84987d44018e66ea3588903a4b6616",
+      "historicalStage2Sha256": "ba9d24c2725f08b61daf5301c9ad05e45a84987d44018e66ea3588903a4b6616",
+      "exactHistoricalMatch": true
+    }
+  ]
+}

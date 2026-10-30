@@ -1,0 +1,246 @@
+{
+  "summary": "주요 상태와 최근 변화를 첫 화면에서 읽는 운영 도구",
+  "productType": "제작 도구",
+  "archetype": "monitor",
+  "requirements": [
+    {
+      "quote": "온도와 통신 상태",
+      "implementation": "상태 요약과 상세 상태를 함께 보여 준다",
+      "screenKeys": [
+        "overview",
+        "detail"
+      ]
+    }
+  ],
+  "fields": [
+    {
+      "key": "product",
+      "value": "온도와 통신 상태를 확인하는 웹 모니터",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "provided"
+    },
+    {
+      "key": "user",
+      "value": "장비 상태를 확인하는 운영자",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "provided"
+    },
+    {
+      "key": "goal",
+      "value": "상태 변화와 경고를 즉시 확인",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "provided"
+    },
+    {
+      "key": "decisionMaker",
+      "value": "가정: 운영자가 직접 사용 결정",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "assumption"
+    },
+    {
+      "key": "value",
+      "value": "현재 상태와 변경 기록",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "provided"
+    },
+    {
+      "key": "doubt",
+      "value": "가정: 이전 값과 현재 값을 혼동할 수 있음",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "assumption"
+    },
+    {
+      "key": "evidence",
+      "value": "상태 이름과 마지막 수신 시각을 함께 표시",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "provided"
+    },
+    {
+      "key": "environment",
+      "value": "가정: 데스크톱 웹 중심, 모바일 확인 지원",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "assumption"
+    },
+    {
+      "key": "scope",
+      "value": "상태 요약과 장비 상세 확인",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "provided"
+    },
+    {
+      "key": "fit",
+      "value": "장식보다 상태 정보를 먼저 보여 주는 구성",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "provided"
+    },
+    {
+      "key": "constraints",
+      "value": "색과 글자로 상태를 함께 표시",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "provided"
+    },
+    {
+      "key": "criteria",
+      "value": "첫 화면 상태 확인, 오류 복구, 작은 화면 가독성",
+      "reason": "입력 기반 또는 표시한 설계 가정",
+      "basis": "provided"
+    }
+  ],
+  "features": [
+    {
+      "key": "status_feature",
+      "name": "장비 상태 확인",
+      "purpose": "상태 변화 확인",
+      "action": "장비 선택 후 상세 확인",
+      "info": "온도, 통신 상태, 마지막 수신 시각",
+      "flowKeys": [
+        "inspect_flow"
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "key": "overview",
+      "name": "상태 요약",
+      "role": "장비별 주요 상태와 최근 변화 확인",
+      "entry": "모니터 열기",
+      "priority": "현재 값 → 최근 변화 → 다음 조작",
+      "actions": "장비 선택, 상세 확인, 목록으로 돌아가기",
+      "response": "선택한 항목과 갱신 시각을 표시",
+      "next": "상세 또는 상태 요약으로 이동",
+      "exceptions": "비어 있음, 로딩, 읽기 실패를 글자와 재시도 조작으로 안내",
+      "preserve": "선택한 장비와 필터",
+      "layout": "상태가 중앙에 보이는 명확한 그리드"
+    },
+    {
+      "key": "detail",
+      "name": "장비 상세",
+      "role": "선택한 장비의 상세 상태 확인",
+      "entry": "장비 선택",
+      "priority": "현재 값 → 최근 변화 → 다음 조작",
+      "actions": "장비 선택, 상세 확인, 목록으로 돌아가기",
+      "response": "선택한 항목과 갱신 시각을 표시",
+      "next": "상세 또는 상태 요약으로 이동",
+      "exceptions": "비어 있음, 로딩, 읽기 실패를 글자와 재시도 조작으로 안내",
+      "preserve": "선택한 장비와 필터",
+      "layout": "상태가 중앙에 보이는 명확한 그리드"
+    }
+  ],
+  "flows": [
+    {
+      "key": "inspect_flow",
+      "name": "상태 확인과 상세 보기",
+      "goal": "장비의 상태와 변화를 확인",
+      "start": "모니터 열기",
+      "complete": "현재 상태를 읽고 목록으로 돌아옴",
+      "recovery": "선택과 필터를 유지해 요약 화면으로 돌아가기",
+      "screenKeys": [
+        "overview",
+        "detail"
+      ],
+      "entryKey": "overview",
+      "terminalKeys": [
+        "overview"
+      ],
+      "transitions": [
+        {
+          "from": "overview",
+          "to": "detail",
+          "kind": "next",
+          "condition": "장비 선택",
+          "preserve": "선택한 장비와 필터"
+        },
+        {
+          "from": "detail",
+          "to": "overview",
+          "kind": "recovery",
+          "condition": "뒤로 가기 또는 상세 읽기 실패",
+          "preserve": "선택한 장비와 필터"
+        }
+      ],
+      "branchPolicy": "none",
+      "branchReason": "별도 조건 분기 없음",
+      "recoveryPolicy": "mapped",
+      "recoveryReason": "실패하면 목록으로 복구"
+    }
+  ],
+  "visual": {
+    "name": "조용하고 선명한 상태 콘솔",
+    "direction": "따뜻한 바탕과 분명한 정보 대비",
+    "why": "장식보다 변화를 읽는 데 집중",
+    "primaryTask": "장비 상태와 최근 변화 확인",
+    "firstViewport": [
+      "현재 상태",
+      "최근 변화",
+      "핵심 조작"
+    ],
+    "layout": "상단 요약, 중앙 상태 목록, 우측 선택 상세",
+    "density": "compact",
+    "typography": "제목 24px, 상태 20px, 본문 14px, 메타 12px",
+    "spacing": "8px 기준, 영역 사이 24px, 카드 안 16px",
+    "shape": "8px 모서리와 얇은 구분선",
+    "motion": "변경 상태만 160ms, 동작 감소 시 전환 제거",
+    "responsive": "390px에서 요약과 상태를 우선하고 상세는 아래에 배치",
+    "avoid": [
+      "큰 홍보용 제목",
+      "색만으로 상태 구분"
+    ],
+    "colors": {
+      "background": "#F7F6F2",
+      "surface": "#FFFFFF",
+      "text": "#222222",
+      "muted": "#626262",
+      "accent": "#A62842",
+      "accentText": "#FFFFFF",
+      "border": "#D4D1C9"
+    },
+    "font": {
+      "family": "system-ui",
+      "fallback": "Arial, sans-serif",
+      "availability": "system",
+      "reason": "시스템 기본 글꼴 사용"
+    }
+  },
+  "assets": [
+    {
+      "name": "상태 표시와 기본 글꼴",
+      "kind": "기본 UI 재료",
+      "purpose": "명확한 상태 안내",
+      "method": "CSS와 시스템 서체로 구현",
+      "rules": "색과 텍스트를 함께 표시",
+      "usage": "시스템 기본 서체, 별도 외부 파일 없음",
+      "sourceUrl": ""
+    }
+  ],
+  "references": [],
+  "assumptions": [
+    "데스크톱 웹 중심으로 설계"
+  ],
+  "questions": [],
+  "checks": [
+    {
+      "label": "첫 화면 정보 위계",
+      "expected": "주요 상태와 최근 변화가 스크롤 전에 보인다",
+      "method": "visual",
+      "viewport": "1440x900"
+    },
+    {
+      "label": "모바일 가독성",
+      "expected": "가로 넘침 없이 상태와 조작을 읽을 수 있다",
+      "method": "visual",
+      "viewport": "390x844"
+    },
+    {
+      "label": "실패 복구",
+      "expected": "읽기 실패 후 필터와 선택을 유지하고 다시 시도한다",
+      "method": "behavior",
+      "viewport": "공통"
+    },
+    {
+      "label": "상태 변경 구분",
+      "expected": "값과 변경 시각을 함께 확인한다",
+      "method": "behavior",
+      "viewport": "공통"
+    }
+  ]
+}

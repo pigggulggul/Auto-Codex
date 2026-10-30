@@ -7,6 +7,8 @@ export function useAtelier(api:AtelierApi,connected:boolean) {
   const [projects,setProjects]=useState<Data[]>([]),[files,setFiles]=useState<FileInfo[]>([]);
   const [capabilities,setCapabilities]=useState<Data|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[remoteVersion,setRemoteVersion]=useState(0);
   const [tab,setTab]=useState<Tab>('design'),[prepared,setPrepared]=useState<{descriptor:Download;mime:string}|null>(null);
+  const preparedRef=useRef<typeof prepared>(null);
+  const releasePrepared=useCallback(async()=>{const old=preparedRef.current;preparedRef.current=null;setPrepared(null);if(old)await api.release(old.descriptor);},[api]);
   const gate=useRef(false),selection=useRef(0);
   const accept=useCallback((p:Project)=>{ref.current=p;setProject(p);setRemoteVersion(v=>v<=p.version?0:v);},[]);
   const perform=useCallback(async<T,>(job:()=>Promise<T>):Promise<T|undefined>=>{
@@ -16,11 +18,14 @@ export function useAtelier(api:AtelierApi,connected:boolean) {
   },[]);
   const list=useCallback(async()=>{setProjects((await api.pages('project.list')).filter(record));},[api]);
   const load=useCallback(async(id:string,restorePosition=true)=>{
+    if(ref.current?.id!==id)await releasePrepared();
     const ticket=++selection.current;const p=await api.project(id);const fileRows=await api.pages('file.list',{designProjectId:id});
     if(ticket!==selection.current)return;
     accept(p);setFiles(fileRows as FileInfo[]);localStorage.setItem('auto-codex.atelier.project',id);
     if(restorePosition){const saved=localStorage.getItem('auto-codex.atelier.tab.'+id);setTab((['design','flow','reference','concept','style','brief','prompt','review'].includes(saved||'')?saved:p.progress.tab) as Tab);}
-  },[api,accept]);
+  },[api,accept,releasePrepared]);
+  useEffect(()=>{if(!connected){preparedRef.current=null;setPrepared(null);}},[connected]);
+  useEffect(()=>()=>{const old=preparedRef.current;preparedRef.current=null;if(old)void api.release(old.descriptor).catch(()=>{});},[api]);
   useEffect(()=>{
     if(!connected){setCapabilities(null);return;}
     let active=true;
@@ -41,15 +46,16 @@ export function useAtelier(api:AtelierApi,connected:boolean) {
     try{return await job();}catch(e){setError(e instanceof Error?e.message:'저장 실패 · 입력 유지');throw e;}finally{gate.current=false;setBusy(false);}
   },[]);
   const commit=useCallback((type:string,payload:Data={})=>commitJob(()=>mutate(type,payload)),[commitJob,mutate]);
-  const navigate=useCallback((next:Tab)=>{setTab(next);const p=ref.current;if(p){localStorage.setItem('auto-codex.atelier.tab.'+p.id,next);void perform(()=>mutate('project.update',{patch:{progress:{tab:next}}}));}},[perform,mutate]);
+  const navigate=useCallback((next:Tab)=>{setTab(next);const p=ref.current;if(p)localStorage.setItem('auto-codex.atelier.tab.'+p.id,next);},[]);
   const create=(name:string,idea:string,entry:Entry,type:Project['type'])=>perform(async()=>{const result=await api.request('project.create',{name,idea,entry,type});const id=String(data(result.project).id);await load(id);await list();return id;});
   const select=(id:string)=>perform(()=>load(id));
   const reload=()=>perform(async()=>{if(ref.current)await load(ref.current.id,false);await list();});
   const upload=async(file:File|Blob,name:string,role:string)=>{const p=ref.current;if(!p)throw new Error('설계 프로젝트가 없습니다.');const r=await api.upload(file,name,p.id,role);const f=data(r.file) as unknown as FileInfo;setFiles(current=>[...current.filter(x=>x.id!==f.id),f]);return f;};
-  const exportFile=(type:'backup.export'|'bundle.export'|'snapshot.read',payload:Data={})=>perform(async()=>{const p=ref.current;if(!p)throw new Error('설계 프로젝트가 없습니다.');const r=await api.request(type,{designProjectId:p.id,...payload});setPrepared({descriptor:data(r.download) as unknown as Download,mime:type==='bundle.export'?'application/zip':'application/json'});});
+  const exportFile=(type:'backup.export'|'bundle.export'|'snapshot.read',payload:Data={})=>perform(async()=>{const p=ref.current;if(!p)throw new Error('설계 프로젝트가 없습니다.');await releasePrepared();const r=await api.request(type,{designProjectId:p.id,...payload});const next={descriptor:data(r.download) as unknown as Download,mime:type==='bundle.export'?'application/zip':'application/json'};preparedRef.current=next;setPrepared(next);});
   const restore=(file:File)=>perform(async()=>{const t=await api.upload(file,file.name);const r=await api.request('backup.import',{transferId:t.transferId});await load(String(data(r.project).id));await list();});
   return {api,project,projectRef:ref,projects,files,capabilities,error,setError,busy,tab,navigate,create,select,reload,mutate,commit,commitJob,action,perform,upload,exportFile,restore,remoteVersion,prepared,
-    savePrepared:()=>perform(async()=>{if(prepared){await api.save(prepared.descriptor,prepared.mime);setPrepared(null);}}),
-    deleteProject:(confirmation:string)=>perform(async()=>{const p=ref.current;if(!p||confirmation!==p.id)throw new Error('확인한 프로젝트가 다릅니다.');await api.request('project.delete',{designProjectId:p.id,expectedVersion:p.version,confirmation:{projectId:confirmation}});ref.current=null;setProject(null);setFiles([]);localStorage.removeItem('auto-codex.atelier.project');await list();})};
+    discardPrepared:()=>perform(releasePrepared),
+    savePrepared:()=>perform(async()=>{const current=preparedRef.current;if(current){try{await api.save(current.descriptor,current.mime);}finally{await releasePrepared();}}}),
+    deleteProject:(confirmation:string)=>perform(async()=>{const p=ref.current;if(!p||confirmation!==p.id)throw new Error('확인한 프로젝트가 다릅니다.');await releasePrepared();await api.request('project.delete',{designProjectId:p.id,expectedVersion:p.version,confirmation:{projectId:confirmation}});ref.current=null;setProject(null);setFiles([]);localStorage.removeItem('auto-codex.atelier.project');await list();})};
 }
 export type AtelierController=ReturnType<typeof useAtelier>;

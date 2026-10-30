@@ -1,4 +1,4 @@
-# 기능 보존 매핑 — 0단계
+# 기능 보존 매핑 — 0단계와 후속 검증
 
 [기준선 결과](STAGE0_BASELINE.md)와 함께 읽는다. 아래 경로는 **현재 구현**, 새 진입점은 **통합 목표**다. `src/components/`의 컴포넌트는 이후 공통 셸로 옮겨도 기능과 상태 소유자를 유지한다. 표의 테스트는 커버하는 범위만 입증하며 브라우저 조작 전체 통과를 뜻하지 않는다.
 
@@ -71,3 +71,37 @@ Atelier 자동 검사는 5개 파일/53개다. browser-journey.js·browser-exten
 | 통합 데이터/파일 WS | A20 + T07/T10/T14/T15/T19 | byte/hash/type·소유 관계·chunk·용량·재시작·권한 미복원 |
 
 새 UI로 이동할 때 A/T 항목마다 새 진입점·정상/실패 경로·증거를 갱신한다. 미구현 버튼이나 모의 결과로 보존 완료를 표시하지 않는다. 실제 접근성·모바일·일반 사용자의 독립 진행은 별도 검증 대상이다.
+
+## 6단계 현재 증거 추가 (2026-10-30)
+
+위 0단계의 현재/목표 표는 당시 이력이다. [6단계 구현 기록](STAGE6_IMPLEMENTATION.md)이 현재 계약과 검증 한계를 설명한다.
+
+| 보존 ID | 현재 진입점·소유자 | 이번 증거 |
+|---|---|---|
+| A01~A08, T11~T13 | 기존 일반 설정 + 프롬프트 스튜디오 Generation.tsx → bridge execution-runtime → 기존 startTurn | execution.test.ts의 고정 입력·binding·버전·draft/소유/권한 필드 거부; generation WS Solo/Team. 실제 모델은 계정 거부로 failed |
+| A09~A14, A18 | 기존 planner/orchestration/runtime registry/pending approvals/token usage | generation WS의 Team IDs·거부/만료 승인·같은 소켓 준비 중 중단·다중 창·양방향 공통 잠금·실제 fixture 토큰·늦은 이벤트 차단; 기존 단위 검사와 대화 재시작 회귀 |
+| A04/A05/A17/A20 | 기존 대화·결과·history v1, 새 DB의 message IDs 참조 | history 실패 시 미전송, 종료 불명 잠금, 실제 history와 generation ID 연결·재시작 자동 실행 금지; verify-conversation-restart.mjs |
+| T07/T10/T12~T15/T19 | 기존 파일·ZIP·legacy 백업 + 선택 파일만 별도 staging | 실제 byte/hash·원본 불변·무관 파일 제외·junction/소실/덮어쓰기 거부·v2 사본/v3 복구; verify-atelier-storage.mjs. AI 기록까지 legacy 백업된다는 안내는 하지 않음 |
+| A15~A17, T01~T20 | 공통 셸·일반/픽셀/활동/승인과 여덟 수동 탭 모두 유지 | 루트 172개 전체 검사 및 storage/proposal/restart 회귀 통과. 새 제작 UI 1440/768/390·Tab·동작 축소 확인; 전체 사용자/접근성 연구 미수행 |
+| T18 수정 제작 | 원래 confirmed plan을 고정한 revision snapshot → 새 generation | 서버의 plan/snapshot 관계 검사 구현. 실제 모델 생성·수정 성공 및 자동 결과/재검토는 다음 단계 조건 |
+
+6시리즈 후속 갱신: 사용자의 CLI 갱신 후 0.166.0의 GPT-6.1 Sol로 실제 create/revise와 Solo thread resume를 확인했다(`STAGE6_LIVE_EVIDENCE.json`). 위 표의 실제 모델 미검증/실패는 최초 0.101.0·5.2 시도 당시 기록이며 `STAGE6_LIVE_PRE_UPGRADE.json`에 보존했다. 현재 루트 174개 테스트·타입·빌드와 합성 제작 회귀가 통과했다. shared/model-selection.ts를 통해 제공된 6시리즈만 선택기에 표시하고 기존 5시리즈 저장 선택을 정리한다(6시리즈 없는 fixture/기타 목록은 기존 동작 보존). 원본 수동 기능·스케줄러·승인·네트워크 정책은 유지하며, 자동 산출물/검토 연결은 여전히 7단계다.
+
+## 7단계 현재 증거 추가 (2026-10-30)
+
+[현재 0단계 재점검](STAGE0_RECHECK_STAGE7.md)의 기준선은 루트 174/원본 53개였다. 이후 [7단계 구현](STAGE7_IMPLEMENTATION.md)에서 다음 경로를 추가했다. 위 표의 미구현·검사 수는 해당 시점의 이력이다.
+
+| 보존 ID | 실제 컴포넌트·메시지·소유 경계 | 현재 검사 |
+|---|---|---|
+| A08~A14/A18 | 기존 startTurn/Team scheduler/pending approvals + execution-runtime.evidence | 6단계 합성 회귀의 Solo/Team·중복/잠금/승인 거부/중단/네트워크 기본 차단; 기존 scheduler/approval/token 단위 검사 |
+| A04/A05/A17/A20 | history v1 + SQLite v4 manifests; Generation/Artifacts, artifact.get/read/attach | conversation-restart, artifact WS 재시작/원본 ID/멱등 연결/불변 사본; 실제 GPT-6.1 Sol 생성·수정·같은 thread/다른 turn |
+| T07/T10/T14/T15/T19 | 기존 transfer/파일/ZIP/수동 backup + 내부 artifacts byte; 원본 DB 미접근 | storage 회귀, 원본 binary backup/restart, hash 손상/경로·junction·hardlink·비밀/다른 P/runtime/cwd/한도 거부; v3 사본+수집 중단 복구 |
+| T12/T13/T16/T17 | Prompt→Generation→Artifacts와 기존 수동 RegisterResult/ReviewEditor; result.update/review.* | 실제 파일·명령 기록만 자동 연결; HTML/SVG 텍스트, 실제 PNG, invalid PNG 거부; 직접 behaviorEvidence 없이 동작 완료 거부; AI 의견/사용자 verdict 분리 |
+| T18 | plan.create/confirm→snapshot.create revision→generation.start revise→새 result/review | 합성 전체 왕복·parent/유지/이전 match 회귀·판정 초기화·이전 판정 보존; 실제 모델은 새 미판정 검토·과거 byte 보존 |
+| A15~A17/T01~T20 | 공통 셸/일반·픽셀·결과·활동·승인/8탭·수동 기능 보존 | 최종 타입/184개 root test/원본 53개+문법 14개/build; 1440/768/390px·키보드 미리보기·동작 축소·검토 진입 |
+
+runtime 결과의 legacy JSON export는 손실을 막기 위해 명시적으로 거부한다. 기존 수동 백업은 유지하며 통합 AI 백업·실행 미리보기·자동 AI 판정은 구현하지 않았다. 전체 수용 체크리스트·사용자 연구·실제 Team 모델 검증과 기본 화면 전환은 8단계 조건이다.
+
+## 8단계 최종 확인 (2026-10-30)
+
+[8단계 수용 기록](STAGE8_ACCEPTANCE.md)에 **A01~A20/T01~T20 전체의 현재 진입점·메시지·정상/거부 경로·검사·미검증 조건**과 가이드의 16항목을 연결했다. 원본 16개는 현재 Git HEAD와 LF 정규화 시 일치하며 과거 2단계 지문 불일치는 보존하고 별도 8단계 지문으로 검사한다. root 188개/원본 53개·문법 14개/typecheck/build와 전체 8종 fixture, 1440/768/390·네 시작점·8탭·오류/승인/복귀 UI를 확인했다. Atelier 기본 셸과 같은 상태를 쓰는 기존 레이아웃을 유지한다. 새 conversation.rename은 기존 대화 ID/본문/thread를 보존하고 저장 성공만 알린다. 사용자 요청에 따라 홈 장식/우측 안내만 제거했으며 상태/승인 기능은 기존 전역 경로로 보존한다. 실제 Team 모델·OS 폴더창·최소 Node/다른 OS·전체 사용자 연구·파괴적 실제 복원은 여전히 미검증이다.

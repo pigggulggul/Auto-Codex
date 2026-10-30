@@ -1,0 +1,18 @@
+{
+  "liveAttempt": true,
+  "liveModelResponse": false,
+  "syntheticDesign": true,
+  "workspace": "C:\\Users\\user01\\Desktop\\Claude\\Auto-Codex",
+  "outputRelativePath": ".cache/atelier-live-cDtlQv/smoke.html",
+  "approvalPolicy": "existing pending approvals; smoke tool declines requests",
+  "ok": false,
+  "failureCode": "MODEL_UNSUPPORTED",
+  "observedActivity": "Selected catalog default gpt-5.2-codex was rejected as unsupported for this ChatGPT account. No artifact or successful model response was verified.",
+  "model": "gpt-5.2-codex",
+  "bindingId": "bind_59f286b0-d04e-4bc6-bc9f-68384637b5bc",
+  "failure": "Live turn did not complete\n+ actual - expected\n\n+ 'failed'\n- 'completed'\n",
+  "lastGeneration": {
+    "id": "gen_833b9cdb-29f1-4330-bfc8-f83a89abb866",
+    "state": "failed"
+  }
+}

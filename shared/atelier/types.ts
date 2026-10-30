@@ -236,6 +236,10 @@ export interface SnapshotData {
 }
 export type PromptSnapshot = DeepReadonly<SnapshotData>;
 export interface ManualResult {
+    generationId?: string;
+    artifactManifestId?: string;
+    executionSource?: 'runtime';
+    behaviorEvidence?: string;
     id: string;
     number?: number;
     snapshotId: string;

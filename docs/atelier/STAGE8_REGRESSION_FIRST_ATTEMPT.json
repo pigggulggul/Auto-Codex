@@ -1,0 +1,67 @@
+{
+  "recordedAt": "2026-10-30T02:11:36.657Z",
+  "node": "v22.18.0",
+  "synthetic": true,
+  "liveModel": false,
+  "ok": false,
+  "results": [
+    {
+      "command": "node tools/verify-conversation-restart.mjs",
+      "exitCode": 0,
+      "elapsedMs": 3562,
+      "logSha256": "b51d339798f859fddf2c94cc07fbebb45e1658709628b62c0c134d6f51309fae"
+    },
+    {
+      "command": "node tools/verify-atelier-domain.mjs",
+      "exitCode": 1,
+      "elapsedMs": 62,
+      "logSha256": "7cf313fa411cdad115ccea100145f2c0d9dab651955cceced4cb7d714ccf341d"
+    },
+    {
+      "command": "node tools/verify-atelier-assets.mjs",
+      "exitCode": 0,
+      "elapsedMs": 955,
+      "logSha256": "08f0e2b0356e96b22a9d322a75f952c553ed89d89c4b9eb8057fb484bc89a32f"
+    },
+    {
+      "command": "node tools/verify-pixel-assets.mjs",
+      "exitCode": 0,
+      "elapsedMs": 291,
+      "logSha256": "9730f3c80320ae466bfde0cc5653cbbfae56891ecd8d29a1db433a0a1767a817"
+    },
+    {
+      "command": "node tools/verify-atelier-storage.mjs",
+      "exitCode": 0,
+      "elapsedMs": 2473,
+      "logSha256": "ec5a5ac8e22567c4b21222bc378649ad5ac7dc2944424dbe118c70aa787c1c53"
+    },
+    {
+      "command": "node tools/verify-atelier-proposals.mjs",
+      "exitCode": 0,
+      "elapsedMs": 53082,
+      "logSha256": "caa6eb5987d3f145f2f026fa8d928a4cda83bd760134599689134657a88c17db"
+    },
+    {
+      "command": "node tools/verify-atelier-generation.mjs",
+      "exitCode": 0,
+      "elapsedMs": 28414,
+      "logSha256": "25fc9861fafb79aa55c433f67a8b3320cb83b38b8452a00a49db0a99af867a44"
+    },
+    {
+      "command": "node tools/verify-atelier-artifacts.mjs",
+      "exitCode": 0,
+      "elapsedMs": 85405,
+      "logSha256": "6a5d33c7cdbeed82e1bf1636a733d01f08cf5769021e73ed22814bf5a53d7dcd"
+    }
+  ],
+  "sourceHashes": {
+    "src/App.tsx": "29934805e2e92f47ecf962c148c49789939887deb199b0d26b0a4cd0ecf154ab",
+    "src/components/ConversationPicker.tsx": "c8f3d8c36bab4cf27fe575fc1a392eb7ce00a1075037c76f31df0ffd52a05f06",
+    "src/components/layout/AtelierPages.tsx": "4402dd840bd34ff9c9b521ad0eb31f32e2423d36f64a8e97983a152b47457e83",
+    "server/index.ts": "d6c99fe534cf4443afac9a41d02fb89f430669bf7c30c54113972bd1aa72feda",
+    "server/client-message.ts": "cc142c2bbcd9076c001636aebca8735cfda66823e6be24154e2f5d43546a258f",
+    "server/conversation-store.ts": "f262da2190dc0e11a93c1f0a26d933bcec3ce7472ed466bab349bbe56781c183",
+    "shared/conversation-title.ts": "430120a3f91d0d2fdd17498d1addc4affadf12770a50f3abcb27f85eb56b606a",
+    "server/atelier/artifacts.ts": "9097d3c9f57e95861e780a4487b927a6f8b724910ba9fe01505716975a8c3323"
+  }
+}

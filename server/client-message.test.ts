@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { parseClientMessage } from "./client-message.js";
 
 describe("parseClientMessage", () => {
+  it('validates bounded conversation rename metadata without permitting runtime fields',()=>{
+    const request={type:'conversation.rename',conversationId:'chat-1',title:'  프로젝트 설계  ',expectedTitle:'토큰',clientRequestId:'11111111-1111-4111-8111-111111111111'};
+    expect(parseClientMessage(JSON.stringify(request))).toMatchObject({title:'프로젝트 설계'});
+    for(const patch of [{title:''},{title:'x'.repeat(81)},{title:'a\0b'},{conversationId:''},{clientRequestId:'wrong'},{threadId:'forged'},{expectedTitle:3}])expect(()=>parseClientMessage(JSON.stringify({...request,...patch}))).toThrow();
+  });
   it("accepts a valid team turn", () => {
     expect(parseClientMessage(JSON.stringify({
       type: "turn.start",

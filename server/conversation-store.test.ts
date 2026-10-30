@@ -20,6 +20,11 @@ function archive(): ConversationArchive {
 }
 
 describe("local conversation history", () => {
+  it('preserves custom title metadata and remains compatible with archives without a title source',async()=>{
+    expect(parseArchive(JSON.stringify(archive())).conversations[0].title).toBe('이전 작업');
+    const root=await mkdtemp(path.join(os.tmpdir(),'auto-codex-name-')),data=archive();data.conversations[0].title='내가 저장한 이름';data.conversations[0].titleSource='user';const store=new ConversationStore(root);await store.save(data);const loaded=await new ConversationStore(root).load();expect(loaded?.conversations[0]).toMatchObject({title:'내가 저장한 이름',titleSource:'user',threadId:'saved-thread'});
+    expect(()=>parseArchive(JSON.stringify({...data,conversations:[{...data.conversations[0],titleSource:'model-authority'}]}))).toThrow();
+  });
   it("loads prior project, transcript, partial results and persistent thread after a new store instance", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "auto-codex-history-"));
     const store = new ConversationStore(root);

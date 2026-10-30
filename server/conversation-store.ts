@@ -4,6 +4,7 @@ import type { ActivityEvent, ConversationMessage, ConversationSummary, RunSnapsh
 import { interruptRun } from "./orchestration.js";
 
 export type ConversationRecord = ConversationSummary & {
+  titleSource?: 'prompt'|'user';
   projectPath: string | null;
   workspaceMode: WorkspaceMode;
   threadId: string | null;
@@ -55,6 +56,7 @@ export function parseArchive(raw: string): ConversationArchive {
   const ids = new Set<string>();
   for (const record of data.conversations) {
     if (!object(record) || !["id", "title", "createdAt", "updatedAt", "preview", "assistantText", "contextSummary"].every((key) => typeof record[key] === "string")
+      || (record.titleSource!==undefined&&!['prompt','user'].includes(String(record.titleSource)))
       || ids.has(String(record.id)) || !Number.isSafeInteger(record.messageCount) || Number(record.messageCount) < 0
       || !["project", "research"].includes(String(record.workspaceMode)) || !nullableString(record.projectPath) || !nullableString(record.threadId)
       || !object(record.taskOutputs) || !Object.values(record.taskOutputs).every((text) => typeof text === "string")

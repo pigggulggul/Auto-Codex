@@ -15,6 +15,7 @@ export class AtelierBundles {
   constructor(private readonly store: AtelierStore,private readonly files: AtelierFiles,private readonly transfers: AtelierTransfers) {}
   async backup(owner: string,pid: string) {
     const p=await this.store.get(pid); await this.files.validate(p);
+    check(!p.results.some(r=>r.generationId),'자동 코드 결과는 legacy JSON 백업으로 표현할 수 없습니다. bridge 종료 후 .local-data/atelier 전체와 별도 history를 보관하세요.','CAPABILITY_UNAVAILABLE');
     const records=await this.store.files(pid),header=JSON.stringify({format:'atelier-backup',version:1,exportedAt:new Date().toISOString(),project:p});
     const expected=Buffer.byteLength(header)-1+Buffer.byteLength(',"files":[')+records.reduce((n,f,i)=>n+Math.ceil(f.size/3)*4+Buffer.byteLength(JSON.stringify({...f,data:''}))+(i?1:0),0)+2;
     check(expected<=BACKUP_LIMIT,'백업 JSON 전체가 90MiB 한도를 초과합니다.','LIMIT_EXCEEDED');
@@ -29,6 +30,7 @@ export class AtelierBundles {
     let input:unknown; try { input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)); } catch { check(false,'백업 JSON을 읽을 수 없습니다.'); }
     const b=obj(input); shape({format:v=>check(v==='atelier-backup','복원용 Atelier 백업이 아닙니다.'),version:v=>check(v===1,'지원하지 않는 백업 버전입니다.','UNSUPPORTED_VERSION'),exportedAt:optional(text(64)),project:json,files:array(json,10000)})(b);
     const p=validateProject(b.project),records:FileRecord[]=[],data=new Map<string,Buffer>();
+    check(!p.results.some(r=>r.generationId||r.artifactManifestId||r.executionSource),'실행 ID를 포함한 legacy 백업은 복원하지 않습니다.','UNSUPPORTED_VERSION');
     for(const value of b.files as unknown[]) {
       shape({id,name:v=>{check(typeof v==='string'&&v.length>0&&v.length<=180,'파일 이름 길이가 올바르지 않습니다.');},mime:optional(text(120)),ext:optional(text(12)),sha256:hash,size:optional(integer(1,15*1024*1024)),data:text(BACKUP_LIMIT),project_id:optional(id)})(value);
       const f=obj(value); check(!data.has(String(f.id)),'백업 파일 ID가 중복되었습니다.');

@@ -534,3 +534,10 @@ footer { display: flex; justify-content: space-between; padding: 0 3px 24px; col
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
 }
+/* Conversation names are plain local metadata in both layouts. */
+.conversation-name { display: grid; gap: 8px; margin-block: 12px; min-width: 0; }
+.conversation-name label { display: grid; gap: 6px; }
+.conversation-name input { width: 100%; min-width: 0; box-sizing: border-box; }
+.conversation-name-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.conversation-name-actions button { white-space: normal; }
+.conversation-name p { margin: 0; font-size: 11px; overflow-wrap: anywhere; }

@@ -1,0 +1,74 @@
+{
+  "recordedAt": "2026-10-30T04:23:45.296Z",
+  "node": "v22.18.0",
+  "synthetic": true,
+  "liveModel": false,
+  "ok": true,
+  "results": [
+    {
+      "command": "node tools/verify-conversation-restart.mjs",
+      "exitCode": 0,
+      "elapsedMs": 3150,
+      "logSha256": "b51d339798f859fddf2c94cc07fbebb45e1658709628b62c0c134d6f51309fae"
+    },
+    {
+      "command": "node tools/verify-atelier-domain.mjs --manifest docs/atelier/STAGE8_SOURCE_MANIFEST.json",
+      "exitCode": 0,
+      "elapsedMs": 91,
+      "logSha256": "bf04e3038c0d5614364b959d4a7a50db89c19caec9ff4496e1e740e7564cee3f"
+    },
+    {
+      "command": "node tools/verify-atelier-assets.mjs",
+      "exitCode": 0,
+      "elapsedMs": 1379,
+      "logSha256": "6fc40a6331e9eb83633e14e390c7c98406e313c1bc75149d63408924967e01d0"
+    },
+    {
+      "command": "node tools/verify-pixel-assets.mjs",
+      "exitCode": 0,
+      "elapsedMs": 337,
+      "logSha256": "9730f3c80320ae466bfde0cc5653cbbfae56891ecd8d29a1db433a0a1767a817"
+    },
+    {
+      "command": "node tools/verify-atelier-storage.mjs",
+      "exitCode": 0,
+      "elapsedMs": 2641,
+      "logSha256": "5d886a865b4c2a7364d0aa970aa52fd34a874ba860a7751823ddd102e5ecd718"
+    },
+    {
+      "command": "node tools/verify-atelier-proposals.mjs",
+      "exitCode": 0,
+      "elapsedMs": 53243,
+      "logSha256": "caa6eb5987d3f145f2f026fa8d928a4cda83bd760134599689134657a88c17db"
+    },
+    {
+      "command": "node tools/verify-atelier-generation.mjs",
+      "exitCode": 0,
+      "elapsedMs": 28179,
+      "logSha256": "da85336ca3b30822d166426045c220c35d5d3d0755cf010b8f7b34430036f24b"
+    },
+    {
+      "command": "node tools/verify-atelier-artifacts.mjs",
+      "exitCode": 0,
+      "elapsedMs": 83203,
+      "logSha256": "a448e4cf24178617b27a3c71ed78f8478289b0fa76887ed7e19730937f20d63c"
+    }
+  ],
+  "sourceHashes": {
+    "src/App.tsx": "f86ceb2c33ec8a3eaa4af19df28cff6aec94eeee5164ef93a032b9c581411fb7",
+    "src/components/ConversationPicker.tsx": "c8f3d8c36bab4cf27fe575fc1a392eb7ce00a1075037c76f31df0ffd52a05f06",
+    "src/components/layout/AtelierPages.tsx": "4402dd840bd34ff9c9b521ad0eb31f32e2423d36f64a8e97983a152b47457e83",
+    "server/index.ts": "4b0054e2b69d4ed868aa7ff008ef3f19f1b543954dc9fa7a9a9515f33edcf246",
+    "server/client-message.ts": "cc142c2bbcd9076c001636aebca8735cfda66823e6be24154e2f5d43546a258f",
+    "server/conversation-store.ts": "f262da2190dc0e11a93c1f0a26d933bcec3ce7472ed466bab349bbe56781c183",
+    "shared/conversation-title.ts": "430120a3f91d0d2fdd17498d1addc4affadf12770a50f3abcb27f85eb56b606a",
+    "server/atelier/artifacts.ts": "9097d3c9f57e95861e780a4487b927a6f8b724910ba9fe01505716975a8c3323"
+  },
+  "postRegressionFormatting": {
+    "path": "src/components/layout/AtelierPages.tsx",
+    "regressionSourceSha256": "4402dd840bd34ff9c9b521ad0eb31f32e2423d36f64a8e97983a152b47457e83",
+    "finalSourceSha256": "2ca20d0fc0e9a5c054dc0b552ae37546a4ddbc4a719f54d2a88a96f4bd731543",
+    "change": "Removed one trailing blank CRLF line only; git diff --check cleanup",
+    "behaviorChanged": false
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "syntheticData": true,
+  "liveModel": false,
+  "method": "Actual Playwright page interaction on isolated loopback bridge fixtures; not the original standalone Atelier browser runner",
+  "finalUIBuild": "index-ChUOE8F6.js / index-DUTssWzz.css",
+  "homeWidths": [1440, 768, 390],
+  "homeOverflow": false,
+  "heroOnlyLaunchButton": true,
+  "notesDOMCount": 0,
+  "conversationNameSavedAndReloaded": true,
+  "customNameSurvivesNextRequest": true,
+  "conversationNameHTMLIsText": true,
+  "work390Overflow": false,
+  "legacyAndAtelierShareDraft": true,
+  "destinations": ["pixel", "operations", "results", "settings"],
+  "entryInitialTabs": ["design", "reference", "concept", "review"],
+  "eightTabsNavigable": true,
+  "tabAlerts": [],
+  "longReaderClientHeight": 722,
+  "longReaderScrollHeight": 5612,
+  "readerEscapeReturnsFocus": true,
+  "readerRawCopySyntheticText": true,
+  "menuEscapeReturnsFocus": true,
+  "reducedMotion": true,
+  "approval390": {
+    "initialFocus": true,
+    "shiftTabTrapped": true,
+    "escapeKeepsPending": true,
+    "noOverflow": true,
+    "explicitDeclineCloses": true
+  },
+  "missingCLI": {
+    "realErrorBanner": true,
+    "manualProjectSaved": true,
+    "proposalButtonDisabled": true
+  },
+  "artifactPreview": {
+    "HTMLAsText": true,
+    "parentGlobalUnchanged": true,
+    "iframeCount": 0,
+    "forbiddenExternalRequests": [],
+    "actualPNGBlobRendered": true,
+    "userVisualAndBehaviorReviewRemainIncomplete": true
+  },
+  "limits": [
+    "Browser interactions are synthetic acceptance checks, not real model output or user design judgment",
+    "Not a complete accessibility, screen-reader or user research audit",
+    "Native OS folder chooser and destructive restore of real user data were not exercised"
+  ]
+}

@@ -52,7 +52,7 @@ it('optimistic writes, snapshot immutability, file hashes and project ownership 
  await writeFile(await service.store.paths.target(service.files.relative(p.id,f)),Buffer.from('# 실제 바이트'));
  await service.store.close();services.splice(services.indexOf(service),1);
  const next=await AtelierHandlers.open(root);services.push(next);expect((await next.store.get(p.id)).name).toBe('new');expect(JSON.stringify((await next.store.get(p.id)).snapshots)).toBe(original);expect((await next.files.read(p.id,f.id)).bytes.toString()).toBe('# 실제 바이트');
- const db=new DatabaseSync(path.join(root,'.local-data/atelier/atelier.sqlite'));expect(db.prepare('PRAGMA user_version').get()?.user_version).toBe(2);db.close();
+ const db=new DatabaseSync(path.join(root,'.local-data/atelier/atelier.sqlite'));try{expect(db.prepare('PRAGMA user_version').get()?.user_version).toBe(4);}finally{db.close();}
 });
 it('all seven original JSON backups import as new projects and preserve frozen legacy snapshots and bytes',async()=>{
  const {service}=await setup();const directory=path.resolve('atelier/atelier/examples');

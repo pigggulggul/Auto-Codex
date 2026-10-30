@@ -1,4 +1,5 @@
 import type { ClientMessage } from "../shared/protocol.js";
+import {savedConversationTitle} from '../shared/conversation-title.js';
 
 const SIMPLE_MESSAGES = new Set(["project.pick", "project.trust", "skills.refresh", "models.refresh", "turn.interrupt"]);
 const APPROVAL_DECISIONS = new Set(["accept", "acceptForSession", "decline", "cancel"]);
@@ -25,6 +26,10 @@ export function parseClientMessage(raw: string): ClientMessage {
     return message as ClientMessage;
   }
   if (message.type === "conversation.new") return message as ClientMessage;
+  if(message.type==='conversation.rename'){
+    if(Object.keys(message).some(k=>!['type','conversationId','title','expectedTitle','clientRequestId'].includes(k))||typeof message.conversationId!=='string'||!message.conversationId.trim()||message.conversationId.length>128||typeof message.expectedTitle!=='string'||message.expectedTitle.length>4096||typeof message.clientRequestId!=='string'||!/^[0-9a-f-]{36}$/i.test(message.clientRequestId))throw new Error('대화 이름 저장 요청이 올바르지 않습니다.');
+    return {...message,title:savedConversationTitle(message.title)} as ClientMessage;
+  }
   if (message.type === "conversation.select") {
     if (typeof message.conversationId !== "string" || !message.conversationId.trim()) {
       throw new Error("대화 ID가 올바르지 않습니다.");

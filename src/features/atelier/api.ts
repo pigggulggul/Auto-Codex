@@ -20,6 +20,7 @@ export class AtelierApi {
   private epoch = 0;
   private pending = new Map<string, Pending>();
   private queue: Promise<unknown> = Promise.resolve();
+  private downloads: Promise<unknown> = Promise.resolve();
   private listeners = new Set<(event: Data) => void>();
   private control = 18; private chunks = 30; private at = Date.now();
   connect(send: (text: string) => void) { this.transport = send; this.control = 18; this.chunks = 30; this.at = Date.now(); }
@@ -41,7 +42,8 @@ export class AtelierApi {
   }
   request(type: string, payload: Data = {}): Promise<Data> {
     const epoch = this.epoch;
-    const operation = this.queue.then(async () => {
+    const priority=type==='generation.interrupt';
+    const operation = (priority?Promise.resolve():this.queue).then(async () => {
       if (epoch !== this.epoch || !this.transport) throw new AtelierFailure('DISCONNECTED', '로컬 브리지에 연결되어 있지 않습니다. 입력은 보관됩니다.');
       const bucket = ['transfer.chunk', 'transfer.read'].includes(type) ? 'chunks' : 'control';
       for (;;) {
@@ -60,12 +62,22 @@ export class AtelierApi {
         catch { clearTimeout(timer); this.pending.delete(clientRequestId); reject(new AtelierFailure('DISCONNECTED', '요청을 보내지 못했습니다. 초안을 유지합니다.')); }
       });
     });
-    this.queue = operation.catch(() => {}); return operation;
+    if(!priority)this.queue = operation.catch(() => {}); return operation;
+  }
+  /** A request queue alone can interleave several project/file transfers and exhaust both slots. */
+  private downloadJob<T>(job:()=>Promise<T>):Promise<T>{
+    const epoch=this.epoch;
+    const operation=this.downloads.then(()=>{if(epoch!==this.epoch||!this.transport)throw new AtelierFailure('DISCONNECTED','연결이 바뀌었습니다. 파일을 자동 재요청하지 않습니다.');return job();});
+    this.downloads=operation.catch(()=>{});return operation;
+  }
+  async release(descriptor:Download){
+    try{await this.request('transfer.abort',{transferId:descriptor.transferId});}
+    catch(error){if(!(error instanceof AtelierFailure)||!['TRANSFER_EXPIRED','DISCONNECTED'].includes(error.code))throw error;}
   }
   async bytes(descriptor: Download, maxBytes = 90 * 1024 * 1024): Promise<Uint8Array<ArrayBuffer>> {
-    if (!Number.isSafeInteger(descriptor.totalBytes) || descriptor.totalBytes < 0 || descriptor.totalBytes > maxBytes) throw new AtelierFailure('LIMIT_EXCEEDED', '이 브라우저에서 한 번에 읽을 수 있는 크기를 초과합니다.');
-    const output = new Uint8Array(descriptor.totalBytes); let offset = 0;
     try {
+      if (!Number.isSafeInteger(descriptor.totalBytes) || descriptor.totalBytes < 0 || descriptor.totalBytes > maxBytes) throw new AtelierFailure('LIMIT_EXCEEDED', '이 브라우저에서 한 번에 읽을 수 있는 크기를 초과합니다.');
+      const output = new Uint8Array(descriptor.totalBytes); let offset = 0;
       for (let index = 0;; index++) {
         const result = await this.request('transfer.read', { transferId: descriptor.transferId, index });
         if (result.index !== index || result.totalBytes !== descriptor.totalBytes || result.sha256 !== descriptor.sha256 || typeof result.dataBase64 !== 'string') throw new Error('다운로드 순서 또는 해시 정보가 다릅니다.');
@@ -79,11 +91,13 @@ export class AtelierApi {
     } catch (error) { await this.request('transfer.abort', { transferId: descriptor.transferId }).catch(() => {}); throw error; }
   }
   async project(id: string) {
+    return this.downloadJob(async()=>{
     const result = await this.request('project.read', { designProjectId: id });
     const bytes = await this.bytes(data(result.download) as unknown as Download);
     const value: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
     if (!record(value) || value.id !== id || value.schemaVersion !== 1 || !Number.isSafeInteger(value.version) || !record(value.fields) || !record(value.output) || !['features','flows','screens','references','contents','styles','assets','concepts','results','reviews','plans','snapshots'].every(k => Array.isArray(value[k]))) throw new Error('설계 프로젝트 응답을 확인할 수 없습니다.');
     return value as unknown as Project;
+    });
   }
   async pages(type: string, payload: Data = {}) {
     const values: unknown[] = []; let cursor: string | undefined;
@@ -103,7 +117,7 @@ export class AtelierApi {
       return await this.request('transfer.finish', { transferId });
     } catch (error) { await this.request('transfer.abort', { transferId }).catch(() => {}); throw error; }
   }
-  async file(pid: string, id: string) { const r = await this.request('file.read', { designProjectId: pid, fileId: id }); return { info: data(r.file) as unknown as FileInfo, bytes: await this.bytes(data(r.download) as unknown as Download, 15 * 1024 * 1024) }; }
+  async file(pid: string, id: string) { return this.downloadJob(async()=>{const r = await this.request('file.read', { designProjectId: pid, fileId: id }); return { info: data(r.file) as unknown as FileInfo, bytes: await this.bytes(data(r.download) as unknown as Download, 15 * 1024 * 1024) };}); }
   async save(descriptor: Download, mime: string) {
     // Stored ZIP32 can exceed the Blob budget. Chromium can stream it to a user-selected file.
     const picker = (window as unknown as { showSaveFilePicker?: (options: {suggestedName:string}) => Promise<{createWritable:()=>Promise<{write:(b:Uint8Array)=>Promise<void>;close:()=>Promise<void>;abort:()=>Promise<void>}>}> }).showSaveFilePicker;

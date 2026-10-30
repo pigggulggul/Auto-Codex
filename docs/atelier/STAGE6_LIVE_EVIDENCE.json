@@ -1,0 +1,32 @@
+{
+  "liveAttempt": true,
+  "liveModelResponse": true,
+  "syntheticDesign": true,
+  "workspace": "C:\\Users\\user01\\Desktop\\Claude\\Auto-Codex",
+  "outputRelativePath": ".cache/atelier-live-8Yrlz3/smoke.html",
+  "approvalPolicy": "existing pending approvals; smoke tool declines requests",
+  "ok": true,
+  "model": "gpt-6.1-sol",
+  "bindingId": "bind_e5671641-9a70-44d6-add9-cb89624da9df",
+  "create": {
+    "generationId": "gen_cc30ce65-1418-4e9c-9184-bb5a66195bb3",
+    "threadId": "01a18a22-31ec-7720-9a95-eada8d2344d8",
+    "turnId": "01a18a22-3279-7ad0-a4df-b213d87a0b41",
+    "hash": "cdc960138efdbceb59766c79d351aca512588a3e2ed046609cf263e665d35eb5",
+    "size": 1581
+  },
+  "revise": {
+    "generationId": "gen_b4b48772-5afe-4ffb-b322-970a2925a13f",
+    "threadId": "01a18a22-31ec-7720-9a95-eada8d2344d8",
+    "turnId": "01a18a22-d769-7541-8074-9989d20b31da",
+    "hash": "5ccdf092ddcb77e692159e0611d9057b5a8578310dcfca9da00e4a5265d7f4e7",
+    "size": 1581
+  },
+  "soloResume": true,
+  "revisionFileChecks": {
+    "titleAndHeading": true,
+    "buttonPresent": true,
+    "inlineScriptsParsed": 1,
+    "behaviorTested": false
+  }
+}

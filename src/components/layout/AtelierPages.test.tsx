@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AtelierNavigation } from "./AtelierNavigation";
-import { AtelierHome, AtelierNotes, AtelierPreparation } from "./AtelierPages";
+import { AtelierHome, AtelierPreparation } from "./AtelierPages";
 
 describe("Atelier shell boundaries", () => {
   it("keeps working destinations separate from the eight unavailable design editors", () => {
@@ -31,13 +31,9 @@ describe("Atelier shell boundaries", () => {
     expect(html.match(/연결 예정/g)).toHaveLength(8);
   });
 
-  it("distinguishes offline, ready, busy and pending approval without a fabricated success", () => {
-    const offline = renderToStaticMarkup(<AtelierNotes connected={false} appServerReady={false} busy={false} awaitingApproval={false} projectPath={null} />);
-    expect(offline).toContain("연결 안 됨");
-    expect(offline).toContain("연결 확인 필요");
-    expect(offline).toContain("진행 작업 없음");
-    const pending = renderToStaticMarkup(<AtelierNotes connected appServerReady busy awaitingApproval projectPath="C:\\synthetic" />);
-    expect(pending).toContain("승인 대기");
-    expect(pending).not.toContain("실행 완료");
+  it("keeps the home launch action without decorative hero content or a notes column", () => {
+    const home=renderToStaticMarkup(<AtelierHome conversations={[]} busy={false} onNavigate={()=>{}} onSelectConversation={()=>{}} onStartDesign={()=>{}}/>);
+    const hero=home.match(/<div class="atelier-home-hero">(.*?)<\/div>/)?.[1]||'';
+    expect(hero).toContain('일반 Codex 작업 시작');expect(hero).not.toMatch(/<(h1|h2|p|img)\b/);expect(home).not.toContain('atelier-notes');expect(home).not.toContain('atelier-type-study');
   });
 });

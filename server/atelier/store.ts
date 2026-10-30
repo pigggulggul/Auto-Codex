@@ -6,6 +6,8 @@ import type { Project } from '../../shared/atelier/types.js';
 import { randomUUID } from 'node:crypto';
 import { sha256 } from './resources.js';
 import type {DesignProposal} from '../../shared/atelier/proposals.js';
+import type {DesignGeneration,WorkspaceBinding} from '../../shared/atelier/execution.js';
+import type {ArtifactManifest} from '../../shared/atelier/artifacts.js';
 
 export interface FileRecord { id:string; name:string; mime:string; ext:string; sha256:string; size:number }
 export class AtelierStore {
@@ -18,7 +20,7 @@ export class AtelierStore {
       const {DatabaseSync} = await import('node:sqlite');
       db = new DatabaseSync(await paths.target('atelier.sqlite'));
       const version = Number(db.prepare('PRAGMA user_version').get()?.user_version);
-      check(version <= 2,'더 높은 버전의 설계 저장소입니다. 기존 DB는 변경하지 않습니다.','UNSUPPORTED_VERSION');
+      check(version <= 4,'더 높은 버전의 설계 저장소입니다. 기존 DB는 변경하지 않습니다.','UNSUPPORTED_VERSION');
       if (!version) {
         check(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().length === 0,'알 수 없는 기존 설계 DB입니다. 기존 파일을 보존합니다.','UNSUPPORTED_VERSION');
         db.exec(`BEGIN; CREATE TABLE projects(id TEXT PRIMARY KEY,version INTEGER NOT NULL,revision INTEGER NOT NULL,json TEXT NOT NULL);
@@ -34,14 +36,37 @@ export class AtelierStore {
         const backup=await paths.target('atelier-v1-backup-'+randomUUID()+'.sqlite');
         db.prepare('VACUUM INTO ?').run(backup);
       }
-      db.exec(`BEGIN; CREATE TABLE IF NOT EXISTS proposals(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,operation_key TEXT NOT NULL,json TEXT NOT NULL,UNIQUE(project_id,operation_key),FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE); PRAGMA user_version=2; COMMIT;`);
+      if(version<2)db.exec(`BEGIN; CREATE TABLE IF NOT EXISTS proposals(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,operation_key TEXT NOT NULL,json TEXT NOT NULL,UNIQUE(project_id,operation_key),FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE); PRAGMA user_version=2; COMMIT;`);
+      if(version===2)db.prepare('VACUUM INTO ?').run(await paths.target('atelier-v2-backup-'+randomUUID()+'.sqlite'));
+      if(version<3)db.exec(`BEGIN;
+        CREATE TABLE IF NOT EXISTS bindings(project_id TEXT PRIMARY KEY,json TEXT NOT NULL,FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE);
+        CREATE TABLE IF NOT EXISTS generations(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,operation_key TEXT NOT NULL,json TEXT NOT NULL,UNIQUE(project_id,operation_key),FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE);
+        PRAGMA user_version=3; COMMIT;`);
       db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
+      if(version===3)db.prepare('VACUUM INTO ?').run(await paths.target('atelier-v3-backup-'+randomUUID()+'.sqlite'));
+      db.exec(`BEGIN; CREATE TABLE IF NOT EXISTS artifact_manifests(id TEXT PRIMARY KEY,project_id TEXT NOT NULL,generation_id TEXT NOT NULL UNIQUE,json TEXT NOT NULL,FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,FOREIGN KEY(generation_id) REFERENCES generations(id) ON DELETE CASCADE); PRAGMA user_version=4; COMMIT;`);
       const store = new AtelierStore(paths,db,lockToken);
-      await store.recover(); await store.recoverProposals(); await paths.cleanTransfers();
+      await store.recover(); await store.recoverProposals(); await store.recoverGenerations(); await store.recoverArtifacts(); await paths.cleanTransfers();
       return store;
     } catch(error) { db?.close();await paths.unlock(lockToken);throw error; }
   }
   async close() { this.db.close();await this.paths.unlock(this.lockToken); }
+  async manifest(pid:string,gid:string):Promise<ArtifactManifest|null>{await this.get(pid);const row=this.db.prepare('SELECT json FROM artifact_manifests WHERE project_id=? AND generation_id=?').get(pid,gid);return row?JSON.parse(String(row.json)) as ArtifactManifest:null;}
+  async manifests(pid:string):Promise<ArtifactManifest[]>{await this.get(pid);return this.db.prepare('SELECT json FROM artifact_manifests WHERE project_id=?').all(pid).map(row=>JSON.parse(String(row.json)) as ArtifactManifest);}
+  private writeManifest(m:ArtifactManifest){
+    check(Buffer.byteLength(canonical(m))<=220*1024,'산출물 기록 한도입니다.','LIMIT_EXCEEDED');
+    const old=this.db.prepare('SELECT json FROM artifact_manifests WHERE id=?').get(m.id);
+    if(old){const original=JSON.parse(String(old.json)) as ArtifactManifest;check(original.projectId===m.projectId&&original.generationId===m.generationId&&original.snapshotId===m.snapshotId,'산출물의 원본 연결은 변경할 수 없습니다.','PROJECT_MISMATCH');if(original.phase==='ready'){const {version:_,resultId:__,...before}=original,{version:___,resultId:____,...after}=m;check(canonical(before)===canonical(after)&&(!original.resultId||original.resultId===m.resultId),'확정된 산출물은 변경할 수 없습니다.','IMMUTABLE_SNAPSHOT');}}
+    this.db.prepare('INSERT INTO artifact_manifests VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET json=excluded.json').run(m.id,m.projectId,m.generationId,JSON.stringify(m));
+  }
+  async saveManifest(m:ArtifactManifest){await this.safe();const g=await this.generation(m.projectId,m.generationId);check(g.snapshotId===m.snapshotId,'산출물의 원본 스냅샷이 다릅니다.','PROJECT_MISMATCH');this.writeManifest(m);}
+  private async recoverArtifacts(){for(const row of this.db.prepare('SELECT json FROM artifact_manifests').all()){const m=JSON.parse(String(row.json)) as ArtifactManifest;if(m.phase==='recording'||m.phase==='collecting'){m.phase='interrupted';m.status=m.files.length?'partial':'unverifiable';m.checkStatus='unverifiable';m.version++;m.limitations.push('Bridge 재시작으로 수집이 중단되었습니다. 현재 workspace 파일을 과거 실행 결과로 자동 재수집하지 않습니다.');this.writeManifest(m);}}}
+  async binding(pid:string):Promise<WorkspaceBinding|null>{await this.get(pid);const row=this.db.prepare('SELECT json FROM bindings WHERE project_id=?').get(pid);return row?JSON.parse(String(row.json)) as WorkspaceBinding:null;}
+  async saveBinding(b:WorkspaceBinding){await this.safe();this.db.prepare('INSERT INTO bindings VALUES(?,?) ON CONFLICT(project_id) DO UPDATE SET json=excluded.json').run(b.projectId,JSON.stringify(b));}
+  async generations(pid:string):Promise<DesignGeneration[]>{await this.get(pid);return this.db.prepare('SELECT json FROM generations WHERE project_id=? ORDER BY rowid DESC').all(pid).map(r=>JSON.parse(String(r.json)) as DesignGeneration);}
+  async generation(pid:string,id:string){const g=(await this.generations(pid)).find(g=>g.id===id);check(g,'이 프로젝트의 제작 기록이 아닙니다.','PROJECT_MISMATCH');return g;}
+  async saveGeneration(g:DesignGeneration){await this.safe();check(Buffer.byteLength(canonical(g))<=220*1024,'제작 연결 기록 한도입니다.','LIMIT_EXCEEDED');this.db.prepare('INSERT INTO generations VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET json=excluded.json').run(g.id,g.projectId,g.idempotencyKey,JSON.stringify(g));}
+  private async recoverGenerations(){for(const row of this.db.prepare('SELECT json FROM generations').all()){const g=JSON.parse(String(row.json)) as DesignGeneration;if(['preparing','dispatching','running','waitingApproval'].includes(g.state)){g.state='interrupted';g.error={code:'RUNTIME_OUTCOME_UNKNOWN',message:'Bridge restarted. Previous dispatch outcome is unknown; no automatic replay.'};g.version++;g.updatedAt=new Date().toISOString();await this.saveGeneration(g);}}}
   private async safe() { await this.paths.verifyRoot(); for (const f of ['atelier.sqlite','atelier.sqlite-wal','atelier.sqlite-shm','atelier.sqlite-journal']) await this.paths.target(f); }
   async get(id: string): Promise<Project> {
     await this.safe(); const row = this.db.prepare('SELECT json FROM projects WHERE id=?').get(id);
@@ -70,7 +95,7 @@ export class AtelierStore {
     const count = Number(this.db.prepare('SELECT count(*) n FROM snapshots WHERE project_id=?').get(p.id)?.n);
     check(count === p.snapshots.length,'기존 스냅샷을 제거할 수 없습니다.','IMMUTABLE_SNAPSHOT');
   }
-  async mutate(id: string, expectedVersion: number, mutation: (p: Project)=>void | Promise<void>, proposal?:DesignProposal) {
+  async mutate(id: string, expectedVersion: number, mutation: (p: Project)=>void | Promise<void>, proposal?:DesignProposal, manifest?:ArtifactManifest) {
     const p = await this.get(id), original = JSON.stringify(p);
     if (p.version !== expectedVersion) throw new AtelierError('VERSION_CONFLICT','다른 창에서 먼저 저장했습니다. 현재 입력을 보존하고 최신 버전을 다시 여세요.',p.version);
     await mutation(p); validateProject(p); await this.safe();
@@ -80,7 +105,7 @@ export class AtelierStore {
       const changed = this.db.prepare('UPDATE projects SET version=?,revision=?,json=? WHERE id=? AND version=?').run(p.version,p.revision,JSON.stringify(p),id,expectedVersion);
       if(changed.changes!==1){const current=this.db.prepare('SELECT version FROM projects WHERE id=?').get(id);throw new AtelierError('VERSION_CONFLICT','다른 창에서 먼저 저장했습니다.',current?Number(current.version):undefined);}
       this.db.prepare('INSERT INTO revisions VALUES(?,?,?)').run(id,expectedVersion,original);
-      this.saveSnapshots(p); if(proposal)this.writeProposal(proposal); this.db.exec('COMMIT');
+      this.saveSnapshots(p); if(proposal)this.writeProposal(proposal);if(manifest)this.writeManifest(manifest); this.db.exec('COMMIT');
     } catch(error) { this.db.exec('ROLLBACK'); throw error; }
     return p;
   }
@@ -96,8 +121,9 @@ export class AtelierStore {
   async clearJournal(id: string) { await this.safe(); this.db.prepare('DELETE FROM operations WHERE id=?').run(id); }
   private async recover() {
     for (const row of this.db.prepare('SELECT id,json FROM operations').all()) {
-      const paths: unknown = JSON.parse(String(row.json)); check(Array.isArray(paths) && paths.every(p=>typeof p==='string' && /^files\/p_[a-z0-9-]+\/file_[a-z0-9-]+\.[a-z0-9]+$/i.test(p)),'파일 복구 journal이 올바르지 않습니다.','STORAGE_UNAVAILABLE');
+      const paths: unknown = JSON.parse(String(row.json)); check(Array.isArray(paths) && paths.every(p=>typeof p==='string' && (/^files\/p_[a-z0-9-]+\/file_[a-z0-9-]+\.[a-z0-9]+$/i.test(p)||/^artifacts\/p_[a-z0-9-]+\/manifest_[a-z0-9-]+\/artifact_[a-z0-9-]+\.bin$/i.test(p))),'파일 복구 journal이 올바르지 않습니다.','STORAGE_UNAVAILABLE');
       for (const item of paths as string[]) {
+        if(item.startsWith('artifacts/')){const parts=item.split('/'),id=parts[3].slice(0,-4);const row=this.db.prepare('SELECT json FROM artifact_manifests WHERE id=? AND project_id=?').get(parts[2],parts[1]);const m=row?JSON.parse(String(row.json)) as ArtifactManifest:null;if(!m?.files.some(f=>f.id===id))await this.paths.remove(item);continue;}
         const match = /^files\/(p_[a-z0-9-]+)\/(file_[a-z0-9-]+)\.[a-z0-9]+$/i.exec(item)!;
         if (!this.db.prepare('SELECT id FROM files WHERE project_id=? AND id=?').get(match[1],match[2])) await this.paths.remove(item);
       }
@@ -117,9 +143,11 @@ export class AtelierStore {
   async delete(id: string, expected: number) {
     const p = await this.get(id); if (p.version !== expected) throw new AtelierError('VERSION_CONFLICT','프로젝트 버전이 변경되었습니다.',p.version);
     // Keep exact orphan-file paths in the journal, then remove only these validated files.
-    const files = await this.files(id), operation = await this.journal(files.map(f=>`files/${id}/${f.id}${f.ext}`));
+    const artifacts=(await this.manifests(id)).flatMap(m=>m.files.map(f=>`artifacts/${id}/${m.id}/${f.id}.bin`));
+    const files = await this.files(id), operation = await this.journal([...files.map(f=>`files/${id}/${f.id}${f.ext}`),...artifacts]);
     this.db.prepare('DELETE FROM projects WHERE id=? AND version=?').run(id,expected);
     for (const f of files) await this.paths.remove(`files/${id}/${f.id}${f.ext}`);
+    for(const relative of artifacts)await this.paths.remove(relative);
     await this.clearJournal(operation);
   }
 }

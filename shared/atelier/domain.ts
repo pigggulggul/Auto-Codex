@@ -2,6 +2,7 @@
 import { QUESTIONS, EXAMPLES, ENTRIES, GUIDE_VERSION, conceptExamples, flowExample, COMMON_DEFAULT, TYPE_FLOW_EXAMPLES, SAMPLE_EXAMPLES } from './guide.js';
 import { createStructure } from './structure.js';
 import { clone, freeze, editable } from './value.js';
+import {designReviewCriteria} from './blueprint.js';
 import type { DomainContext, Project, Decision, Provenance, DecisionStatus, NewProjectOptions, FieldKey, Palette, TransitionKind, Issue, Tab, Criterion, SnapshotOptions, SnapshotData, ManualResult, Review, PlanFields, RevisionPlan, Flow, FlowGraph, Section, OutputSelection } from './types.js';
 export const TEMPLATE_VERSION = 'atelier-prompt-1.3.2';
 export const SCHEMA_VERSION = 1;
@@ -243,7 +244,7 @@ export function createDomain(context: DomainContext) {
         const dependencies = criterionDependencies(p);
         const get = (k: FieldKey) => confirmed(p.fields[k]) ? p.fields[k].value : '아직 확정하지 않은 기준';
         return [criterion('intent', '서비스 목적과 전체 경험', get('goal'), 'behavior'), criterion('customer', '고객 의문과 판단', get('doubt') + ' / ' + get('evidence'), 'behavior'), criterion('fit', '분위기의 서비스 적합성', get('fit')), criterion('style', '색·서체·형태·재질의 관계', p.styles.filter(confirmed).map(s => `${s.role}: ${s.value} → ${s.scope}`).join('\n') || '직접 작성한 표현 기준 필요'), criterion('scope', '지정한 영역과 적용 강도', p.styles
-                .filter(confirmed).map(s => `${s.scope} / 예외: ${s.exception}`).join('\n') || '적용 범위 확인 필요'), criterion('reference', '레퍼런스의 유지와 조정', p.references.flatMap(r => r.regions.filter(confirmed).map(a => `${r.name}/${a.id}: ${a.observation} → ${a.target}`)).join('\n') || '등록한 레퍼런스 없음. 직접 규칙으로 검토'), criterion('interaction', '정보·조작·복구', p.flows.filter(confirmed).map(f => `${f.value}: ${f.recovery}`).join('\n') || get('criteria'), 'behavior'), criterion('consistency', '대표 화면과 다른 상태의 일관성', get('criteria'))].map(c => ({ ...c, decisionIds: dependencies[c.id] || [] }));
+                .filter(confirmed).map(s => `${s.scope} / 예외: ${s.exception}`).join('\n') || '적용 범위 확인 필요'), criterion('reference', '레퍼런스의 유지와 조정', p.references.flatMap(r => r.regions.filter(confirmed).map(a => `${r.name}/${a.id}: ${a.observation} → ${a.target}`)).join('\n') || '등록한 레퍼런스 없음. 직접 규칙으로 검토'), criterion('interaction', '정보·조작·복구', p.flows.filter(confirmed).map(f => `${f.value}: ${f.recovery}`).join('\n') || get('criteria'), 'behavior'), criterion('consistency', '대표 화면과 다른 상태의 일관성', get('criteria'))].map(c => ({ ...c, decisionIds: dependencies[c.id] || [] })).concat(designReviewCriteria(p));
     }
     const safe = (s: unknown) => String(s ?? '').replaceAll('\r', '');
     function assemble(p: Project, { draft = false, plan = null }: SnapshotOptions = {}) {
@@ -332,7 +333,7 @@ export function createDomain(context: DomainContext) {
             out.push('결과 이미지 또는 직접 확인한 실행 기록이 필요합니다.');
         if (r.intent !== 'match' || !r.intentReason.trim())
             out.push('실제 결과가 의도와 맞는지 이유와 함께 확인하세요.');
-        if (r.scope === 'behavior' && !result?.execution?.trim())
+        if (r.scope === 'behavior' && (!result?.execution?.trim() || result.executionSource === 'runtime' && !result.behaviorEvidence?.trim()))
             out.push('동작을 포함한 검토에는 직접 실행한 기록이 필요합니다.');
         for (const i of r.items) {
             if (r.scope === 'visual' && i.scope === 'behavior')

@@ -1,0 +1,33 @@
+{
+  "liveAttempt": true,
+  "liveModelResponse": true,
+  "syntheticDesign": true,
+  "outputRelativePath": ".cache/atelier-artifacts-live-Z0LBk4/smoke.html",
+  "approvalPolicy": "existing pending approvals; tool declines requests",
+  "networkDefault": false,
+  "ok": true,
+  "model": "gpt-6.1-sol",
+  "create": {
+    "generationId": "gen_23415faf-739a-4781-975f-7463af49d45e",
+    "snapshotId": "snap_2c7d0f71-8eb0-49a5-a46d-6aa36d2d770e",
+    "resultId": "result_44ee1639-1db7-411a-bd92-0d94df6b539b",
+    "threadId": "01a18a53-e57c-7582-af87-17b93833b0ed",
+    "turnId": "01a18a53-e61c-72e0-bb00-0b6a977965e7",
+    "hash": "f616cef15caac731b16e9b707e1a695b2455286f119f0c57a820316687087c35",
+    "checkStatus": "notRun"
+  },
+  "revise": {
+    "generationId": "gen_a5d248f6-8b4a-4b41-9c43-921f0eb44aaa",
+    "snapshotId": "snap_1bbd9f47-0d3a-439b-9a96-40f579853288",
+    "resultId": "result_2d80ee5a-5652-4a15-8e66-1f2094318aed",
+    "threadId": "01a18a53-e57c-7582-af87-17b93833b0ed",
+    "turnId": "01a18a54-75ea-7692-a30b-18c2880c7c24",
+    "hash": "a954e2aee6d2ecf4f75c06264379713bcb8bc1983ccfcc0409c49fc152d15981",
+    "checkStatus": "notRun"
+  },
+  "immutableHistoricalCopy": true,
+  "revisionReviewReset": true,
+  "visualReviewCompleted": false,
+  "behaviorReviewCompleted": false,
+  "soloResume": true
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AtelierNavigation, PAGE_INFO, type AtelierPage } from "./components/layout/AtelierNavigation";
-import { AtelierHome, AtelierNotes } from "./components/layout/AtelierPages";
+import { AtelierHome } from "./components/layout/AtelierPages";
 import {AtelierWorkspace} from './features/atelier/Workspace';
 import type {Entry,Tab} from '../shared/atelier/types';
 import { ApprovalDialog } from "./components/ApprovalDialog";
@@ -13,6 +13,7 @@ import { ResultView } from "./components/ResultView";
 import { SkillPicker } from "./components/SkillPicker";
 import { useBridge } from "./hooks/useBridge";
 import type { AgentRole, ExecutionMode, ReasoningEffort } from "../shared/protocol";
+import {defaultModel,preferredModelCatalog} from '../shared/model-selection';
 import {
   loadPetAssignments,
   loadPetCatalog,
@@ -41,6 +42,7 @@ function formatTokenCount(value: number): string {
 
 export default function App() {
   const bridge = useBridge();
+  const selectableModels=useMemo(()=>preferredModelCatalog(bridge.models),[bridge.models]);
   const [shellMode, setShellMode] = useState<"atelier" | "legacy">(() => window.localStorage.getItem(SHELL_KEY) === "legacy" ? "legacy" : "atelier");
   const [page, setPage] = useState<AtelierPage>("home");
   const [designEntry,setDesignEntry]=useState<{entry:Entry;nonce:number}|null>(null);
@@ -136,9 +138,9 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (bridge.models.length === 0) return;
-    const available = bridge.models.find((model) => model.model === selectedModel);
-    const next = available ?? bridge.models.find((model) => model.isDefault) ?? bridge.models[0];
+    if (selectableModels.length === 0) return;
+    const available = selectableModels.find((model) => model.model === selectedModel);
+    const next = available ?? defaultModel(selectableModels)!;
     if (!available) {
       setSelectedModel(next.model);
       window.localStorage.setItem(MODEL_KEY, next.model);
@@ -147,7 +149,7 @@ export default function App() {
       setSelectedEffort("");
       window.localStorage.removeItem(EFFORT_KEY);
     }
-  }, [bridge.models, selectedEffort, selectedModel]);
+  }, [selectableModels, selectedEffort, selectedModel]);
 
   const selectedModelInfo = useMemo(
     () => bridge.models.find((model) => model.model === selectedModel),
@@ -238,10 +240,10 @@ export default function App() {
         </div>
       )}
 
-      {atelier && page==='home'&&<div className="atelier-introduction"><AtelierHome onNavigate={navigate} conversations={bridge.conversations} busy={busy} onStartDesign={entry=>{setDesignEntry({entry,nonce:Date.now()});navigate('design');}} onSelectConversation={(id) => { if (bridge.selectConversation(id)) navigate("results"); }} /><AtelierNotes connected={bridge.snapshot.connected} appServerReady={bridge.snapshot.appServerReady} busy={busy} awaitingApproval={bridge.approvals.length > 0} projectPath={projectPath} /></div>}
-      <AtelierWorkspace aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'} entryRequest={designEntry} tabRequest={designTabRequest} onTab={setDesignTab}/>
+      {atelier && page==='home'&&<div className="atelier-introduction"><AtelierHome onNavigate={navigate} conversations={bridge.conversations} busy={busy} onStartDesign={entry=>{setDesignEntry({entry,nonce:Date.now()});navigate('design');}} onSelectConversation={(id) => { if (bridge.selectConversation(id)) navigate("work"); }} /></div>}
+      <AtelierWorkspace production={{snapshot:bridge.snapshot,executionMode,skillMode,skillPath:skillPath||undefined,model:selectedModel||undefined,effort:selectedEffort||undefined,onInterrupt:bridge.interruptTurn}} aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'} entryRequest={designEntry} tabRequest={designTabRequest} onTab={setDesignTab}/>
 
-      {atelier && page === "settings" && <section className="atelier-display-settings" aria-labelledby="display-settings-title"><h2 id="display-settings-title">화면 표시</h2><p>화면을 전환해도 현재 입력·실행·대화 연결은 유지됩니다.</p><div><button type="button" onClick={() => changeShell("legacy")}>기존 화면으로 전환 ↗</button><button type="button" aria-pressed={animationEnabled} onClick={toggleAnimation}>캐릭터 애니메이션 {animationEnabled ? "켜짐" : "꺼짐"}</button></div><p><a href="/atelier-assets/LICENSES.md" target="_blank" rel="noreferrer">폰트·아이콘 출처와 라이선스</a></p></section>}
+      {atelier && page === "settings" && <section className="atelier-display-settings" aria-labelledby="display-settings-title"><h2 id="display-settings-title">화면 표시</h2><p>Atelier가 기본 작업실입니다. 기존 화면은 통합 전 배치로 돌아가는 호환 보기이며 같은 브리지·기능을 사용합니다. 화면을 전환해도 현재 입력·실행·대화 연결은 유지됩니다.</p><div><button type="button" onClick={() => changeShell("legacy")}>기존 화면으로 전환 ↗</button><button type="button" aria-pressed={animationEnabled} onClick={toggleAnimation}>캐릭터 애니메이션 {animationEnabled ? "켜짐" : "꺼짐"}</button></div><p><a href="/atelier-assets/LICENSES.md" target="_blank" rel="noreferrer">폰트·아이콘 출처와 라이선스</a></p></section>}
 
       <div className="metaverse-layout" hidden={atelier && (page === "home" || page === "design")}>
         <div className="left-rail" hidden={!showControls && !showOperations}>
@@ -277,6 +279,8 @@ export default function App() {
                 disabled={busy}
                 onNew={bridge.newConversation}
                 onSelect={bridge.selectConversation}
+                onRename={bridge.renameConversation}
+                firstPrompt={bridge.messages.find(m=>m.role==='user')?.text}
               />
               <ProjectPanel
                 currentPath={projectPath}
@@ -294,7 +298,7 @@ export default function App() {
                 onNetworkChange={bridge.setResearchNetworkAccess}
               />
               <ModelPicker
-                models={bridge.models}
+                models={selectableModels}
                 selectedModel={selectedModel}
                 selectedEffort={selectedEffort}
                 errors={bridge.modelErrors}

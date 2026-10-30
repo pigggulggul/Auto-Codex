@@ -1,8 +1,10 @@
 # Atelier 통합 계약 v1 — 단계별 구현과 목표
 
-상태: **0단계 목표 계약이며 전체가 구현된 것은 아니다.** 2단계 도메인, 3단계 저장소·수동 WS·legacy 백업/ZIP, [4단계 수동 React 작업실](STAGE4_IMPLEMENTATION.md), [5단계 읽기 전용 제안](STAGE5_IMPLEMENTATION.md)을 구현했다. 실제 지원 필드·한도·검증과 차이는 각 단계 기록을 따른다. 5단계는 brief/flow/concept/style과 기존 대상의 후보 편집/제외/명시 적용, proposalVersion과 ai.interrupt를 지원한다. review 목적·skillPath·binding/generation/artifact·통합 AI 백업·제작 어댑터는 계속 후속 제안이다. 기준선은 [0단계](STAGE0_BASELINE.md), 유지 대상은 [기능 보존표](FEATURE_PRESERVATION.md)에 있다.
+상태: **0단계 목표 계약이며 전체가 구현된 것은 아니다.** 2단계 도메인, 3단계 저장소·수동 WS·legacy 백업/ZIP, [4단계 수동 React 작업실](STAGE4_IMPLEMENTATION.md), [5단계 읽기 전용 제안](STAGE5_IMPLEMENTATION.md), [6단계 제작 어댑터](STAGE6_IMPLEMENTATION.md), [7단계 산출물·검토 왕복](STAGE7_IMPLEMENTATION.md)을 구현했다. 현재 SQLite v4와 artifact.get/read/attach, 실제 byte 사본·원본 결과 연결이 추가됐다. CLI 0.166.0/GPT-6.1 Sol의 실제 Solo 생성·수정·산출물 연결이 통과했다. 기본 모델 선택은 제공된 6시리즈를 우선하며 추론 실패 후 자동 변경하지 않는다. review 목적의 AI 제안·제안의 skillPath·통합 AI 백업·자동 실행 미리보기는 후속 제안이다. 아래 목표 타입의 retryOf, 별도 planId payload, 자동 연결 복구와 실제 필드 차이는 6/7단계 구현 계약을 따른다. 기준선은 [최초 0단계](STAGE0_BASELINE.md)와 [재점검](STAGE0_RECHECK_STAGE7.md), 유지 대상은 [기능 보존표](FEATURE_PRESERVATION.md)에 있다.
 
 가이드의 `atelier.file.begin/chunk/commit/read` 초안은 이 계약에서 **범용 `atelier.transfer.*`**로 정리한다. 파일뿐 아니라 90MiB 백업·ZIP·긴 snapshot도 같은 제한된 전송 경로를 사용하기 위해서다. 기존 메시지 이름은 변경하지 않는다.
+
+[8단계 수용·운영 검증](STAGE8_ACCEPTANCE.md)은 현재 16개 수용 조건과 A/T 전체 보존표, 정적 파일 경계·재시작·UI 근거를 기록한다. Atelier가 신규 기본 레이아웃이며 기존 보기는 같은 브리지의 호환 경로다. 일반 대화의 신규 `conversation.rename`/`conversation.rename.result`는 atelier.*와 별도 기존 대화 채널에서 bounded title·expectedTitle·저장 성공을 상관시킨다. history v1과 선택적 titleSource를 사용하고 실행/승인 계약은 바꾸지 않는다.
 
 ## 1. 적용 순서와 소유 경계
 
@@ -285,6 +287,8 @@ completed는 **실제 런타임 종료 완료**이며 산출물이나 품질의 
 
 ### 7.3 입출력 manifest와 검토
 
+아래는 목표 요약이다. **현재 구현**은 shared/atelier/artifacts.ts와 [7단계 실제 계약](STAGE7_IMPLEMENTATION.md)을 따른다. files는 `reportedChange:add/update/delete`, 실제 삭제 확인은 deleted, 명령은 commands, 검사 요약은 checkStatus다. byte는 내부 artifacts 사본이며 legacy 첨부 fileId와 섞지 않는다. 관측된 fileChange 경로에만 한정하고 알 수 없는 파일을 성공으로 채우지 않는다.
+
 InputManifest는 `contractVersion,P,snapshotId,snapshotHash,decisionVersions,selection,files[{id,hash,size,role}],bindingVersion,model/effort/skill,createdAt`를 고정한다. 프로젝트 내 기존 자료를 의미상 필요한 범위만 선별하며 전체 대화·환경·설정 디렉터리는 첨부하지 않는다.
 
 ArtifactManifest는 `generationId,P,snapshotId,files[{id,relativePath?,fileId?,hash,size,kind,change:'created'|'modified'}],checks,limitations`를 저장한다. 서버가 실제 path·root·byte/hash를 확인한 항목만 verified다. 파일을 썼다는 item 이벤트도 최종 내용·존재 검증의 대체가 아니다. Git 없는 프로젝트도 지원하고 결과 수집을 위해 무조건 git init을 실행하지 않는다.
@@ -299,7 +303,7 @@ revision 계획은 기존 result/review/snapshot/selection·변경 목표·유�
 
 기존 백업 한 개는 설계 프로젝트 한 개다. handoff.json은 복원 백업으로 거부한다. 기존 `atelier-backup` version 1은 validateBackup·byte/hash/type/참조 검증 후 새 P로 가져오며 원본 DB를 열지 않는다.
 
-신규 통합 포맷은 명시적으로 다음과 같이 구분한다.
+신규 통합 포맷은 **미구현 제안**이며 다음과 같이 구분한다. 현재는 수동 legacy export/import만 제공하고 runtime 결과가 포함된 legacy export는 CAPABILITY_UNAVAILABLE로 거부한다. 전체 기록은 bridge 종료 후 `.local-data/atelier` 전체와 별도 history/workspace 세트로 보관한다. 구체적인 v4 이전·복귀 조건은 [7단계 저장·백업](STAGE7_IMPLEMENTATION.md)을 따른다.
 
 ```text
 format: auto-codex-atelier-backup
@@ -314,6 +318,8 @@ legacy의 결정·스냅샷·결과 내부 구조와 파일 해시는 유지한�
 구형 포맷 export는 새 데이터가 legacy로 손실 없이 표현되는 프로젝트에만 제공한다. 코드 중심 결과/다중 산출물/AI 연결 등 표현 불가능한 데이터가 있으면 누락 목록과 통합 백업 안내를 주고, 조용히 정보 일부를 버린 성공 백업을 만들지 않는다. 기존 프로젝트의 legacy export/import 기능은 계속 제공한다.
 
 ### 8.2 복원 절차
+
+이 절차는 통합 포맷의 후속 구현 계약이다. 현재 legacy 수동 복원은 실행 ID를 담은 입력을 거부하며 runtime ID 재매핑 복원을 지원하지 않는다.
 
 1. 제한된 byte 전송과 JSON/version/중복 ID/소유/관계/hash/type를 모두 검증한다.
 2. 새 P와 비공개 temp 파일 영역을 만든다. legacy 내부 ID는 프로젝트 namespace에서 유지한다.

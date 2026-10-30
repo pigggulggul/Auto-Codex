@@ -38,7 +38,8 @@ try{
  const restore=await upload(backup);const imported=await request('backup.import',{transferId:restore.transferId});assert.notEqual(imported.project.id,pid);
  const loaded=await request('project.load',{designProjectId:pid});assert.equal(loaded.project.version,3);
  assert.equal((await request('project.update',{designProjectId:pid,expectedVersion:3,patch:{command:'forbidden'}},false)).code,'INVALID_MESSAGE');
- assert.equal((await request('generation.start',{},false)).code,'CAPABILITY_UNAVAILABLE');
+ // Stage 6 implements generation.start: an empty production request must fail its strict schema.
+ assert.equal((await request('generation.start',{},false)).code,'INVALID_MESSAGE');
  // A pending upload does not put approval validation behind the design worker queue.
  const unfinished=await request('transfer.begin',{direction:'upload',purpose:'file',designProjectId:pid,fileRole:'asset',name:'interrupted.md',totalBytes:524288,sha256:hash(Buffer.alloc(524288,65))});
  const chunkId=randomUUID();socket.send(JSON.stringify({type:'atelier.transfer.chunk',v:1,clientRequestId:chunkId,payload:{transferId:unfinished.transfer.transferId,index:0,dataBase64:Buffer.alloc(262144,65).toString('base64')}}));

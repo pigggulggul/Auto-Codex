@@ -104,3 +104,41 @@ it('interrupt while storage preparation is pending never dispatches a model turn
   const pending=runtime.request(JSON.stringify({type:'atelier.ai.propose',v:1,clientRequestId:randomUUID(),payload:{designProjectId:p.id,expectedVersion:1,revision:1,purpose:'brief',targetIds:[p.fields.product.id],idempotencyKey:randomUUID()}}));expect(runtime.busy).toBe(true);await runtime.interrupt();release();expect(await pending).toMatchObject({ok:true,result:{state:'interrupted'}});expect(calls).toBe(0);expect(runtime.busy).toBe(false);
  }finally{await t.close();}
 });
+
+it('single fenced JSON is validated normally; mixed prose and authority patches still fail closed',async()=>{
+ const t=await setup();try{
+  const p=domain.newProject({name:'아이디어',idea:'혼자 여행하는 사람의 일정 도구'});await t.service.store.insert(p);
+  const b={designProjectId:p.id,expectedVersion:1,revision:1,purpose:'brief',targetIds:[p.fields.product.id],request:'첫 버전 범위를 줄여 주세요.',idempotencyKey:randomUUID()};
+  const prepared=await t.service.proposals.prepare(b);expect(JSON.parse(prepared.input!).request).toBe(b.request);expect(JSON.parse(prepared.input!).idea).toBe(p.idea);
+  const output=JSON.stringify({candidates:[{targetId:p.fields.product.id,patch:{value:'여행 일정 만들기'},rationale:'아이디어를 구체화',assumptions:'사용자 확인 필요'}]});
+  await t.service.proposals.running(p.id,prepared.proposal.id,source);expect((await t.service.proposals.complete(p.id,prepared.proposal.id,'```json\n'+output+'\n```')).state).toBe('ready');
+  for(const invalid of ['설명을 붙였습니다.\n'+output,'```json\n'+output+'\n```\n```json\n{}\n```',output.replace('"value":"여행 일정 만들기"','"status":"confirmed"')]){
+   const q=(await t.service.proposals.prepare({...b,idempotencyKey:randomUUID()})).proposal;await t.service.proposals.running(p.id,q.id,source);expect((await t.service.proposals.complete(p.id,q.id,invalid)).error?.code).toBe('INVALID_OUTPUT');
+  }
+  expect((await t.service.store.get(p.id)).version).toBe(1);
+ }finally{await t.close();}
+});
+
+it('runtime reads final text despite empty content, ignores commentary and keeps final-answer priority',async()=>{
+ const t=await setup();try{
+  const p=domain.newProject({name:'final output'});await t.service.store.insert(p);
+  const output=JSON.stringify({candidates:[{targetId:p.fields.product.id,patch:{value:'올바른 최종 후보'},rationale:'아이디어 근거',assumptions:''}]});
+  const server={request:async(method:string)=>method==='thread/start'?{thread:{id:'final-thread'}}:method==='turn/start'?{turn:{id:'final-turn'}}:{},stopAndWait:async()=>{}} as unknown as CodexAppServer;
+  const model={model:'synthetic-model',isDefault:true,inputModalities:['text'],supportedReasoningEfforts:[]} as unknown as ModelInfo;
+  const runtime=new AtelierProposalRuntime(server,storageFor(t.service),{cwd:async()=>t.root,ensure:async()=>{},busy:()=>false,models:()=>[model],emit:()=>{}});
+  for(const mode of ['completed','delta-only','legacy-comment']){
+   const reply=await runtime.request(JSON.stringify({type:'atelier.ai.propose',v:1,clientRequestId:randomUUID(),payload:{designProjectId:p.id,expectedVersion:1,revision:1,purpose:'brief',targetIds:[p.fields.product.id],idempotencyKey:randomUUID()}}));expect(reply.ok).toBe(true);
+   const params={threadId:'final-thread',turnId:'final-turn'};
+   runtime.notification({method:'item/agentMessage/delta',params:{...params,itemId:'comment',delta:'설계를 정리하겠습니다.'}});
+   runtime.notification({method:'item/completed',params:{...params,item:{type:'agentMessage',id:'comment',...(mode==='legacy-comment'?{}:{phase:'commentary'}),text:'설계를 정리하겠습니다.'}}});
+   runtime.notification({method:'item/agentMessage/delta',params:{...params,itemId:'final',delta:output}});
+   if(mode==='completed'){
+    runtime.notification({method:'item/completed',params:{...params,item:{type:'agentMessage',id:'final',phase:'final_answer',content:[],text:output}}});
+    runtime.notification({method:'item/completed',params:{...params,item:{type:'agentMessage',id:'late-comment',phase:'commentary',text:'완료했습니다.'}}});
+   }
+   runtime.notification({method:'turn/completed',params:{threadId:'final-thread',turn:{id:'final-turn',status:'completed'}}});
+   for(let i=0;i<80&&runtime.busy;i++)await new Promise(resolve=>setTimeout(resolve,5));expect(runtime.busy).toBe(false);
+  }
+  const proposals=await t.service.store.proposals(p.id);expect(proposals).toHaveLength(3);expect(proposals.every(r=>r.state==='ready'&&r.candidates[0].patch.value==='올바른 최종 후보')).toBe(true);expect((await t.service.store.get(p.id)).version).toBe(1);
+ }finally{await t.close();}
+});

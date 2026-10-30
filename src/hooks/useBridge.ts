@@ -51,6 +51,8 @@ export function useBridge() {
   const socketRef = useRef<WebSocket | null>(null);
   const retryRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
+  const renameRef=useRef<{id:string;resolve:()=>void;reject:(e:Error)=>void;timer:ReturnType<typeof setTimeout>}|null>(null);
+  const failRename=(reason:string)=>{const pending=renameRef.current;if(pending){clearTimeout(pending.timer);renameRef.current=null;pending.reject(new Error(reason));}};
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [skillErrors, setSkillErrors] = useState<string[]>([]);
@@ -92,6 +94,11 @@ export function useBridge() {
           return;
         }
         switch (message.type) {
+          case 'conversation.rename.result':{
+            const pending=renameRef.current;if(pending?.id!==message.clientRequestId)break;
+            if(!message.ok){failRename(message.error||'대화 이름 저장 실패');break;}
+            clearTimeout(pending.timer);renameRef.current=null;pending.resolve();break;
+          }
           case "bridge.state":
             setSnapshot(message.snapshot);
             break;
@@ -159,6 +166,7 @@ export function useBridge() {
             setApprovals((current) => current.filter((item) => item.approvalId !== message.approvalId));
             break;
           case "error":
+            failRename(message.message);
             setIsPickingProject(false);
             setIsTrustingProject(false);
             setLastError(message.message);
@@ -170,6 +178,7 @@ export function useBridge() {
       socket.addEventListener("close", () => {
         if (socketRef.current !== socket) return;
         socketRef.current = null;
+        failRename('연결이 끊겨 이름 저장 결과를 확인하지 못했습니다. 재연결 후 저장된 이름을 확인하세요.');
         atelierApi.disconnect();
         setSnapshot((current) => ({ ...current, connected: false, appServerReady: false, petState: "connecting" }));
         setApprovals([]);
@@ -187,6 +196,7 @@ export function useBridge() {
     connect();
     return () => {
       disposed = true;
+      failRename('화면이 닫혀 이름 저장 결과를 확인하지 못했습니다.');
       if (retryRef.current !== null) window.clearTimeout(retryRef.current);
       socketRef.current?.close();
       atelierApi.disconnect();
@@ -224,6 +234,12 @@ export function useBridge() {
     setResearchNetworkAccess: (enabled: boolean) => send({ type: "workspace.network", enabled }),
     newConversation: () => send({ type: "conversation.new" }),
     selectConversation: (conversationId: string) => send({ type: "conversation.select", conversationId }),
+    renameConversation:(conversationId:string,title:string,expectedTitle:string)=>new Promise<void>((resolve,reject)=>{
+      if(renameRef.current){reject(new Error('이름 저장 응답을 기다려 주세요.'));return;}
+      const id=crypto.randomUUID(),timer=setTimeout(()=>failRename('이름 저장 응답이 지연됩니다. 최신 이름을 확인한 뒤 다시 시도하세요.'),15000);
+      renameRef.current={id,timer,resolve,reject};
+      if(!send({type:'conversation.rename',conversationId,title,expectedTitle,clientRequestId:id}))failRename('로컬 브리지에 연결되어 있지 않습니다.');
+    }),
     pickProject: () => {
       if (!send({ type: "project.pick" })) return false;
       setIsPickingProject(true);

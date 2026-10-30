@@ -1,0 +1,20 @@
+{
+  "liveAttempt": true,
+  "liveModelResponse": true,
+  "syntheticDesign": true,
+  "outputRelativePath": ".cache/atelier-artifacts-live-B8ILvn/smoke.html",
+  "approvalPolicy": "existing pending approvals; tool declines requests",
+  "networkDefault": false,
+  "ok": false,
+  "model": "gpt-6.1-sol",
+  "create": {
+    "generationId": "gen_1df7db8c-461f-44d7-8618-f7597b6b838a",
+    "snapshotId": "snap_47793c8c-f21a-4933-9c98-c476be432ffc",
+    "resultId": "result_6d96f45b-b926-45b3-a2a3-fadd5d2f5089",
+    "threadId": "01a18a46-eaae-73e3-9689-0907cc0573bc",
+    "turnId": "01a18a46-eb22-7fb2-8fb4-62230a4e1dc3",
+    "hash": "f616cef15caac731b16e9b707e1a695b2455286f119f0c57a820316687087c35",
+    "checkStatus": "notRun"
+  },
+  "failure": "The expression evaluated to a falsy value:\n\n  assert(next.items.some(i=>i.regression))\n"
+}
