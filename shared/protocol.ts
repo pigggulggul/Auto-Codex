@@ -147,6 +147,8 @@ export type TaskDefinition = {
   dependsOn: string[];
   order: number;
   skillPath?: string;
+  skillName?: string;
+  skillRationale?: string;
   runAfterFailure?: boolean;
 };
 
@@ -253,6 +255,7 @@ export type ClientMessage =
       skillMode: "auto" | "manual";
       skillPath?: string;
       executionMode?: ExecutionMode;
+      readOnly?: boolean;
       model?: string;
       effort?: ReasoningEffort;
     }

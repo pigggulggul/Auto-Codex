@@ -1,8 +1,21 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ResultView } from "./ResultView";
+import type { RunSnapshot } from "../../shared/protocol";
 
 describe("restored conversation results", () => {
+  it("shows the bridge-assigned skill and its rationale with a task result", () => {
+    const run: RunSnapshot = {
+      id: "run", prompt: "모바일 앱", mode: "team", status: "completed", createdAt: "2026-10-25T00:00:00Z", completedAt: "2026-10-25T00:01:00Z", agents: [],
+      tasks: [{ id: "build", title: "구현", description: "앱", kind: "implementation", access: "write", agentRole: "builder", dependsOn: [], order: 1,
+        agentId: "builder", status: "completed", attempt: 1, threadId: "thread", turnId: "turn", startedAt: null, completedAt: null,
+        skillName: "mobile-app-delivery", skillPath: "mobile", skillRationale: "모바일 작업에 일치", resultSummary: "합성 결과" }],
+    };
+    const html = renderToStaticMarkup(<ResultView conversationId="chat" conversationTitle="결과" run={run} taskOutputs={{}} assistantText="" messages={[]} />);
+    expect(html).toContain("스킬 배정: ");
+    expect(html).toContain("mobile-app-delivery");
+    expect(html).toContain("모바일 작업에 일치");
+  });
   it("renders visible Markdown and an accessible full-text action for every message", () => {
     const html = renderToStaticMarkup(<ResultView conversationId="saved-chat" conversationTitle="읽기 검증" run={null} taskOutputs={{}} assistantText={"## 결론\n\n**확인 가능한 본문**"} messages={[
       { id: "u1", role: "user", text: "긴 결과를 보여줘", timestamp: "2026-10-25T00:00:00Z", status: "completed" },

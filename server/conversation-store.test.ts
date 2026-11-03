@@ -20,6 +20,16 @@ function archive(): ConversationArchive {
 }
 
 describe("local conversation history", () => {
+  it("preserves skill assignment metadata while accepting older task records", () => {
+    const data = archive();
+    const run = createRunSnapshot({ prompt: "합성 테스트", mode: "team", tasks: [{ id: "work", title: "작업", description: "테스트", kind: "research", access: "read", agentRole: "researcher", dependsOn: [], order: 1, skillPath: "synthetic", skillName: "sample", skillRationale: "근거" }] });
+    data.conversations[0].activeRun = run;
+    const restored = parseArchive(JSON.stringify(data)).conversations[0].activeRun;
+    expect(restored?.tasks[0]).toMatchObject({ skillName: "sample", skillRationale: "근거" });
+    delete run.tasks[0].skillName;
+    delete run.tasks[0].skillRationale;
+    expect(parseArchive(JSON.stringify(data)).conversations[0].activeRun?.tasks[0].skillPath).toBe("synthetic");
+  });
   it('preserves custom title metadata and remains compatible with archives without a title source',async()=>{
     expect(parseArchive(JSON.stringify(archive())).conversations[0].title).toBe('이전 작업');
     const root=await mkdtemp(path.join(os.tmpdir(),'auto-codex-name-')),data=archive();data.conversations[0].title='내가 저장한 이름';data.conversations[0].titleSource='user';const store=new ConversationStore(root);await store.save(data);const loaded=await new ConversationStore(root).load();expect(loaded?.conversations[0]).toMatchObject({title:'내가 저장한 이름',titleSource:'user',threadId:'saved-thread'});

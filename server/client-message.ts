@@ -49,6 +49,7 @@ export function parseClientMessage(raw: string): ClientMessage {
     if (typeof message.prompt !== "string") throw new Error("Codex에 전달할 업무를 입력하세요.");
     if (message.skillMode !== "auto" && message.skillMode !== "manual") throw new Error("스킬 선택 모드가 올바르지 않습니다.");
     if (message.skillPath !== undefined && typeof message.skillPath !== "string") throw new Error("스킬 경로가 올바르지 않습니다.");
+    if (message.readOnly !== undefined && typeof message.readOnly !== "boolean") throw new Error("읽기 전용 설정이 올바르지 않습니다.");
     if (message.executionMode !== undefined && message.executionMode !== "solo" && message.executionMode !== "team") {
       throw new Error("실행 모드가 올바르지 않습니다.");
     }

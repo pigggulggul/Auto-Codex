@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fallbackTaskPlan, parseTaskPlan, TASK_PLAN_OUTPUT_SCHEMA } from "./task-planner.js";
+import { explicitReadOnlyRequest, fallbackTaskPlan, parseTaskPlan, TASK_PLAN_OUTPUT_SCHEMA } from "./task-planner.js";
 
 describe("task planner", () => {
   it("uses only the supported array keywords in the structured output schema", () => {
@@ -58,5 +58,19 @@ describe("task planner", () => {
     expect(tasks.map((task) => task.id)).toEqual(["plan", "research", "report"]);
     expect(tasks.every((task) => task.access === "read")).toBe(true);
     expect(tasks.find((task) => task.id === "research")?.agentRole).toBe("researcher");
+  });
+
+  it("preserves read-only verification and constrains a planner's write requests when explicitly read-only", () => {
+    const plan = JSON.stringify({ tasks: [
+      { id: "audit", title: "검토", description: "파일을 읽고 검토", kind: "verification", access: "read", agentRole: "qa", dependsOn: [], order: 1 },
+    ] });
+    expect(parseTaskPlan(plan).find((task) => task.id === "audit")?.access).toBe("read");
+    const badPlan = JSON.stringify({ tasks: [
+      { id: "change", title: "수정", description: "파일 변경", kind: "implementation", access: "write", agentRole: "builder", dependsOn: [], order: 1 },
+    ] });
+    expect(parseTaskPlan(badPlan, { readOnly: true }).every((task) => task.access === "read")).toBe(true);
+    expect(explicitReadOnlyRequest("파일을 수정하지 않고 검토해줘")).toBe(true);
+    expect(explicitReadOnlyRequest("do not edit the files")).toBe(true);
+    expect(explicitReadOnlyRequest("코드를 수정해줘")).toBe(false);
   });
 });

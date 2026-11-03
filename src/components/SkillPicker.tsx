@@ -27,7 +27,7 @@ export function SkillPicker({ skills, projectPath, mode, selectedPath, disabled,
   const [expanded, setExpanded] = useState(false);
   const enabled = skills.filter((skill) => skill.enabled);
   const projectSkills = enabled.filter((skill) => isProjectSkill(skill, projectPath));
-  const visible = showAll ? enabled : projectSkills;
+  const visible = showAll || !projectPath ? enabled : projectSkills;
   return (
     <details className="control-section skill-control control-collapsible" open={expanded} onToggle={(event) => setExpanded(event.currentTarget.open)}>
       <summary className="section-heading">
@@ -37,31 +37,32 @@ export function SkillPicker({ skills, projectPath, mode, selectedPath, disabled,
       <div className="control-section-body">
         <button className="section-refresh-button" type="button" onClick={onRefresh} disabled={disabled}>↻ 스킬 다시 읽기</button>
         <div className="segmented" role="group" aria-label="스킬 선택 방식">
-        <button className={mode === "auto" ? "active" : ""} onClick={() => onModeChange("auto")} type="button">✦ Auto</button>
-        <button className={mode === "manual" ? "active" : ""} onClick={() => onModeChange("manual")} type="button">Manual</button>
+        <button className={mode === "auto" ? "active" : ""} onClick={() => onModeChange("auto")} disabled={disabled} type="button">✦ Auto</button>
+        <button className={mode === "manual" ? "active" : ""} onClick={() => onModeChange("manual")} disabled={disabled} type="button">Manual</button>
         </div>
         {mode === "auto" ? (
         <p className="helper-copy">업무와 설치된 스킬 설명을 비교해 Task마다 적합한 스킬을 배정합니다.</p>
       ) : (
         <>
+          <p className="helper-copy">Team에서는 선택한 스킬을 같은 역할의 첫 작업에만 배정합니다. 기본 에이전트 선택 시 스킬을 자동 배정하지 않습니다.</p>
           <div className="skill-list compact">
-            <button type="button" className={`skill-option ${selectedPath === "" ? "selected" : ""}`} onClick={() => onSkillChange("")}>
+            <button type="button" className={`skill-option ${selectedPath === "" ? "selected" : ""}`} onClick={() => onSkillChange("")} disabled={disabled}>
               <span className="skill-avatar base">C</span>
               <span><strong>General agent</strong><small>{SKILL_ROLE_DESCRIPTIONS.general}</small></span>
             </button>
             {visible.map((skill) => {
               const role = classifySkill(skill);
               return (
-                <button type="button" className={`skill-option ${selectedPath === skill.path ? "selected" : ""}`} onClick={() => onSkillChange(skill.path)} key={skill.path}>
+                <button type="button" className={`skill-option ${selectedPath === skill.path ? "selected" : ""}`} onClick={() => onSkillChange(skill.path)} key={skill.path} disabled={disabled}>
                   <span className="skill-avatar">{skill.name.slice(0, 1).toUpperCase()}</span>
                   <span><strong>{shortSkillName(skill.name)}</strong><small>{SKILL_ROLE_LABELS[role]} · {skill.shortDescription || skill.description}</small></span>
                 </button>
               );
             })}
           </div>
-          <button type="button" className="skill-scope-toggle" onClick={() => setShowAll((value) => !value)}>
+          {projectPath && <button type="button" className="skill-scope-toggle" onClick={() => setShowAll((value) => !value)}>
             <span>{showAll ? "프로젝트 스킬만 보기" : "Codex 스킬 전체 보기"}</span><span>{showAll ? ">" : "<"}</span>
-          </button>
+          </button>}
         </>
         )}
         <div className="skill-count"><span>{enabled.length}</span> enabled skills</div>

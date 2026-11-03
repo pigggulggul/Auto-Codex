@@ -47,7 +47,7 @@ export function ProjectPanel({ currentPath, workspaceMode, researchNetworkAccess
         {workspaceMode === "research" ? (
           <div className="research-mode-card">
             <strong>폴더 연결 없이 조사합니다</strong>
-            <p>미국 증시·뉴스·웹 자료를 확인할 때 사용합니다. 파일을 읽거나 수정하지 않습니다.</p>
+            <p>작업 폴더를 연결하지 않으며 읽기 전용 sandbox를 사용합니다. 웹 접근은 선택한 경우에만 허용됩니다.</p>
             <label><input type="checkbox" checked={researchNetworkAccess} onChange={(event) => onNetworkChange(event.target.checked)} disabled={disabled} /> 웹 접근 허용</label>
             <small>{researchNetworkAccess ? "이번 조사에서 네트워크 사용이 허용됩니다." : "안전하게 네트워크가 차단되어 있습니다."}</small>
           </div>

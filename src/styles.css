@@ -214,6 +214,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .execution-mode button.active { color: #f4eee2; border-color: rgba(105,229,178,.42); background: rgba(105,229,178,.075); box-shadow: inset 0 0 0 1px rgba(105,229,178,.08); }
 .execution-mode strong { font: 750 9px/1 monospace; letter-spacing: .06em; }
 .execution-mode span { font-size: 8px; }
+.read-only-option { display: flex; align-items: flex-start; gap: 9px; margin: 0 0 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.read-only-option input { margin-top: 3px; }
+.read-only-option span { display: grid; gap: 3px; }
+.read-only-option strong { font-size: 12px; }
+.read-only-option small { font-size: 11px; line-height: 1.5; }
 
 .task-board { grid-column: 1 / -1; padding: 22px 24px 18px; background: rgba(20,20,24,.94); }
 .task-board-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 16px; }

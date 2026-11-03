@@ -43,7 +43,7 @@ const SKILL_ROLE_TERMS: Record<Exclude<SkillRole, "general">, string[]> = {
 };
 
 const PROMPT_ROLE_TERMS: Record<Exclude<SkillRole, "general">, string[]> = {
-  builder: ["개발", "코드", "구현", "기능", "화면", "만들어", "만들고", "수정", "고쳐", "리팩터링", "버그", "frontend", "backend", "fullstack"],
+  builder: ["개발", "코드", "구현", "기능", "화면", "수정", "고쳐", "리팩터링", "버그", "frontend", "backend", "fullstack", "모바일", "mobile", "android", "ios", "앱"],
   researcher: ["조사", "분석", "설명", "요약", "리서치", "검색", "출처", "자료", "찾아", "찾고", "브라우저", "웹에서", "research", "analyze", "explain", "summary", "sources", "citations"],
   documenter: ["pdf", "문서", "보고서", "워드", "엑셀", "스프레드시트", "발표자료", "슬라이드", "docx", "xlsx", "ppt"],
   visual: ["이미지", "그림", "스프라이트", "시각화", "차트", "디자인", "캐릭터", "image", "sprite", "visualize", "illustration"],
@@ -58,10 +58,11 @@ export const AUTO_DEFAULT_SKILL_NAMES: Record<Exclude<SkillRole, "general">, str
     "backend-feature-delivery",
     "service-architecture-and-slicing",
     "web-product-planning",
+    "mobile-app-delivery",
   ],
   researcher: ["deep-research", "control-in-app-browser", "browser"],
   documenter: ["pdf", "documents", "spreadsheets", "presentations"],
-  visual: ["imagegen", "visualize", "hatch-pet"],
+  visual: ["imagegen", "visualize", "hatch-pet", "product-ui-ux-design"],
   qa: ["run-evals", "service-release-readiness", "review-agent"],
   integrator: ["sites-building", "plugin-management"],
 };
@@ -75,6 +76,10 @@ function skillText(skill: Pick<SkillInfo, "name" | "description" | "shortDescrip
 }
 
 export function classifySkill(skill: Pick<SkillInfo, "name" | "description" | "shortDescription">): SkillRole {
+  const name = shortSkillIdentifier(skill.name).toLocaleLowerCase();
+  for (const [role, names] of Object.entries(AUTO_DEFAULT_SKILL_NAMES)) {
+    if (names.includes(name)) return role as SkillRole;
+  }
   const text = skillText(skill);
   const priority: Array<Exclude<SkillRole, "general">> = ["visual", "documenter", "qa", "researcher", "integrator", "builder"];
   for (const role of priority) {

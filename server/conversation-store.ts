@@ -42,7 +42,7 @@ function validRun(run: unknown): boolean {
     && ["read", "write"].includes(String(task.access))
     && ["queued", "ready", "running", "waitingApproval", "completed", "failed", "blocked", "interrupted"].includes(String(task.status))
     && typeof task.order === "number" && typeof task.attempt === "number"
-    && ["resultSummary", "error", "skillPath"].every((key) => optionalString(task[key]))
+    && ["resultSummary", "error", "skillPath", "skillName", "skillRationale"].every((key) => optionalString(task[key]))
     && ["threadId", "turnId", "startedAt", "completedAt"].every((key) => nullableString(task[key])))
     && run.agents.every((agent) => object(agent) && roles.has(String(agent.role)) && states.has(String(agent.activity))
       && ["idle", "ready", "working", "waitingApproval", "completed", "error"].includes(String(agent.status))

@@ -57,6 +57,7 @@ export default function App() {
   const [skillMode, setSkillMode] = useState<"auto" | "manual">("auto");
   const [skillPath, setSkillPath] = useState("");
   const [executionMode, setExecutionMode] = useState<ExecutionMode>("team");
+  const [readOnly, setReadOnly] = useState(false);
   const [pets, setPets] = useState<LoadedPet[]>([]);
   const [petErrors, setPetErrors] = useState<string[]>([]);
   const [petAssignments, setPetAssignments] = useState<PetAssignments>({});
@@ -76,6 +77,7 @@ export default function App() {
   const animationEnabled = motionOverride ?? !systemReducedMotion;
   const projectPath = bridge.snapshot.projectPath;
   const workspaceMode = bridge.snapshot.workspaceMode;
+  useEffect(() => { setSkillPath(""); }, [projectPath, workspaceMode]);
   const activeRun = bridge.snapshot.activeRun;
   const teamBusy = Boolean(activeRun && ["planning", "running", "verifying"].includes(activeRun.status));
   const busy = teamBusy || Boolean(bridge.snapshot.turnId) || bridge.turnStatus === "inProgress";
@@ -195,6 +197,7 @@ export default function App() {
       executionMode,
       selectedModel || undefined,
       selectedEffort || undefined,
+      readOnly || workspaceMode === "research",
     )) setPrompt("");
   };
 
@@ -210,6 +213,10 @@ export default function App() {
                     <strong>SOLO</strong><span>하나의 Codex 작업</span>
                   </button>
                   </div>
+                  <label className="read-only-option">
+                    <input type="checkbox" checked={readOnly || workspaceMode === "research"} onChange={(event) => setReadOnly(event.target.checked)} disabled={busy || workspaceMode === "research"} />
+                    <span><strong>읽기 전용</strong><small>{workspaceMode === "research" ? "조사 모드는 읽기 전용 sandbox를 사용합니다." : "sandbox 쓰기와 추가 권한 요청을 차단합니다. 외부 도구에는 별도 권한이 적용됩니다."}</small></span>
+                  </label>
                   <label className="prompt-field">
                   <textarea
                     aria-label="Codex 업무 지시"
@@ -271,18 +278,16 @@ export default function App() {
                 onModeChange={bridge.setWorkspaceMode}
                 onNetworkChange={bridge.setResearchNetworkAccess}
               />
-              {workspaceMode === "project" && (
                 <SkillPicker
                   skills={bridge.skills}
                   projectPath={projectPath}
                   mode={skillMode}
                   selectedPath={skillPath}
-                  disabled={!projectPath || busy}
+                  disabled={(workspaceMode === "project" && !projectPath) || busy}
                   onModeChange={setSkillMode}
                   onSkillChange={setSkillPath}
                   onRefresh={bridge.refreshSkills}
                 />
-              )}
   </aside></details>;
 
   return (
@@ -392,18 +397,16 @@ export default function App() {
                 onEffortChange={changeEffort}
                 onRefresh={bridge.refreshModels}
               />
-              {workspaceMode === "project" && (
                 <SkillPicker
                   skills={bridge.skills}
                   projectPath={projectPath}
                   mode={skillMode}
                   selectedPath={skillPath}
-                  disabled={!projectPath || busy}
+                  disabled={(workspaceMode === "project" && !projectPath) || busy}
                   onModeChange={setSkillMode}
                   onSkillChange={setSkillPath}
                   onRefresh={bridge.refreshSkills}
                 />
-              )}
               {(!atelier || page !== "work") && promptControls}
             </aside>
           <div className="atelier-operations-slot" hidden={!showOperations}>
