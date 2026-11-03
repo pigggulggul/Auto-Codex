@@ -264,8 +264,9 @@ export function useBridge() {
       executionMode: ExecutionMode,
       model?: string,
       effort?: ReasoningEffort,
+      readOnly = false,
     ) => {
-      const sent = send({ type: "turn.start", prompt, skillMode, skillPath, executionMode, model, effort });
+      const sent = send({ type: "turn.start", prompt, skillMode, skillPath, executionMode, model, effort, readOnly });
       return sent;
     },
     interruptTurn: () => send({ type: "turn.interrupt" }),

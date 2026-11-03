@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { taskSkillLabel } from "../lib/taskSkill";
 import type { AgentRole, AgentSnapshot, PetState, RunSnapshot, TaskNode } from "../../shared/protocol";
 import { PET_PRESENTATIONS, type LoadedPet, type PetAssignments } from "../lib/petCatalog";
 import {
@@ -926,7 +927,9 @@ export function PixelOffice({
             <dl>
               <div><dt>STATUS</dt><dd>{selectedAgent.status}</dd></div>
               <div><dt>ACTIVITY</dt><dd>{selectedAgent.activity}</dd></div>
+              {selectedTask && <div><dt>스킬 배정</dt><dd>{taskSkillLabel(selectedTask)}</dd></div>}
             </dl>
+            {selectedTask?.skillRationale && <p>{selectedTask.skillRationale}</p>}
             <span className="pixel-character-label">CHARACTER</span>
             <div className="pixel-character-options">
               {CHARACTER_ASSETS.map((url, index) => (

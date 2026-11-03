@@ -3,6 +3,7 @@ import type { ActivityEvent, AgentRole, RunSnapshot } from "../../shared/protoco
 import { PET_PRESENTATIONS } from "../lib/petCatalog";
 import { characterIndexForRole, type WorldCharacterAssignments } from "../lib/worldCharacters";
 import { WorldCharacter } from "./WorldCharacter";
+import { taskSkillLabel } from "../lib/taskSkill";
 
 type PanelTab = "activity" | "results" | "quests";
 
@@ -111,7 +112,7 @@ export function OperationsPanel({ activities, run, assistantText, taskOutputs, c
             {run ? run.tasks.map((task, index) => (
               <article className={`quest-card status-${task.status}`} key={task.id}>
                 <span className="quest-index">{String(index + 1).padStart(2, "0")}</span>
-                <div><strong>{task.title}</strong><small>{ROLE_LABELS[task.agentRole]} · {task.access.toUpperCase()}</small>{task.dependsOn.length > 0 && <em>← {task.dependsOn.join(", ")}</em>}</div>
+                <div><strong>{task.title}</strong><small>{ROLE_LABELS[task.agentRole]} · {task.access.toUpperCase()}</small><small>스킬 배정: {taskSkillLabel(task)}</small>{task.skillRationale && <small>{task.skillRationale}</small>}{task.dependsOn.length > 0 && <em>← {task.dependsOn.join(", ")}</em>}</div>
                 <span className="quest-status">{task.status}</span>
               </article>
             )) : <div className="panel-empty"><span>◆</span><strong>퀘스트를 기다리는 중</strong><small>팀 작업을 시작하면 DAG 순서와 담당 캐릭터가 표시됩니다.</small></div>}

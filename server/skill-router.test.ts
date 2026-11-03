@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SkillInfo } from "../shared/protocol.js";
 import { routeSkill } from "./skill-router.js";
+import { classifySkill } from "../shared/skill-catalog.js";
 
 const skills: SkillInfo[] = [
   {
@@ -67,5 +68,38 @@ describe("routeSkill", () => {
     const result = routeSkill("구조를 분석해서 요약해줘. 파일은 수정하지 마.", skills);
     expect(result.role).toBe("researcher");
     expect(result.skill).toBeNull();
+  });
+
+  it("classifies document skills by their identity, even when descriptions mention visual QA", () => {
+    expect(classifySkill({ name: "pdf:pdf", description: "Read and verify PDF files where visual layout matters" })).toBe("documenter");
+    expect(classifySkill({ name: "spreadsheets:Spreadsheets", description: "Analyze and visualize spreadsheet files" })).toBe("documenter");
+  });
+
+  it("routes a Korean Excel request to spreadsheets regardless of catalog order", () => {
+    const catalog = [
+      { name: "pdf:pdf", description: "Read and verify PDF files where visual layout matters", path: "pdf", enabled: true },
+      { name: "spreadsheets:Spreadsheets", description: "Create and visualize spreadsheet files", path: "sheet", enabled: true },
+    ];
+    expect(routeSkill("엑셀 보고서를 만들어줘", catalog).skill?.path).toBe("sheet");
+    expect(routeSkill("엑셀 보고서를 만들어줘", catalog.slice(0, 1)).skill).toBeNull();
+  });
+
+  it("selects a mobile development skill when the task asks for a mobile app", () => {
+    const mobile = { name: "mobile-app-delivery", description: "Build and test mobile apps for Android and iOS", path: "mobile", enabled: true };
+    const frontend = { name: "frontend-feature-delivery", description: "Frontend implementation; use a mobile skill for native mobile apps", path: "frontend", enabled: true };
+    expect(routeSkill("모바일 앱 기능을 구현해줘", [frontend, mobile]).skill?.path).toBe("mobile");
+    expect(routeSkill("프론트엔드 화면을 구현해줘", [mobile, frontend]).skill?.path).toBe("frontend");
+  });
+
+  it("routes Korean product design work to the UX skill", () => {
+    const design = { name: "product-ui-ux-design", description: "Design product UI and UX", path: "design", enabled: true };
+    expect(routeSkill("UI/UX 디자인을 개선해줘", [design]).skill?.path).toBe("design");
+    expect(routeSkill("화면 디자인 구현", [design], "visual").skill?.path).toBe("design");
+  });
+
+  it("does not confuse a CSS stylesheet with a spreadsheet", () => {
+    const frontend = { name: "frontend-feature-delivery", description: "Implement frontend UI features", path: "frontend", enabled: true };
+    expect(routeSkill("프론트엔드 stylesheet 수정", [skills[1], frontend]).skill?.path).toBe("frontend");
+    expect(routeSkill("프론트엔드 스타일시트 수정", [skills[1], frontend]).skill?.path).toBe("frontend");
   });
 });

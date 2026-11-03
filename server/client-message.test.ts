@@ -18,6 +18,13 @@ describe("parseClientMessage", () => {
     }))).toMatchObject({ type: "turn.start", executionMode: "team", model: "gpt-5.6-sol", effort: "high" });
   });
 
+  it("validates the optional explicit read-only setting", () => {
+    const turn = { type: "turn.start", prompt: "검토", skillMode: "auto" };
+    expect(parseClientMessage(JSON.stringify({ ...turn, readOnly: true }))).toMatchObject({ readOnly: true });
+    expect(parseClientMessage(JSON.stringify(turn))).toMatchObject(turn);
+    for (const readOnly of ["true", 1, null, {}]) expect(() => parseClientMessage(JSON.stringify({ ...turn, readOnly }))).toThrow("읽기 전용");
+  });
+
   it("accepts a model refresh request", () => {
     expect(parseClientMessage('{"type":"models.refresh"}')).toEqual({ type: "models.refresh" });
   });

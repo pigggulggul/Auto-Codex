@@ -7,7 +7,7 @@ const KINDS = new Set<TaskKind>([
 const ROLES = new Set<AgentRole>([
   "coordinator", "general", "builder", "researcher", "documenter", "visual", "qa", "integrator",
 ]);
-const WRITING_KINDS = new Set<TaskKind>(["design", "implementation", "verification", "integration"]);
+const WRITING_KINDS = new Set<TaskKind>(["design", "implementation", "integration"]);
 
 export const TASK_PLAN_OUTPUT_SCHEMA = {
   type: "object",
@@ -109,7 +109,7 @@ function addControlTasks(tasks: TaskDefinition[]): TaskDefinition[] {
       .filter((task) => task.id !== verification?.id && task.kind !== "report")
       .map((task) => task.id);
     executionTasks = executionTasks.map((task) => task.id === verification?.id
-      ? { ...task, access: "write", agentRole: "qa", dependsOn: [...new Set([...task.dependsOn, ...dependencies])] }
+      ? { ...task, access: writeTasks.length > 0 ? "write" : task.access, agentRole: "qa", dependsOn: [...new Set([...task.dependsOn, ...dependencies])] }
       : task);
   }
 
@@ -141,13 +141,13 @@ function addControlTasks(tasks: TaskDefinition[]): TaskDefinition[] {
   ];
 }
 
-export function parseTaskPlan(text: string): TaskDefinition[] {
+export function parseTaskPlan(text: string, options: { readOnly?: boolean } = {}): TaskDefinition[] {
   const clean = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   const parsed = JSON.parse(clean) as { tasks?: unknown };
   if (!parsed || !Array.isArray(parsed.tasks) || parsed.tasks.length === 0 || parsed.tasks.length > 5) {
     throw new Error("Coordinator가 반환한 작업 배열의 크기가 올바르지 않습니다.");
   }
-  const tasks = parsed.tasks.map(parseTask);
+  const tasks = parsed.tasks.map(parseTask).map((task) => options.readOnly ? { ...task, access: "read" as const } : task);
   const issues = validateTaskPlan(tasks);
   if (issues.length > 0) throw new Error(issues.join("\n"));
   const expanded = addControlTasks(tasks);
@@ -156,7 +156,7 @@ export function parseTaskPlan(text: string): TaskDefinition[] {
   return expanded;
 }
 
-function readOnlyRequest(prompt: string): boolean {
+export function explicitReadOnlyRequest(prompt: string): boolean {
   const lower = prompt.toLocaleLowerCase();
   const explicitReadOnlySignals = [
     "읽기 전용",
@@ -166,16 +166,29 @@ function readOnlyRequest(prompt: string): boolean {
     "변경하지 마",
     "변경하지마",
     "변경하지 말",
+    "수정하지 않고",
+    "변경하지 않고",
+    "파일 수정 없이",
+    "파일 변경 없이",
     "파일을 건드리지",
     "파일은 건드리지",
     "do not modify",
     "don't modify",
+    "do not edit",
+    "don't edit",
     "without modifying",
     "read-only",
     "read only",
     "no file changes",
+    "do not change files",
+    "don't change files",
   ];
-  if (explicitReadOnlySignals.some((signal) => lower.includes(signal))) return true;
+  return explicitReadOnlySignals.some((signal) => lower.includes(signal));
+}
+
+export function readOnlyRequest(prompt: string): boolean {
+  if (explicitReadOnlyRequest(prompt)) return true;
+  const lower = prompt.toLocaleLowerCase();
   const readSignals = ["설명", "알려", "조사", "분석", "검토", "리뷰", "요약", "explain", "research", "review", "analyze"];
   const writeSignals = ["만들", "구현", "수정", "추가", "삭제", "바꿔", "작성", "개발", "build", "implement", "fix", "create", "update"];
   return readSignals.some((signal) => lower.includes(signal)) && !writeSignals.some((signal) => lower.includes(signal));
