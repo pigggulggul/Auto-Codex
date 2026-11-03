@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import {commitConversationDeletion,planConversationDeletion} from './conversation-delete.js';
 import {titleFromPrompt} from '../shared/conversation-title.js';
 import { spawn } from "node:child_process";
 import { realpath, stat, readFile } from "node:fs/promises";
@@ -1273,6 +1274,31 @@ async function handleClientMessage(socket: WebSocket, raw: string): Promise<void
     case "conversation.select":
       await selectConversation(message.conversationId);
       break;
+    case 'conversation.delete': {
+      try {
+        if (turnId || runIsActive() || proposalRuntime.busy || executionRuntime.busy) throw new Error('진행 중인 작업을 마친 뒤 대화를 삭제하세요.');
+        if (!historyWritable || historyError) throw new Error('대화 기록 저장을 복구한 뒤 삭제하세요.');
+        if (!conversations.has(message.conversationId)) throw new Error('삭제할 대화를 찾을 수 없습니다.');
+        syncActiveConversation();
+        if (saveTimer) { clearTimeout(saveTimer); saveTimer = undefined; }
+        const deletingActive = message.conversationId === activeConversationId;
+        const next = planConversationDeletion([...conversations.values()], activeConversationId, message.conversationId, createConversation);
+        renameSave = commitConversationDeletion(next, archive => conversationStore.save(archive), () => {
+          conversations.delete(message.conversationId);
+          if (deletingActive) {
+            const replacement = next.conversations.find(record => record.id === next.activeConversationId)!;
+            conversations.set(replacement.id, replacement);
+            activeConversationId = replacement.id;
+            resetActiveConversationRuntime();
+          }
+        });
+        try { await renameSave; } catch { throw new Error('대화를 삭제하지 못했습니다. 저장 공간과 권한을 확인하세요.'); }
+        finally { renameSave = null; persistConversations(); }
+        broadcastConversationState();
+        send(socket, {type:'conversation.delete.result', clientRequestId:message.clientRequestId, ok:true});
+      } catch (error) { send(socket, {type:'conversation.delete.result', clientRequestId:message.clientRequestId, ok:false, error:errorMessage(error)}); }
+      break;
+    }
     case 'conversation.rename':{
       try{
         if(turnId||runIsActive()||proposalRuntime.busy)throw new Error('진행 중인 작업을 마친 뒤 이름을 저장하세요.');

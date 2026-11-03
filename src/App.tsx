@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AtelierNavigation, PAGE_INFO, type AtelierPage } from "./components/layout/AtelierNavigation";
 import { AtelierHome } from "./components/layout/AtelierPages";
+import { ConversationSidebar } from "./components/layout/ConversationSidebar";
 import {AtelierWorkspace} from './features/atelier/Workspace';
-import type {Entry,Tab} from '../shared/atelier/types';
+import type {Entry} from '../shared/atelier/types';
 import { ApprovalDialog } from "./components/ApprovalDialog";
 import { ModelPicker } from "./components/ModelPicker";
 import { OperationsPanel } from "./components/OperationsPanel";
@@ -43,11 +44,9 @@ function formatTokenCount(value: number): string {
 export default function App() {
   const bridge = useBridge();
   const selectableModels=useMemo(()=>preferredModelCatalog(bridge.models),[bridge.models]);
-  const [shellMode, setShellMode] = useState<"atelier" | "legacy">(() => window.localStorage.getItem(SHELL_KEY) === "legacy" ? "legacy" : "atelier");
+  const [shellMode, setShellMode] = useState<"atelier" | "legacy">("atelier");
   const [page, setPage] = useState<AtelierPage>("home");
   const [designEntry,setDesignEntry]=useState<{entry:Entry;nonce:number}|null>(null);
-  const [designTabRequest,setDesignTabRequest]=useState<{tab:Tab;nonce:number}|null>(null);
-  const [designTab,setDesignTab]=useState<Tab>('design');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const atelier = shellMode === "atelier";
@@ -102,7 +101,7 @@ export default function App() {
     window.localStorage.setItem(SHELL_KEY, next);
     setMobileMenuOpen(false);
   };
-  const showControls = !atelier ? leftPanel === "workspace" : page === "work" || page === "settings";
+  const showControls = !atelier && leftPanel === "workspace";
   const showOperations = !atelier ? leftPanel === "operations" : page === "operations";
   const showWorld = !atelier || page === "work" || page === "pixel" || page === "results";
 
@@ -199,9 +198,96 @@ export default function App() {
     )) setPrompt("");
   };
 
+  const promptControls = (
+    <details className="control-section prompt-section control-collapsible" open={atelier && page === "work" ? true : promptExpanded} onToggle={(event) => { if (!atelier || page !== "work") setPromptExpanded(event.currentTarget.open); }}>
+                <summary className="section-heading"><div><span className="eyebrow">04 · QUEST</span><h2>업무 지시</h2></div><span className="collapse-glyph" aria-hidden="true">⌄</span></summary>
+                <div className="control-section-body">
+                  <div className="execution-mode" aria-label="실행 모드">
+                  <button type="button" className={executionMode === "team" ? "active" : ""} onClick={() => setExecutionMode("team")} disabled={busy}>
+                    <strong>TEAM AUTO</strong><span>역할 분배 · 안전한 병렬</span>
+                  </button>
+                  <button type="button" className={executionMode === "solo" ? "active" : ""} onClick={() => setExecutionMode("solo")} disabled={busy}>
+                    <strong>SOLO</strong><span>하나의 Codex 작업</span>
+                  </button>
+                  </div>
+                  <label className="prompt-field">
+                  <textarea
+                    aria-label="Codex 업무 지시"
+                    value={prompt}
+                    onChange={(event) => setPrompt(event.target.value)}
+                    onKeyDown={(event) => {
+                      if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && ready && !busy) start();
+                    }}
+                    placeholder={workspaceMode === "research" ? "예: 오늘 미국 증시와 주요 종목 흐름을 출처와 함께 정리해줘" : "예: 로그인 화면을 만들고 테스트까지 실행해줘"}
+                    disabled={busy}
+                    rows={5}
+                  />
+                  <span>Ctrl + Enter</span>
+                  </label>
+                  <div className="work-composer-actions">
+                  {atelier && page === "work" && <div className="work-quick-controls">
+                    <label>모델 <select aria-label="모델 선택" value={selectedModel} onChange={e=>changeModel(e.target.value)} disabled={busy || selectableModels.length===0}>{!selectableModels.length && <option value="">모델 목록 대기 중</option>}{selectableModels.map(model=><option key={model.id} value={model.model}>{model.displayName}</option>)}</select></label>
+                    <label>추론 <select aria-label="추론 수준" value={selectedEffort} onChange={e=>changeEffort(e.target.value as ReasoningEffort | "")} disabled={busy || !selectedModelInfo}><option value="">기본값</option>{selectedModelInfo?.supportedReasoningEfforts.map(item=><option key={item.reasoningEffort} value={item.reasoningEffort}>{item.reasoningEffort.toUpperCase()}</option>)}</select></label>
+                    {(selectableModels.length===0 || bridge.modelErrors.length>0) && <button type="button" className="work-model-refresh" onClick={bridge.refreshModels} disabled={busy || !bridge.snapshot.connected}>모델 새로고침</button>}
+                    {workspaceMode === "research" && <label className="work-network"><input type="checkbox" checked={bridge.snapshot.researchNetworkAccess} onChange={e=>bridge.setResearchNetworkAccess(e.target.checked)} disabled={busy || !bridge.snapshot.connected}/> 웹 접근 허용</label>}
+                  </div>}
+                  {busy ? (
+                  <button className="stop-button" type="button" onClick={bridge.interruptTurn}><span>■</span> 작업 중단</button>
+                ) : (
+                  <button className="run-button" type="button" onClick={start} disabled={!ready || !prompt.trim()}>
+                    <span>▶</span> {executionMode === "team" ? "팀에게 맡기기" : "Codex에게 맡기기"}
+                  </button>
+                  )}
+                  </div>
+                  {atelier && page === "work" && bridge.modelErrors.length > 0 && <p className="inline-warning">{bridge.modelErrors[0]}</p>}
+                  {bridge.skillErrors.length > 0 && <p className="inline-warning">스킬 {bridge.skillErrors.length}개를 불러오지 못했습니다.</p>}
+                  {petErrors.length > 0 && <p className="inline-warning">펫 {petErrors.length}개를 불러오지 못했습니다.</p>}
+                </div>
+              </details>
+  );
+
+  const sidebarSettings = <details className="sidebar-settings"><summary>프로젝트 · 스킬 설정</summary><aside className="control-card" aria-label="프로젝트와 실행 설정">
+              <ConversationPicker
+                conversations={bridge.conversations}
+                activeConversationId={bridge.snapshot.activeConversationId}
+                disabled={busy}
+                onNew={bridge.newConversation}
+                onSelect={bridge.selectConversation}
+                onRename={bridge.renameConversation}
+                firstPrompt={bridge.messages.find(m=>m.role==='user')?.text}
+              />
+              <ProjectPanel
+                currentPath={projectPath}
+                workspaceMode={workspaceMode}
+                researchNetworkAccess={bridge.snapshot.researchNetworkAccess}
+                connected={bridge.snapshot.connected}
+                isPicking={bridge.isPickingProject}
+                trustStatus={bridge.snapshot.projectTrust}
+                isTrusting={bridge.isTrustingProject}
+                disabled={busy}
+                onSelect={bridge.selectProject}
+                onPick={bridge.pickProject}
+                onTrust={bridge.trustProject}
+                onModeChange={bridge.setWorkspaceMode}
+                onNetworkChange={bridge.setResearchNetworkAccess}
+              />
+              {workspaceMode === "project" && (
+                <SkillPicker
+                  skills={bridge.skills}
+                  projectPath={projectPath}
+                  mode={skillMode}
+                  selectedPath={skillPath}
+                  disabled={!projectPath || busy}
+                  onModeChange={setSkillMode}
+                  onSkillChange={setSkillPath}
+                  onRefresh={bridge.refreshSkills}
+                />
+              )}
+  </aside></details>;
+
   return (
     <div className={atelier ? "atelier-app" : "legacy-frame"} data-page={page}>
-    <AtelierNavigation page={page} onNavigate={navigate} mobileOpen={mobileMenuOpen} onMobileClose={closeMobileMenu} onLegacy={() => changeShell("legacy")} hidden={!atelier} designTab={designTab} onDesignTab={tab=>{setDesignTabRequest({tab,nonce:Date.now()});navigate('design');}} />
+    <AtelierNavigation page={page} onNavigate={navigate} mobileOpen={mobileMenuOpen} onMobileClose={closeMobileMenu} hidden={!atelier} sidebarSettings={sidebarSettings} conversationSidebar={<ConversationSidebar conversations={bridge.conversations} activeConversationId={bridge.snapshot.activeConversationId} disabled={busy || !bridge.snapshot.connected || bridge.isPickingProject} isPicking={bridge.isPickingProject} onNewResearch={() => { if (bridge.setWorkspaceMode("research")) { bridge.setResearchNetworkAccess(false); bridge.newConversation(); navigate("work"); closeMobileMenu(); } }} onPickProject={() => { if (bridge.pickProject()) { navigate("work"); closeMobileMenu(); } }} onSelect={id => { if (bridge.selectConversation(id)) { navigate("work"); closeMobileMenu(); } }} onDelete={bridge.deleteConversation} />} />
     <main id="workspace-main" className={`app-shell ${atelier ? "atelier-main" : "metaverse-app"} ${animationEnabled ? "motion-enabled" : "motion-disabled"}`}>
       <a className="atelier-skip-link" href="#workspace-heading" hidden={!atelier}>작업 내용으로 건너뛰기</a>
       <header className="topbar">
@@ -241,9 +327,8 @@ export default function App() {
       )}
 
       {atelier && page==='home'&&<div className="atelier-introduction"><AtelierHome onNavigate={navigate} conversations={bridge.conversations} busy={busy} onStartDesign={entry=>{setDesignEntry({entry,nonce:Date.now()});navigate('design');}} onSelectConversation={(id) => { if (bridge.selectConversation(id)) navigate("work"); }} /></div>}
-      <AtelierWorkspace production={{snapshot:bridge.snapshot,executionMode,skillMode,skillPath:skillPath||undefined,model:selectedModel||undefined,effort:selectedEffort||undefined,onInterrupt:bridge.interruptTurn}} aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'} entryRequest={designEntry} tabRequest={designTabRequest} onTab={setDesignTab}/>
+      <AtelierWorkspace production={{snapshot:bridge.snapshot,executionMode,skillMode,skillPath:skillPath||undefined,model:selectedModel||undefined,effort:selectedEffort||undefined,onInterrupt:bridge.interruptTurn}} aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'} entryRequest={designEntry}/>
 
-      {atelier && page === "settings" && <section className="atelier-display-settings" aria-labelledby="display-settings-title"><h2 id="display-settings-title">화면 표시</h2><p>Atelier가 기본 작업실입니다. 기존 화면은 통합 전 배치로 돌아가는 호환 보기이며 같은 브리지·기능을 사용합니다. 화면을 전환해도 현재 입력·실행·대화 연결은 유지됩니다.</p><div><button type="button" onClick={() => changeShell("legacy")}>기존 화면으로 전환 ↗</button><button type="button" aria-pressed={animationEnabled} onClick={toggleAnimation}>캐릭터 애니메이션 {animationEnabled ? "켜짐" : "꺼짐"}</button></div><p><a href="/atelier-assets/LICENSES.md" target="_blank" rel="noreferrer">폰트·아이콘 출처와 라이선스</a></p></section>}
 
       <div className="metaverse-layout" hidden={atelier && (page === "home" || page === "design")}>
         <div className="left-rail" hidden={!showControls && !showOperations}>
@@ -272,7 +357,7 @@ export default function App() {
             </button>
           </nav>
 
-            <aside className="control-card" hidden={!showControls} aria-label="프로젝트와 실행 설정">
+            <aside id="work-settings" className="control-card" hidden={!showControls} aria-label="프로젝트와 실행 설정">
               <ConversationPicker
                 conversations={bridge.conversations}
                 activeConversationId={bridge.snapshot.activeConversationId}
@@ -319,42 +404,7 @@ export default function App() {
                   onRefresh={bridge.refreshSkills}
                 />
               )}
-              <details className="control-section prompt-section control-collapsible" open={promptExpanded} onToggle={(event) => setPromptExpanded(event.currentTarget.open)}>
-                <summary className="section-heading"><div><span className="eyebrow">04 · QUEST</span><h2>업무 지시</h2></div><span className="collapse-glyph" aria-hidden="true">⌄</span></summary>
-                <div className="control-section-body">
-                  <div className="execution-mode" aria-label="실행 모드">
-                  <button type="button" className={executionMode === "team" ? "active" : ""} onClick={() => setExecutionMode("team")} disabled={busy}>
-                    <strong>TEAM AUTO</strong><span>역할 분배 · 안전한 병렬</span>
-                  </button>
-                  <button type="button" className={executionMode === "solo" ? "active" : ""} onClick={() => setExecutionMode("solo")} disabled={busy}>
-                    <strong>SOLO</strong><span>하나의 Codex 작업</span>
-                  </button>
-                  </div>
-                  <label className="prompt-field">
-                  <textarea
-                    aria-label="Codex 업무 지시"
-                    value={prompt}
-                    onChange={(event) => setPrompt(event.target.value)}
-                    onKeyDown={(event) => {
-                      if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && ready && !busy) start();
-                    }}
-                    placeholder={workspaceMode === "research" ? "예: 오늘 미국 증시와 주요 종목 흐름을 출처와 함께 정리해줘" : "예: 로그인 화면을 만들고 테스트까지 실행해줘"}
-                    disabled={busy}
-                    rows={5}
-                  />
-                  <span>Ctrl + Enter</span>
-                  </label>
-                  {busy ? (
-                  <button className="stop-button" type="button" onClick={bridge.interruptTurn}><span>■</span> 작업 중단</button>
-                ) : (
-                  <button className="run-button" type="button" onClick={start} disabled={!ready || !prompt.trim()}>
-                    <span>▶</span> {executionMode === "team" ? "팀에게 맡기기" : "Codex에게 맡기기"}
-                  </button>
-                  )}
-                  {bridge.skillErrors.length > 0 && <p className="inline-warning">스킬 {bridge.skillErrors.length}개를 불러오지 못했습니다.</p>}
-                  {petErrors.length > 0 && <p className="inline-warning">펫 {petErrors.length}개를 불러오지 못했습니다.</p>}
-                </div>
-              </details>
+              {(!atelier || page !== "work") && promptControls}
             </aside>
           <div className="atelier-operations-slot" hidden={!showOperations}>
             <OperationsPanel
@@ -371,7 +421,7 @@ export default function App() {
         </div>
 
         <div className="world-column" hidden={!showWorld}>
-          <div className="main-view-switch" role="tablist" aria-label="메인 화면 선택">
+          <div className="main-view-switch" role="tablist" aria-label="메인 화면 선택" hidden={atelier && page === "work"}>
             <button type="button" role="tab" aria-selected={mainView === "pixel"} className={mainView === "pixel" ? "active" : ""} onClick={() => atelier ? navigate("pixel") : setMainView("pixel")}>▦ 픽셀 화면</button>
             <button type="button" role="tab" aria-selected={mainView === "results"} className={mainView === "results" ? "active" : ""} onClick={() => atelier ? navigate("results") : setMainView("results")}>▤ 결과 화면</button>
           </div>
@@ -395,6 +445,7 @@ export default function App() {
           </div>
           <div hidden={mainView !== "results"}>
             <ResultView
+              compactConversation={atelier && page === "work"}
               messages={bridge.messages}
               conversationTitle={bridge.conversations.find((conversation) => conversation.id === bridge.snapshot.activeConversationId)?.title || "새 대화"}
               conversationId={bridge.snapshot.activeConversationId}
@@ -403,6 +454,7 @@ export default function App() {
               taskOutputs={bridge.taskOutputs}
             />
           </div>
+          {atelier && page === "work" && <div className="work-composer"><div className="work-composer-context"><span title={projectPath || undefined}>{workspaceMode === "research" ? "조사 모드" : projectPath ? projectPath.split(/[\\/]/).filter(Boolean).at(-1) : "프로젝트를 선택하세요"} · 이 컴퓨터</span><button type="button" onClick={bridge.newConversation} disabled={busy || !bridge.snapshot.connected || bridge.isPickingProject}>현재 작업공간에서 새 대화</button></div>{promptControls}</div>}
         </div>
 
       </div>

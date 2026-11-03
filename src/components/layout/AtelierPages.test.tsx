@@ -4,13 +4,11 @@ import { AtelierNavigation } from "./AtelierNavigation";
 import { AtelierHome, AtelierPreparation } from "./AtelierPages";
 
 describe("Atelier shell boundaries", () => {
-  it("keeps working destinations separate from the eight unavailable design editors", () => {
-    const html = renderToStaticMarkup(<AtelierNavigation page="work" mobileOpen={false} onNavigate={() => {}} onMobileClose={() => {}} onLegacy={() => {}} />);
+  it("shows one results and pixel destination and keeps design navigation compact", () => {
+    const html = renderToStaticMarkup(<AtelierNavigation page="pixel" mobileOpen={false} onNavigate={() => {}} onMobileClose={() => {}} />);
     expect(html).toContain('aria-current="page"');
-    for (const label of ["일반 Codex 작업", "대화와 결과", "Codex 활동 센터", "픽셀 화면", "작업실 설정", "기존 화면으로 전환"]) expect(html).toContain(label);
-    expect(html.match(/disabled=""/g)).toHaveLength(8);
-    expect(html).toContain("디자인 작업실");
-    expect(html).toContain("준비 중");
+    for (const label of ["대화와 픽셀 화면", "Codex 활동 센터", "디자인 작업실"]) expect(html).toContain(label);
+    for (const label of ["일반 Codex 작업", "작업실 설정", "기존 화면으로 전환", "디자인 작업 단계"]) expect(html).not.toContain(label);
   });
 
   it("shows only received conversation data, escapes it, and prevents switching while busy", () => {

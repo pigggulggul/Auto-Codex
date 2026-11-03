@@ -59,9 +59,9 @@ describe('manual workspace transport and drafts',()=>{
   const first=new AtelierDrafts(storage);first.put('p_one:d_one',{value:{value:'unsaved'},base:'old version'});first.put('p_two:d_one',{value:{value:'other'},base:'other version'});
   const restored=new AtelierDrafts(storage);expect(restored.get('p_one:d_one')).toEqual({value:{value:'unsaved'},base:'old version'});restored.clear('p_two:d_one');expect(restored.get('p_one:d_one')?.value.value).toBe('unsaved');
  });
- it('enables all eight editor destinations but reports offline/manual AI state without success',()=>{
-  const nav=renderToStaticMarkup(<AtelierNavigation page="design" mobileOpen={false} onNavigate={()=>{}} onMobileClose={()=>{}} onLegacy={()=>{}} onDesignTab={()=>{}} designTab="flow"/>);
-  expect(nav).not.toContain('disabled=""');expect(nav).toContain('이용 순서');
+ it('keeps design navigation compact and reports offline/manual AI state without success',()=>{
+  const nav=renderToStaticMarkup(<AtelierNavigation page="design" mobileOpen={false} onNavigate={()=>{}} onMobileClose={()=>{}}/>);
+  expect(nav).toContain('디자인 작업실');expect(nav).not.toContain('디자인 작업 단계');
   const html=renderToStaticMarkup(<AtelierWorkspace api={new AtelierApi()} connected={false}/>);
   for(const title of ['아이디어부터','이미지부터','컨셉 확정','기존 결과 개선'])expect(html).toContain(title);
   expect(html).toContain('연결이 끊겼습니다');expect(html).toContain('AI 설계 제안은 아직 연결되지 않았습니다');expect(html).not.toContain('실행 완료');

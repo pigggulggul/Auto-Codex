@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type {Tab} from '../../../shared/atelier/types';
+import type { ReactNode } from "react";
 import {TABS} from '../../../shared/atelier/guide';
 import {TAB_LABELS} from '../../features/atelier/guidance';
 
@@ -18,9 +18,7 @@ export const PAGE_INFO: Record<AtelierPage, { title: string; english: string; de
 };
 
 const MAIN_PAGES = [
-  ["home", "folder", "나의 작업실"], ["work", "edit", "일반 Codex 작업"],
-  ["results", "prompt", "대화와 결과"], ["operations", "flow", "Codex 활동 센터"],
-  ["pixel", "concept", "픽셀 화면"],
+  ["results", "prompt", "대화와 픽셀 화면"], ["operations", "flow", "Codex 활동 센터"],
 ] as const;
 
 export function AtelierIcon({ name }: { name: string }) {
@@ -32,13 +30,12 @@ type Props = {
   onNavigate: (page: AtelierPage) => void;
   mobileOpen: boolean;
   onMobileClose: () => void;
-  onLegacy: () => void;
   hidden?: boolean;
-  onDesignTab?: (tab:Tab)=>void;
-  designTab?:Tab;
+  conversationSidebar?:ReactNode;
+  sidebarSettings?:ReactNode;
 };
 
-export function AtelierNavigation({ page, onNavigate, mobileOpen, onMobileClose, onLegacy, hidden,onDesignTab,designTab }: Props) {
+export function AtelierNavigation({ page, onNavigate, mobileOpen, onMobileClose, hidden,conversationSidebar,sidebarSettings }: Props) {
   const drawer = useRef<HTMLDialogElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
 
@@ -62,18 +59,15 @@ export function AtelierNavigation({ page, onNavigate, mobileOpen, onMobileClose,
   const navigate = (next: AtelierPage) => { onNavigate(next); onMobileClose(); };
   const content = <>
     <button type="button" className="atelier-wordmark" onClick={() => navigate("home")} aria-label="Auto Codex 나의 작업실">auto codex<span>.</span></button>
+    {conversationSidebar}
     <p className="atelier-nav-label">PERSONAL WORKSPACE</p>
     <nav aria-label="작업실 탐색">
-      {MAIN_PAGES.map(([id, icon, label]) => <button key={id} type="button" className={`atelier-nav-item ${page === id ? "is-current" : ""}`} aria-current={page === id ? "page" : undefined} onClick={() => navigate(id)}><AtelierIcon name={icon} />{label}</button>)}
+      {MAIN_PAGES.map(([id, icon, label]) => <button key={id} type="button" className={`atelier-nav-item ${(page === id || id === "results" && page === "pixel") ? "is-current" : ""}`} aria-current={(page === id || id === "results" && page === "pixel") ? "page" : undefined} onClick={() => navigate(id)}><AtelierIcon name={icon} />{label}</button>)}
       <p className="atelier-nav-label">YOUR DESIGN PROCESS</p>
-      <button type="button" className={`atelier-nav-item ${page === "design" ? "is-current" : ""}`} aria-current={page === "design" ? "page" : undefined} onClick={() => navigate("design")}><AtelierIcon name="brief" />디자인 작업실{!onDesignTab&&<span className="atelier-preparing">준비 중</span>}</button>
-      <ol className="atelier-design-nav" aria-label="디자인 작업 단계">
-        {DESIGN_STEPS.map(([icon, label], index) => <li key={icon}><button type="button" disabled={!onDesignTab} aria-current={page==='design'&&designTab===TABS[index][0]?'page':undefined} onClick={()=>{onDesignTab?.(TABS[index][0]);onMobileClose();}}><AtelierIcon name={icon} /><span>{label}</span><small>{String(index + 1).padStart(2, "0")}</small></button></li>)}
-      </ol>
+      <button type="button" className={`atelier-nav-item ${page === "design" ? "is-current" : ""}`} aria-current={page === "design" ? "page" : undefined} onClick={() => navigate("design")}><AtelierIcon name="brief" />디자인 작업실</button>
     </nav>
     <div className="atelier-nav-bottom">
-      <button type="button" className={`atelier-nav-item ${page === "settings" ? "is-current" : ""}`} aria-current={page === "settings" ? "page" : undefined} onClick={() => navigate("settings")}><AtelierIcon name="settings" />작업실 설정</button>
-      <button type="button" className="atelier-legacy-link" onClick={onLegacy}>기존 화면으로 전환 <span aria-hidden="true">↗</span></button>
+      {sidebarSettings}
       <p className="atelier-local-note">LOCAL WORKSPACE<br />저장과 실행 연결은 로컬 브리지가 관리합니다.</p>
       <a className="atelier-attribution" href="https://streamlinehq.com" target="_blank" rel="noreferrer">Free icons from Streamline ↗</a>
     </div>
@@ -83,7 +77,7 @@ export function AtelierNavigation({ page, onNavigate, mobileOpen, onMobileClose,
     <aside className="atelier-sidebar" hidden={hidden}>{content}</aside>
     <dialog className="atelier-nav-dialog" ref={drawer} aria-label="작업실 메뉴" onClose={onMobileClose} onClick={(event) => { if (event.target === event.currentTarget) onMobileClose(); }} onKeyDown={(event) => {
       if (event.key !== "Tab") return;
-      const nodes = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]")];
+      const nodes = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary")];
       if (event.shiftKey && document.activeElement === nodes[0]) { event.preventDefault(); nodes.at(-1)?.focus(); }
       if (!event.shiftKey && document.activeElement === nodes.at(-1)) { event.preventDefault(); nodes[0]?.focus(); }
     }}>

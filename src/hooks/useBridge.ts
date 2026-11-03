@@ -52,6 +52,8 @@ export function useBridge() {
   const retryRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
   const renameRef=useRef<{id:string;resolve:()=>void;reject:(e:Error)=>void;timer:ReturnType<typeof setTimeout>}|null>(null);
+  const deleteRef=useRef<{id:string;resolve:()=>void;reject:(e:Error)=>void;timer:ReturnType<typeof setTimeout>}|null>(null);
+  const failDelete=(reason:string)=>{const pending=deleteRef.current;if(pending){clearTimeout(pending.timer);deleteRef.current=null;pending.reject(new Error(reason));}};
   const failRename=(reason:string)=>{const pending=renameRef.current;if(pending){clearTimeout(pending.timer);renameRef.current=null;pending.reject(new Error(reason));}};
   const [snapshot, setSnapshot] = useState(EMPTY_SNAPSHOT);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
@@ -94,6 +96,11 @@ export function useBridge() {
           return;
         }
         switch (message.type) {
+          case 'conversation.delete.result':{
+            const pending=deleteRef.current;if(pending?.id!==message.clientRequestId)break;
+            if(!message.ok){failDelete(message.error||'대화 삭제 실패');break;}
+            clearTimeout(pending.timer);deleteRef.current=null;pending.resolve();break;
+          }
           case 'conversation.rename.result':{
             const pending=renameRef.current;if(pending?.id!==message.clientRequestId)break;
             if(!message.ok){failRename(message.error||'대화 이름 저장 실패');break;}
@@ -166,6 +173,7 @@ export function useBridge() {
             setApprovals((current) => current.filter((item) => item.approvalId !== message.approvalId));
             break;
           case "error":
+            failDelete(message.message);
             failRename(message.message);
             setIsPickingProject(false);
             setIsTrustingProject(false);
@@ -178,6 +186,7 @@ export function useBridge() {
       socket.addEventListener("close", () => {
         if (socketRef.current !== socket) return;
         socketRef.current = null;
+        failDelete('연결이 끊겨 삭제 결과를 확인하지 못했습니다. 재연결 후 목록을 확인하세요.');
         failRename('연결이 끊겨 이름 저장 결과를 확인하지 못했습니다. 재연결 후 저장된 이름을 확인하세요.');
         atelierApi.disconnect();
         setSnapshot((current) => ({ ...current, connected: false, appServerReady: false, petState: "connecting" }));
@@ -196,6 +205,7 @@ export function useBridge() {
     connect();
     return () => {
       disposed = true;
+      failDelete('화면이 닫혀 삭제 결과를 확인하지 못했습니다.');
       failRename('화면이 닫혀 이름 저장 결과를 확인하지 못했습니다.');
       if (retryRef.current !== null) window.clearTimeout(retryRef.current);
       socketRef.current?.close();
@@ -234,6 +244,12 @@ export function useBridge() {
     setResearchNetworkAccess: (enabled: boolean) => send({ type: "workspace.network", enabled }),
     newConversation: () => send({ type: "conversation.new" }),
     selectConversation: (conversationId: string) => send({ type: "conversation.select", conversationId }),
+    deleteConversation:(conversationId:string)=>new Promise<void>((resolve,reject)=>{
+      if(deleteRef.current){reject(new Error('이전 삭제 요청의 결과를 기다려 주세요.'));return;}
+      const id=crypto.randomUUID(),timer=setTimeout(()=>failDelete('삭제 응답이 지연됩니다. 목록을 확인한 뒤 다시 시도하세요.'),15000);
+      deleteRef.current={id,timer,resolve,reject};
+      if(!send({type:'conversation.delete',conversationId,clientRequestId:id}))failDelete('로컬 브리지에 연결되어 있지 않습니다.');
+    }),
     renameConversation:(conversationId:string,title:string,expectedTitle:string)=>new Promise<void>((resolve,reject)=>{
       if(renameRef.current){reject(new Error('이름 저장 응답을 기다려 주세요.'));return;}
       const id=crypto.randomUUID(),timer=setTimeout(()=>failRename('이름 저장 응답이 지연됩니다. 최신 이름을 확인한 뒤 다시 시도하세요.'),15000);

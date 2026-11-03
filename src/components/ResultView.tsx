@@ -3,6 +3,7 @@ import type { AgentRole, ConversationMessage, RunSnapshot } from "../../shared/p
 import { ResultText } from "./ResultText";
 
 type Props = {
+  compactConversation?: boolean;
   conversationTitle: string;
   conversationId: string;
   run: RunSnapshot | null;
@@ -22,7 +23,7 @@ const ROLE_LABELS: Record<AgentRole, string> = {
   integrator: "Integrator",
 };
 
-export function ResultView({ conversationTitle, conversationId, run, assistantText, taskOutputs, messages }: Props) {
+export function ResultView({ compactConversation = false, conversationTitle, conversationId, run, assistantText, taskOutputs, messages }: Props) {
   const [copied, setCopied] = useState(false);
   const latestReply = messages.at(-1)?.role === "assistant" ? messages.at(-1) : undefined;
   const outputs = run?.tasks.map((task) => ({
@@ -43,7 +44,7 @@ export function ResultView({ conversationTitle, conversationId, run, assistantTe
   };
 
   return (
-    <section className="large-result-view" aria-label="큰 결과 화면">
+    <section className={`large-result-view${compactConversation ? " work-conversation" : ""}`} aria-label="큰 결과 화면">
       <header className="large-result-heading">
         <div>
           <span className="eyebrow">CONVERSATION RESULT</span>
@@ -76,7 +77,7 @@ export function ResultView({ conversationTitle, conversationId, run, assistantTe
           </article>
         ))}
         {messages.length === 0 && !assistantText && outputs.length === 0 && (
-          <div className="large-result-empty"><span>▤</span><strong>아직 결과가 없습니다</strong><p>작업을 실행하면 최종 응답과 작업별 결과가 이 화면에 표시됩니다.</p></div>
+          <div className="large-result-empty"><span>{compactConversation ? "✧" : "▤"}</span><strong>{compactConversation ? "무엇을 만들어볼까요?" : "아직 결과가 없습니다"}</strong><p>{compactConversation ? "아래에 요청을 입력해 작업을 시작하세요." : "작업을 실행하면 최종 응답과 작업별 결과가 이 화면에 표시됩니다."}</p></div>
         )}
       </div>
     </section>

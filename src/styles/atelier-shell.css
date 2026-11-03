@@ -205,3 +205,79 @@ html:has(.atelier-app), body:has(.atelier-app) { background: #fff; background-im
 }
 @media (prefers-reduced-motion: reduce) { .atelier-app *, .atelier-app *::before, .atelier-app *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
 .atelier-app .motion-disabled *, .atelier-app .motion-disabled *::before, .atelier-app .motion-disabled *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+
+/* A focused conversation and composer for the normal Codex workspace. */
+.atelier-app[data-page="work"] .metaverse-layout { display:flex; flex-direction:column; gap:12px; }
+.atelier-app[data-page="work"] .left-rail, .atelier-app[data-page="work"] .world-column { width:min(100%, 820px); margin-inline:auto; }
+.atelier-app[data-page="work"] .left-rail[hidden], .atelier-app[data-page="work"] .control-card[hidden], .atelier-app[data-page="work"] .main-view-switch[hidden] { display:none; }
+.work-settings-toggle { display:block; margin-left:auto; padding:9px 13px; border:1px solid #dedee1; border-radius:8px; background:#fff; color:#515258; cursor:pointer; }
+.atelier-app[data-page="work"] .control-card { margin-top:10px; }
+.atelier-app[data-page="work"] .work-conversation { min-height:clamp(300px, 40vh, 520px); padding:0; border:0; }
+.atelier-app[data-page="work"] .work-conversation .large-result-heading { padding:8px 0 14px; }
+.atelier-app[data-page="work"] .work-conversation:has(.large-result-empty) .large-result-heading { display:none; }
+.atelier-app[data-page="work"] .work-conversation .large-result-empty { min-height:clamp(300px, 40vh, 520px); display:flex; flex-direction:column; align-items:center; justify-content:center; border:0; background:#fff; text-align:center; }
+.atelier-app[data-page="work"] .work-conversation .large-result-empty strong { font-size:clamp(22px, 3vw, 28px); }
+.atelier-app[data-page="work"] .work-conversation .large-result-card { margin-block:16px; }
+.work-composer { position:relative; margin:0 auto 20px; border:1px solid #dedee1; border-radius:20px; background:#fff; box-shadow:0 8px 30px #17171c0c; overflow:hidden; }
+.work-composer-context { padding:10px 18px; background:#f6f6f7; color:#3e4044; font-size:12px; font-weight:600; overflow-wrap:anywhere; }
+.work-composer-context span { color:#777980; font-weight:400; }
+.atelier-app .work-composer .prompt-section { border:0; }
+.atelier-app .work-composer .prompt-section > summary { padding:10px 18px; }
+.atelier-app .work-composer .prompt-section > .control-section-body { padding:0 18px 16px; }
+.atelier-app .work-composer .prompt-field textarea { width:100%; min-height:120px; border:0; box-shadow:none; resize:vertical; padding:12px 2px 26px; }
+.atelier-app .work-composer .execution-mode { max-width:400px; }
+.atelier-app .work-composer .execution-mode button { min-height:40px; }
+.atelier-app .work-composer .run-button, .atelier-app .work-composer .stop-button { display:block; width:auto; min-width:150px; margin-left:auto; border-radius:20px; padding-inline:18px; }
+.atelier-app[data-page="pixel"] .world-column { width:min(100%, 1000px); margin-inline:auto; }
+@media(max-width:600px) { .atelier-app[data-page="work"] .work-conversation, .atelier-app[data-page="work"] .work-conversation .large-result-empty { min-height:250px; } .work-composer { border-radius:14px; } }
+.atelier-app .work-composer .prompt-section > summary { display:none; }
+.atelier-app .work-composer .prompt-section > .control-section-body { padding-top:14px; }
+.atelier-app .work-composer .prompt-field textarea:focus-visible, .work-settings-toggle:focus-visible { outline:3px solid #826cb9; outline-offset:2px; }
+
+/* Conversation groups and immediate controls in the Codex workspace. */
+.chat-sidebar { margin:24px -6px 0; padding-bottom:12px; border-bottom:1px solid var(--atelier-line); }
+.chat-sidebar button { font:inherit; }
+.chat-new { display:flex; align-items:center; justify-content:space-between; width:100%; padding:10px 12px; border:0; border-radius:7px; background:#f2f2f3; color:#29292d; text-align:left; font-size:13px !important; font-weight:600 !important; }
+.chat-new small { color:#73737b; font-size:10px; font-weight:400; }
+.chat-sidebar-heading { display:flex; justify-content:space-between; align-items:center; margin:20px 5px 8px; font-size:11px; color:#77777e; }
+.chat-sidebar-heading button { padding:5px 7px; border:0; border-radius:5px; background:#f1f1f2; color:#4e4e55; font-size:11px; }
+.chat-search input { width:100%; padding:8px 9px; border:1px solid #e2e2e4; border-radius:6px; background:#fff; font-size:11px; }
+.chat-sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.chat-groups { max-height:min(42vh, 390px); margin-top:10px; overflow:auto; scrollbar-width:thin; }
+.chat-group { margin:2px 0; }
+.chat-group summary { display:flex; align-items:center; gap:7px; padding:8px 6px; border-radius:5px; list-style:none; cursor:pointer; color:#414147; font-size:12px; }
+.chat-group summary::-webkit-details-marker { display:none; }
+.chat-group summary::after { content:'▸'; margin-left:auto; color:#888; }
+.chat-group[open] summary::after { content:'▾'; }
+.chat-group summary strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+.chat-group summary small { color:#85858b; }
+.chat-group summary:hover, .chat-group button:hover { background:#f3f3f4; }
+.chat-group-path { overflow:hidden; margin:0 8px 4px 24px; color:#88888e; text-overflow:ellipsis; white-space:nowrap; font-size:10px; word-break:normal !important; }
+.chat-group button { display:block; width:100%; padding:8px 8px 8px 25px; overflow:hidden; border:0; border-radius:6px; background:transparent; color:#5a5a61; text-align:left; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+.chat-group button.is-current { background:#e9e9eb; color:#202024; font-weight:600; }
+.chat-empty { padding:8px; color:#77777e; font-size:11px; }
+.atelier-app .work-quick-controls { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:2px 0 12px; }
+.atelier-app .work-quick-controls label { display:flex; align-items:center; gap:5px; color:#6c6c73; font-size:11px; }
+.atelier-app .work-quick-controls select { max-width:190px; padding:7px 9px; border:1px solid #e2e2e5; border-radius:20px; background:#f7f7f8; color:#303037; font-size:12px; }
+.atelier-app .work-quick-controls .work-network { padding:7px 9px; color:#4e4e55; }
+.atelier-app .work-quick-controls input { width:auto; accent-color:#ad3150; }
+@media(max-width:900px) { .chat-groups { max-height:36vh; } }
+.atelier-app .work-composer-context { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.atelier-app .work-composer-context > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#3e4044; }
+.atelier-app .work-composer-context button { flex:none; border:0; border-radius:5px; padding:5px 8px; color:#55555c; background:#e9e9eb; font-size:11px; }
+.atelier-app .work-composer .work-composer-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.atelier-app .work-composer .work-quick-controls { flex:1 1 auto; margin:0; }
+.atelier-app .work-composer .run-button, .atelier-app .work-composer .stop-button { flex:none; margin-left:auto; }
+.chat-row { display:flex; align-items:center; min-width:0; }
+.chat-group .chat-row > button:first-child { flex:1; min-width:0; }
+.chat-group .chat-row > .chat-delete { flex:none; width:28px; padding:7px 5px; color:#777; text-align:center; font-size:16px; }
+.chat-group .chat-row > .chat-delete:hover { color:#a1243b; background:#fbecef; }
+.chat-delete-error { padding:8px; color:#a1243b; font-size:11px; }
+.sidebar-settings { margin-top:16px; }
+.sidebar-settings > summary { padding:10px 8px; cursor:pointer; color:#55555c; font-size:12px; }
+.atelier-app .sidebar-settings .control-card { margin-top:6px; overflow:hidden; }
+.atelier-app .sidebar-settings .control-collapsible > summary, .atelier-app .sidebar-settings .conversation-picker { padding:12px; }
+.atelier-app .sidebar-settings .control-collapsible > .control-section-body { padding:0 12px 14px; }
+.atelier-app .sidebar-settings .conversation-name-actions { flex-wrap:wrap; }
+@media(max-width:550px) { .atelier-app .work-composer .work-composer-actions { align-items:flex-end; } .atelier-app .work-composer .work-quick-controls { flex:1 1 200px; } .atelier-app .work-composer .run-button, .atelier-app .work-composer .stop-button { min-width:0; } }
+.atelier-app .work-model-refresh { border:1px solid #e2e2e5; border-radius:20px; padding:7px 9px; color:#555; background:#f7f7f8; font-size:11px; }

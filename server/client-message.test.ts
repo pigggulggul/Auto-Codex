@@ -7,6 +7,11 @@ describe("parseClientMessage", () => {
     expect(parseClientMessage(JSON.stringify(request))).toMatchObject({title:'프로젝트 설계'});
     for(const patch of [{title:''},{title:'x'.repeat(81)},{title:'a\0b'},{conversationId:''},{clientRequestId:'wrong'},{threadId:'forged'},{expectedTitle:3}])expect(()=>parseClientMessage(JSON.stringify({...request,...patch}))).toThrow();
   });
+  it('rejects forged or malformed deletion requests',()=>{
+    const request={type:'conversation.delete',conversationId:'chat-1',clientRequestId:'11111111-1111-4111-8111-111111111111'};
+    expect(parseClientMessage(JSON.stringify(request))).toEqual(request);
+    for(const patch of [{conversationId:''},{conversationId:'x'.repeat(129)},{clientRequestId:'wrong'},{path:'outside'},{threadId:'forged'}]) expect(()=>parseClientMessage(JSON.stringify({...request,...patch}))).toThrow();
+  });
   it("accepts a valid team turn", () => {
     expect(parseClientMessage(JSON.stringify({
       type: "turn.start",
