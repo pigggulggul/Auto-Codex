@@ -32,6 +32,53 @@ function setup() {
 }
 
 describe("issue binding bridge boundary", () => {
+  it("guards analysis batches with the authorized snapshot and rechecks originals before and after transport", async () => {
+    const t = setup(), socket = new AbortController(); let admitted = true, originalHash = "a".repeat(64), calls = 0;
+    t.options.readSource = async () => ({ relativePath: "plan.md", bytes: 9, sha256: originalHash, text: "synthetic" });
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" });
+    if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    const create = () => t.api.createAnalysisBatch(socket.signal, t.connected, () => admitted, prepared.snapshot!.id, 1);
+    admitted = false; await expect(create()).rejects.toMatchObject({ code: "STALE_INPUT" }); admitted = true;
+    const batch = await create();
+    originalHash = "b".repeat(64);
+    expect(await batch.run(async () => { calls++; return '{"requirements":[]}'; }, 1)).toBe("blocked");
+    expect(calls).toBe(0);
+    expect(batch.inspect().segments[0]).toMatchObject({ status: "failed", error: "STALE_INPUT" });
+    originalHash = "a".repeat(64); batch.retry(0);
+    expect(await batch.run(async () => { calls++; originalHash = "b".repeat(64); return '{"requirements":[]}'; }, 1)).toBe("blocked");
+    expect(calls).toBe(1); expect(batch.inspect().processedSegments).toBe(0);
+    originalHash = "a".repeat(64); batch.retry(0);
+    const base = t.options.context;
+    expect(await batch.run(async () => { t.options.context = () => ({ ...base(), status: async () => ({ project: { id: "different", revision: 1 } }) }); return '{"requirements":[]}'; }, 1)).toBe("blocked");
+    expect(batch.inspect().processedSegments).toBe(0);
+    t.options.context = base; batch.retry(0);
+    expect(await batch.run(async () => '{"requirements":[]}', 1)).toBe("complete");
+    socket.abort();
+    await expect(create()).rejects.toMatchObject({ code: "STALE_INPUT" });
+  });
+
+  it("discards a result when its view grant or admission expires during the source recheck", async () => {
+    for (const revoke of ["view", "admission"] as const) {
+      const t = setup(), socket = new AbortController(); let admitted = true;
+      const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+      await ask("issues.project.bind"); await ask("issues.view.authorize");
+      const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+      const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" });
+      if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+      const batch = await t.api.createAnalysisBatch(socket.signal, t.connected, () => admitted, prepared.snapshot.id, 1);
+      const started = deferred<void>(), finish = deferred<{ relativePath: string; bytes: number; sha256: string; text: string }>(); let reads = 0;
+      t.options.readSource = async () => { reads++; if (reads === 2) { started.resolve(); return finish.promise; } return { relativePath: "plan.md", bytes: 9, sha256: "a".repeat(64), text: "synthetic" }; };
+      const pending = batch.run(async () => '{"requirements":[]}', 1); await started.promise;
+      if (revoke === "view") await ask("issues.view.release"); else admitted = false;
+      finish.resolve({ relativePath: "plan.md", bytes: 9, sha256: "a".repeat(64), text: "synthetic" });
+      expect(await pending).toBe("blocked");
+      expect(batch.inspect()).toMatchObject({ processedSegments: 0, segments: [{ status: "failed", error: "STALE_INPUT" }] });
+      socket.abort();
+    }
+  });
   it("requires UI origin and rejects renderer-supplied paths or permissions", async () => {
     const t = setup();
     for (const raw of [wire("issues.project.bind", { path: "C:/outside" }), wire("issues.project.bind", { permissions: "all" }), wire("issues.project.bind", { v: 2 })]) expect((await t.api.handle(raw, true, t.connected)).ok).toBe(false);
@@ -143,6 +190,9 @@ describe("issue binding bridge boundary", () => {
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "projectIssues", expectedRevision: 1, cursor: { issueOffset: 0 } } }), true, t.connected, second.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "categories", documentId: "doc-1", expectedRevision: 1, parentId: null, offset: 0 } }), true, t.connected, second.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "diagnostics", documentId: "doc-1", expectedRevision: 1, offset: 0 } }), true, t.connected, second.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    expect(await t.api.handle(wire("issues.view.query", { query: { kind: "requirementDetail", documentId: "doc-1", expectedRevision: 1, requirementId: "req-1", offset: 0 } }), true, t.connected, second.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    expect(await t.api.handle(wire("issues.view.query", { query: { kind: "requirementDetail", documentId: "doc-1", expectedRevision: 1, requirementId: "req-1", offset: 0, projectId: "foreign" } }), true, t.connected, first.signal)).toMatchObject({ ok: false });
+    expect(await t.api.handle(wire("issues.view.query", { query: { kind: "requirementDetail", documentId: "doc-1", expectedRevision: 1, requirementId: "../outside", offset: 0 } }), true, t.connected, first.signal)).toMatchObject({ ok: false });
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "diagnostics", documentId: "doc-1", expectedRevision: 1, offset: 0, projectId: "foreign" } }), true, t.connected, first.signal)).toMatchObject({ ok: false });
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "documents", projectId: "foreign" } }), true, t.connected, first.signal)).toMatchObject({ ok: false });
     t.change({ workspaceMode: "project", projectPath: "C:/synthetic/project", generation: 3 });

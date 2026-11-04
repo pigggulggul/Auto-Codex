@@ -30,6 +30,9 @@ describe("issue worker internal contract", () => {
       { operation: "issue.list", projectId: project, documentId: "doc", expectedRevision: 1, offset: 0, filters: { version: "1.2.3", path: "elsewhere" } },
       { operation: "document.diagnostics", projectId: project, documentId: "doc", expectedRevision: 1, offset: -1 },
       { operation: "document.diagnostics", projectId: project, documentId: "doc", expectedRevision: 1, offset: 0, path: "elsewhere" },
+      { operation: "requirement.detail", projectId: project, documentId: "doc", expectedRevision: 1, requirementId: "../outside", offset: 0 },
+      { operation: "requirement.detail", projectId: project, documentId: "doc", expectedRevision: 1, requirementId: "req", offset: -1 },
+      { operation: "requirement.detail", projectId: project, documentId: "doc", expectedRevision: 1, requirementId: "req", offset: 0, network: true },
       { operation: "category.list", projectId: project, documentId: "doc", expectedRevision: 1, parentId: "../outside", offset: 0 },
       { operation: "category.list", projectId: project, documentId: "doc", expectedRevision: 1, parentId: null, offset: -1 },
       { operation: "issue.projectSearch", projectId: project, expectedRevision: 1, cursor: { issueOffset: -1 } },
@@ -43,6 +46,17 @@ describe("issue worker internal contract", () => {
     expect(await dispatchIssueWorkerRequest(store, { operation: "project.read", projectId: created.id })).toEqual(created);
     expect(await dispatchIssueWorkerRequest(store, { operation: "document.list", projectId: created.id, expectedRevision: 1 })).toMatchObject({ kind: "documents", documents: [] });
     await expect(dispatchIssueWorkerRequest(store, { operation: "document.read", projectId: created.id, documentId: "missing" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+  it("dispatches requirement detail against a real store at the expected revision", async () => {
+    const { store, workspace } = await setup();
+    const created = await dispatchIssueWorkerRequest(store, { operation: "project.create", selectedPath: workspace });
+    if (created.kind !== "project") throw new Error("wrong response");
+    const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc", revision: 1, sources: [], categories: [], requirements: [{ id: "req", categoryId: null, text: "합성", origin: "user" }], issues: [{ id: "issue", categoryId: null, requirementIds: ["req"], version: "1.0.0", order: 0, title: "이슈", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }] };
+    const bytes = new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(doc)}\n\`\`\``);
+    await dispatchIssueWorkerRequest(store, { operation: "document.import", projectId: created.id, expectedRevision: 1, bytes });
+    const request = { operation: "requirement.detail", projectId: created.id, documentId: "doc", expectedRevision: 2, requirementId: "req", offset: 0 };
+    expect(await dispatchIssueWorkerRequest(store, request)).toMatchObject({ kind: "requirement.detail", requirement: { id: "req", linkedIssueCount: 1 }, page: { items: [{ id: "issue" }], nextOffset: null } });
+    await expect(dispatchIssueWorkerRequest(store, { ...request, expectedRevision: 1 })).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
   });
   it("does not expose unknown exception messages or stack data", () => {
     expect(safeIssueWorkerError(new Error("private synthetic value"))).toEqual({ code: "STORAGE_FAILED", message: "이슈 저장소 작업에 실패했습니다. 기존 데이터를 확인하세요." });

@@ -41,6 +41,26 @@ describe("bounded issue views", () => {
     await expect(t.view.list(t.project.id, "doc-1", 1, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
     await expect(t.view.criteria(t.project.id, "doc-1", 2, "issue-first", 41)).rejects.toMatchObject({ code: "LIMIT_EXCEEDED" });
   });
+  it("shows a requirement and its linked issues only within the selected document and revision", async () => {
+    const t = await setup();
+    expect(await t.view.requirementDetail(t.project.id, "doc-1", 2, "req-1", 0)).toMatchObject({ requirement: { id: "req-1", text: "근거 요구사항", category: "기능", origin: "source", sourceName: "기획서", locator: "2절", linkedIssueCount: 1 }, page: { items: [{ id: "issue-first", importedStatus: "completed", localStatus: "needs_review" }], nextOffset: null } });
+    await expect(t.view.requirementDetail(t.project.id, "doc-1", 2, "missing", 0)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(t.view.requirementDetail(t.project.id, "missing", 2, "req-1", 0)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(t.view.requirementDetail("project_00000000-0000-4000-8000-000000000000", "doc-1", 2, "req-1", 0)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(t.view.requirementDetail(t.project.id, "doc-1", 1, "req-1", 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    await expect(t.view.requirementDetail(t.project.id, "doc-1", 2, "req-1", 2)).rejects.toMatchObject({ code: "LIMIT_EXCEEDED" });
+  });
+  it("pages linked issues without exceeding response limits for a large escaped requirement", async () => {
+    const t = await setup(), content = "\u0001".repeat(32768);
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-trace", revision: 1, sources: [], categories: [], requirements: [{ id: "req-trace", categoryId: null, text: content, origin: "user" }, { id: "req-empty", categoryId: null, text: "미연결", origin: "user" }], issues: Array.from({ length: 40 }, (_, i) => ({ id: `trace-${String(i).padStart(2, "0")}`, categoryId: null, requirementIds: ["req-trace"], version: "1.0.0", order: i, title: `${"\u0001".repeat(240)}-${i}`, description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" })) };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const first = await t.view.requirementDetail(t.project.id, "doc-trace", 3, "req-trace", 0);
+    expect(first.requirement.text).toBe(content); expect(first.requirement.linkedIssueCount).toBe(40); expect(first.page.items.length).toBeGreaterThan(0); expect(first.page.items.length).toBeLessThan(32); expect(first.page.nextOffset).toBe(first.page.items.length);
+    expect(Buffer.byteLength(JSON.stringify(first))).toBeLessThan(240 * 1024);
+    const last = await t.view.requirementDetail(t.project.id, "doc-trace", 3, "req-trace", first.page.nextOffset!);
+    expect(first.page.items.length + last.page.items.length).toBe(40); expect(last.page.nextOffset).toBeNull(); expect(Buffer.byteLength(JSON.stringify(last))).toBeLessThan(240 * 1024);
+    expect(await t.view.requirementDetail(t.project.id, "doc-trace", 3, "req-empty", 0)).toMatchObject({ requirement: { linkedIssueCount: 0 }, page: { items: [], nextOffset: null } });
+  });
   it("reports scoped missing links and fields without treating imported completion as verified", async () => {
     const t = await setup(), report = await t.view.diagnostics(t.project.id, "doc-1", 2, 0);
     expect(report).toMatchObject({ documentRevision: 1, issueCount: 2, requirementCount: 1, linkedRequirementCount: 1, totalFindings: 4 });
@@ -61,6 +81,27 @@ describe("bounded issue views", () => {
     const report = await t.view.diagnostics(t.project.id, "doc-links", 3, 0);
     expect(report).toMatchObject({ issueCount: 2, requirementCount: 2, linkedRequirementCount: 1, totalFindings: 5 });
     expect(report.findings.items.slice(0, 3)).toEqual([{ code: "requirement-uncategorized", entityId: "req-a", title: "연결", provenance: { origin: "user", sourceName: null, locator: null } }, { code: "requirement-unlinked", entityId: "req-b", title: "미연결", provenance: { origin: "source", sourceName: "원본", locator: "3절" } }, { code: "requirement-uncategorized", entityId: "req-b", title: "미연결", provenance: { origin: "source", sourceName: "원본", locator: "3절" } }]);
+  });
+  it("flags matching text as a review candidate with stable comparison IDs across pages", async () => {
+    const t = await setup();
+    const requirements = Array.from({ length: 35 }, (_, i) => ({ id: `duplicate-req-${String(i).padStart(2, "0")}`, categoryId: "dup-category", text: i % 2 ? "  로그인\n화면  " : "로그인 화면", origin: "user" }));
+    requirements.push({ id: "distinct-req", categoryId: "dup-category", text: "로그인 화면!", origin: "user" });
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-duplicates", revision: 1, sources: [], categories: [{ id: "dup-category", parentId: null, title: "기능", order: 0 }], requirements, issues: [
+      { id: "dup-first", categoryId: "dup-category", requirementIds: requirements.map(item => item.id), version: "1.0.0", order: 0, title: "Login   screen", description: "첫 설명", acceptanceCriteria: ["확인"], dependencyIds: [], status: "ready" },
+      { id: "dup-second", categoryId: "dup-category", requirementIds: ["distinct-req"], version: "2.0.0", order: 0, title: " login screen ", description: "다른 설명", acceptanceCriteria: ["확인"], dependencyIds: [], status: "ready" },
+    ] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const first = await t.view.diagnostics(t.project.id, "doc-duplicates", 3, 0);
+    expect(first.totalFindings).toBe(35); expect(first.findings.items).toHaveLength(32); expect(first.findings.nextOffset).toBe(32);
+    const last = await t.view.diagnostics(t.project.id, "doc-duplicates", 3, 32);
+    expect(last.findings.nextOffset).toBeNull();
+    const all = [...first.findings.items, ...last.findings.items];
+    expect(all.filter(item => item.code === "requirement-same-text")).toHaveLength(34);
+    expect(all.find(item => item.entityId === "duplicate-req-01")).toMatchObject({ code: "requirement-same-text", relatedEntityId: "duplicate-req-00", provenance: { origin: "user" } });
+    expect(all.find(item => item.code === "issue-same-title")).toMatchObject({ entityId: "dup-second", relatedEntityId: "dup-first", provenance: null });
+    expect(all.some(item => item.entityId === "distinct-req")).toBe(false);
+    expect((await t.store.readProject(t.project.id)).revision).toBe(3);
+    await expect(t.view.diagnostics(t.project.id, "doc-duplicates", 2, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
   });
   it("pages large requirement findings without truncating their text", async () => {
     const t = await setup(), longText = "\u0001".repeat(32768);

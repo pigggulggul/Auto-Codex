@@ -104,6 +104,7 @@ export class IssueProjectContext {
       case "projectIssues": request = { operation: "issue.projectSearch", ...base, cursor: query.cursor, ...(query.filters ? { filters: query.filters } : {}) }; break;
       case "categories": request = { operation: "category.list", ...base, documentId: query.documentId, parentId: query.parentId, offset: query.offset }; break;
       case "diagnostics": request = { operation: "document.diagnostics", ...base, documentId: query.documentId, offset: query.offset }; break;
+      case "requirementDetail": request = { operation: "requirement.detail", ...base, documentId: query.documentId, requirementId: query.requirementId, offset: query.offset }; break;
       case "detail": request = { operation: "issue.detail", ...base, documentId: query.documentId, issueId: query.issueId }; break;
       case "criteria": request = { operation: "issue.criteria", ...base, documentId: query.documentId, issueId: query.issueId, offset: query.offset }; break;
       case "requirements": request = { operation: "issue.requirements", ...base, documentId: query.documentId, issueId: query.issueId, offset: query.offset }; break;
@@ -116,6 +117,7 @@ export class IssueProjectContext {
     if (query.kind === "projectIssues" && result.kind === "issue.projectSearch") return { kind: "projectIssues", revision: project.revision, page: result.page };
     if (query.kind === "categories" && result.kind === "category.list") return { kind: "categories", revision: project.revision, page: result.page };
     if (query.kind === "diagnostics" && result.kind === "document.diagnostics") return { kind: "diagnostics", revision: project.revision, report: result.report };
+    if (query.kind === "requirementDetail" && result.kind === "requirement.detail") return { kind: "requirementDetail", revision: project.revision, requirement: result.requirement, page: result.page };
     if (query.kind === "detail" && result.kind === "issue.detail") return { kind: "detail", revision: project.revision, issue: result.issue };
     if (query.kind === "criteria" && result.kind === "issue.criteria") return { kind: "criteria", revision: project.revision, page: result.page };
     if (query.kind === "requirements" && result.kind === "issue.requirements") return { kind: "requirements", revision: project.revision, page: result.page };

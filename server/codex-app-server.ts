@@ -61,18 +61,21 @@ export class CodexAppServer extends EventEmitter {
   private pending = new Map<RequestId, PendingRequest>();
   private nextId = 1;
   private startPromise: Promise<void> | null = null;
+  private stoppingPromise: Promise<void> | null = null;
 
   get ready(): boolean {
     return this.child !== null && !this.child.killed;
   }
 
   start(): Promise<void> {
+    if (this.stoppingPromise) return Promise.reject(new Error("App Server termination is not confirmed. Restart the bridge if it does not stop."));
     if (this.startPromise) return this.startPromise;
-    this.startPromise = this.startInternal().catch((error) => {
-      this.startPromise = null;
+    const attempt = this.startInternal().catch((error) => {
+      if (this.startPromise === attempt) this.startPromise = null;
       throw error;
     });
-    return this.startPromise;
+    this.startPromise = attempt;
+    return attempt;
   }
 
   private async startInternal(): Promise<void> {
@@ -90,20 +93,22 @@ export class CodexAppServer extends EventEmitter {
     this.child = child;
 
     child.once("error", (error) => {
+      if (this.child !== child) return;
       const hint = (error as NodeJS.ErrnoException).code === "ENOENT"
         ? " Codex CLI 또는 Windows 명령 처리기를 PATH에서 찾을 수 없습니다."
         : "";
       this.handleExit(new Error(`${error.message}.${hint}`));
     });
     child.once("exit", (code, signal) => {
+      if (this.child !== child) return;
       const detail = signal ? `signal ${signal}` : `code ${code ?? "unknown"}`;
       this.handleExit(new Error(`codex app-server exited with ${detail}`));
     });
     child.stderr.setEncoding("utf8");
-    child.stderr.on("data", (chunk: string) => this.emit("diagnostic", chunk.trim()));
+    child.stderr.on("data", (chunk: string) => { if (this.child === child) this.emit("diagnostic", chunk.trim()); });
 
     const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
-    lines.on("line", (line) => this.handleLine(line));
+    lines.on("line", (line) => { if (this.child === child) this.handleLine(line); });
 
     await this.request("initialize", {
       clientInfo: {
@@ -116,6 +121,7 @@ export class CodexAppServer extends EventEmitter {
         optOutNotificationMethods: ["item/reasoning/textDelta"],
       },
     });
+    if (this.child !== child) throw new Error("App Server changed during initialization.");
     this.notify("initialized", {});
     this.emit("ready");
   }
@@ -152,40 +158,64 @@ export class CodexAppServer extends EventEmitter {
   }
 
   stop(): void {
+    const termination = this.detachAndStop();
+    if (termination) void termination.catch(() => { /* Best effort on shutdown; exclusive callers use stopAndWait. */ });
+  }
+
+  private detachAndStop(): Promise<void> | null {
     const child = this.child;
     this.child = null;
     this.startPromise = null;
     // Clear the reference before killing so the old child's asynchronous
     // exit event cannot tear down a new server started immediately after it.
-    if (!child) return;
-    if (process.platform === "win32" && child.pid) {
+    if (!child) return null;
+    this.rejectPending(new Error("codex app-server was stopped"));
+    if (process.platform === "win32") {
       // Windows runs the default Codex launch through cmd.exe. Killing only
       // that wrapper can orphan codex app-server, so terminate the exact
       // process tree rooted at the child we spawned.
-      const killer = spawn("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], {
-        stdio: "ignore",
-        windowsHide: true,
+      return new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const failed = () => {
+          if (settled) return;
+          settled = true;
+          try { if (!child.killed) child.kill(); } catch { /* Termination is still unconfirmed. */ }
+          reject(new Error("App Server termination was not confirmed. Restart the bridge."));
+        };
+        if (!child.pid) { failed(); return; }
+        try {
+          const killer = spawn("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+          killer.once("error", failed);
+          killer.once("exit", (code, signal) => { if (code === 0 && signal === null) { if (!settled) { settled = true; resolve(); } } else failed(); });
+        } catch { failed(); }
       });
-      killer.once("error", () => {
-        if (!child.killed) child.kill();
-      });
-      return;
     }
-    child.kill();
+    try {
+      return child.kill() ? Promise.resolve() : Promise.reject(new Error("App Server termination was not confirmed. Restart the bridge."));
+    } catch {
+      return Promise.reject(new Error("App Server termination was not confirmed. Restart the bridge."));
+    }
   }
 
   /** For exclusive proposal admission: do not release it while a timed-out child may still execute. */
-  async stopAndWait(): Promise<void> {
-    const child=this.child;if(!child)return;
-    const exited=new Promise<void>((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error('App Server termination was not confirmed. Restart the bridge.')),10000);
-      child.once('exit',()=>{clearTimeout(timer);resolve();});
+  stopAndWait(): Promise<void> {
+    if (this.stoppingPromise) return this.stoppingPromise;
+    const child = this.child;
+    if (!child) return Promise.resolve();
+    const exited = new Promise<void>(resolve => { child.once("exit", () => resolve()); });
+    const termination = this.detachAndStop();
+    const stopped = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("App Server termination was not confirmed. Restart the bridge.")), 10_000);
+      Promise.all([exited, termination]).then(() => { clearTimeout(timer); resolve(); }, error => { clearTimeout(timer); reject(error); });
     });
-    this.stop();await exited;
-    // stop() detaches the child before its exit callback. Notify subscribers after termination is confirmed.
-    const error=new Error('Exclusive Atelier proposal runtime was stopped after failure.');
-    for(const pending of this.pending.values()){clearTimeout(pending.timer);pending.reject(error);}this.pending.clear();
-    this.emit('exit',error);
+    const operation = stopped.then(() => {
+      if (this.stoppingPromise === operation) this.stoppingPromise = null;
+      // stop() detaches the child; publish its exit only after it is confirmed.
+      this.emit("exit", new Error("Exclusive App Server runtime was stopped after failure."));
+    });
+    // A timeout remains latched: an unconfirmed old process must not overlap a new one.
+    this.stoppingPromise = operation;
+    return operation;
   }
 
   private write(message: unknown): void {
@@ -233,11 +263,15 @@ export class CodexAppServer extends EventEmitter {
     if (!this.child && !this.startPromise) return;
     this.child = null;
     this.startPromise = null;
+    this.rejectPending(error);
+    this.emit("exit", error);
+  }
+
+  private rejectPending(error: Error): void {
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
       pending.reject(error);
     }
     this.pending.clear();
-    this.emit("exit", error);
   }
 }

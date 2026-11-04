@@ -74,6 +74,30 @@ describe("issue project transport", () => {
     api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 1, requirementCount: 0, linkedRequirementCount: 1, totalFindings: 0, findings: { items: [], nextOffset: null } } } });
     await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
   });
+  it("accepts matching-text findings only with a distinct bounded comparison ID", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "diagnostics" as const, documentId: "doc-1", expectedRevision: 2, offset: 0 };
+    const reply = (finding: Record<string, unknown>) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 2, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [finding], nextOffset: null } } } });
+    const finding = { code: "issue-same-title", entityId: "issue-2", title: "합성", provenance: null, relatedEntityId: "issue-1" };
+    const pending = api.request("view", query); api.receive(reply(finding)); expect((await pending).view?.kind).toBe("diagnostics");
+    for (const relatedEntityId of [undefined, "issue-2", "../outside", "x".repeat(129)]) {
+      const invalid = api.request("view", query); api.receive(reply({ ...finding, relatedEntityId }));
+      await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    }
+    api.disconnect();
+  });
+  it("validates bounded requirement details and linked issue pages", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "requirementDetail" as const, documentId: "doc-1", expectedRevision: 2, requirementId: "req-1", offset: 0 };
+    const requirement = { id: "req-1", text: "합성 요구사항", origin: "source", sourceName: "문서", locator: "1절", category: "기능", linkedIssueCount: 1 };
+    const issue = { id: "issue-1", title: "합성 이슈", version: "1.0.0", category: null, localStatus: "ready", importedStatus: "ready", missingCriteria: false, unverifiedDependencies: 0 };
+    const reply = (detail: unknown, page: unknown) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "requirementDetail", revision: 2, requirement: detail, page } });
+    const pending = api.request("view", query); api.receive(reply(requirement, { items: [issue], nextOffset: null })); expect((await pending).view?.kind).toBe("requirementDetail");
+    for (const [detail, page] of [[{ ...requirement, origin: "unknown" }, { items: [], nextOffset: null }], [requirement, { items: [issue], nextOffset: 1 }], [{ ...requirement, linkedIssueCount: 0 }, { items: [issue], nextOffset: null }]]) {
+      const invalid = api.request("view", query); api.receive(reply(detail, page)); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    }
+    api.disconnect();
+  });
   it("accepts only bounded category pages with explicit child indicators", async () => {
     const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
     const query = { kind: "categories" as const, documentId: "doc-1", expectedRevision: 2, parentId: null, offset: 0 };

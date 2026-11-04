@@ -57,7 +57,12 @@ export async function createIssueExport(projectPath: string, selectedPath: strin
     if (!finalTemp.isFile() || finalTemp.isSymbolicLink() || finalTemp.nlink !== 1n || !sameIdentity(tempInfo, finalTemp) || finalTemp.size !== tempInfo.size || finalTemp.mtimeNs !== tempInfo.mtimeNs || finalTemp.ctimeNs !== tempInfo.ctimeNs) fail("STALE_SELECTION", "임시 파일이 변경되어 저장하지 않았습니다.");
     aborted();
     try { await link(temp, target); committed = true; }
-    catch (error) { if ((error as NodeJS.ErrnoException).code === "EEXIST") return fail("FILE_EXISTS", "이미 파일이 있습니다. 새 파일 이름을 선택하세요."); throw error; }
+    catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "EEXIST") return fail("FILE_EXISTS", "이미 파일이 있습니다. 새 파일 이름을 선택하세요.");
+      if (code && ["EPERM", "EACCES", "ENOTSUP", "EOPNOTSUPP", "ENOSYS"].includes(code)) return fail("STORAGE_FAILED", "파일시스템이 안전한 새 파일 생성을 지원하지 않거나 권한이 없습니다. 저장 위치와 권한을 확인하세요.");
+      throw error;
+    }
   } catch (error) {
     if (error instanceof IssueExportError) throw error;
     if (signal?.aborted) return fail(committed ? "OUTCOME_UNKNOWN" : "INTERRUPTED", committed ? "저장 결과를 확인할 수 없습니다. 선택한 위치를 확인하세요." : "문서 저장이 취소되었습니다.");

@@ -18,6 +18,12 @@ export class AnalysisDraft {
   inspect() {
     return { snapshotId: this.snapshotId, projectRevision: this.projectRevision, totalSegments: this.segments.length, processedSegments: this.segments.filter(item => item.status === "processed").length, segments: structuredClone(this.segments) };
   }
+  /** Counts only; unlike inspect(), this does not copy candidate text on every batch step. */
+  progress() {
+    const counts: Record<SegmentStatus, number> = { pending: 0, running: 0, processed: 0, failed: 0, interrupted: 0 };
+    for (const segment of this.segments) counts[segment.status]++;
+    return counts;
+  }
   interrupt(): void {
     if (!this.active) return;
     this.segments[this.active.index] = { status: "interrupted", requirements: [] };

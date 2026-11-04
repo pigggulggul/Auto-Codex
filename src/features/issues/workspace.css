@@ -60,6 +60,7 @@
 .issues-diagnostics li span { white-space: pre-wrap; }
 .issues-finding-origin { display: block; margin-top: 4px; color: #5e5a50; }
 .issues-diagnostics li + li { margin-top: 10px; }
+.issues-finding-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .issues-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 10px; }
 .issues-filters label { display: grid; gap: 4px; color: #494538; font-size: .85rem; font-weight: 700; }
 .issues-filters input, .issues-filters select { max-width: 100%; min-width: 0; padding: 9px; border: 1px solid #b6ad9b; border-radius: 8px; background: #fff; color: #393429; font: inherit; }

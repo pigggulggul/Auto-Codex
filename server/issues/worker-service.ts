@@ -49,6 +49,10 @@ export function validateIssueWorkerRequest(value: unknown): IssueWorkerRequest {
       keys(["operation", "projectId", "documentId", "expectedRevision", "offset"]);
       if (!projectId(v.projectId) || !issueId(v.documentId) || !revision(v.expectedRevision) || !Number.isSafeInteger(v.offset) || Number(v.offset) < 0) return invalid();
       return v as IssueWorkerRequest;
+    case "requirement.detail":
+      keys(["operation", "projectId", "documentId", "expectedRevision", "requirementId", "offset"]);
+      if (!projectId(v.projectId) || !issueId(v.documentId) || !revision(v.expectedRevision) || !issueId(v.requirementId) || !Number.isSafeInteger(v.offset) || Number(v.offset) < 0) return invalid();
+      return v as IssueWorkerRequest;
     case "category.list":
       keys(["operation", "projectId", "documentId", "expectedRevision", "parentId", "offset"]);
       if (!projectId(v.projectId) || !issueId(v.documentId) || !revision(v.expectedRevision) || !(v.parentId === null || issueId(v.parentId)) || !Number.isSafeInteger(v.offset) || Number(v.offset) < 0) return invalid();
@@ -85,6 +89,7 @@ export async function dispatchIssueWorkerRequest(store: IssueStore, input: unkno
     case "issue.list": return { kind: "issue.list", page: await new IssueView(store).list(request.projectId, request.documentId, request.expectedRevision, request.offset, request.filters) };
     case "issue.projectSearch": return { kind: "issue.projectSearch", page: await new IssueView(store).projectSearch(request.projectId, request.expectedRevision, request.cursor, request.filters) };
     case "document.diagnostics": return { kind: "document.diagnostics", report: await new IssueView(store).diagnostics(request.projectId, request.documentId, request.expectedRevision, request.offset) };
+    case "requirement.detail": return { kind: "requirement.detail", ...await new IssueView(store).requirementDetail(request.projectId, request.documentId, request.expectedRevision, request.requirementId, request.offset) };
     case "category.list": return { kind: "category.list", page: await new IssueView(store).categories(request.projectId, request.documentId, request.expectedRevision, request.parentId, request.offset) };
     case "issue.detail": return { kind: "issue.detail", issue: await new IssueView(store).detail(request.projectId, request.documentId, request.expectedRevision, request.issueId) };
     case "issue.criteria": return { kind: "issue.criteria", page: await new IssueView(store).criteria(request.projectId, request.documentId, request.expectedRevision, request.issueId, request.offset) };

@@ -5,6 +5,8 @@ import { SelectedDocumentError } from "./selected-document.js";
 import { IssueExportError } from "./export-file.js";
 import { AnalysisSourceError } from "./analysis-source.js";
 import { IssueSourceSessions, SourceSessionError } from "./source-session.js";
+import { AnalysisDraft } from "./analysis-draft.js";
+import { AnalysisBatch } from "./analysis-batch.js";
 import { validIssueFilters, validProjectIssueCursor, validProjectIssueFilters, type IssueViewQuery, type IssueViewResult } from "../../shared/issues/view.js";
 import type { AnalysisFreshness, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../shared/issues/sources.js";
 import { performance } from "node:perf_hooks";
@@ -40,6 +42,7 @@ function parseViewQuery(value: unknown): IssueViewQuery {
     case "projectIssues": keys(["kind", "expectedRevision", "cursor", "filters"]); if (!revision() || !validProjectIssueCursor(q.cursor) || q.filters !== undefined && !validProjectIssueFilters(q.filters)) throw new Error("invalid"); break;
     case "categories": keys(["kind", "documentId", "expectedRevision", "parentId", "offset"]); if (!id(q.documentId) || !revision() || !offset() || !(q.parentId === null || id(q.parentId))) throw new Error("invalid"); break;
     case "diagnostics": keys(["kind", "documentId", "expectedRevision", "offset"]); if (!id(q.documentId) || !revision() || !offset()) throw new Error("invalid"); break;
+    case "requirementDetail": keys(["kind", "documentId", "expectedRevision", "requirementId", "offset"]); if (!id(q.documentId) || !revision() || !id(q.requirementId) || !offset()) throw new Error("invalid"); break;
     case "detail": keys(["kind", "documentId", "expectedRevision", "issueId"]); if (!id(q.documentId) || !revision() || !id(q.issueId)) throw new Error("invalid"); break;
     case "criteria": case "requirements": case "dependencies": keys(["kind", "documentId", "expectedRevision", "issueId", "offset"]); if (!id(q.documentId) || !revision() || !id(q.issueId) || !offset()) throw new Error("invalid"); break;
     default: throw new Error("invalid");
@@ -61,6 +64,35 @@ export class IssueBridgeApi {
     const grant = this.views.get(signal), current = this.options.selection();
     if (!grant || grant.expires <= this.now() || current.workspaceMode !== "project" || current.generation !== grant.generation || current.projectPath !== grant.path) { this.sources.clear(signal); return null; }
     return grant;
+  }
+  /**
+   * Trusted runtime entry point, not a WebSocket operation. The runtime must acquire
+   * shared admission and enforce tool isolation before using the returned batch.
+   */
+  async createAnalysisBatch(signal: AbortSignal, connected: () => boolean, admitted: () => boolean, snapshotId: string, revision: number): Promise<AnalysisBatch> {
+    const grant = this.activeView(signal, connected);
+    const stale = (): never => { throw new AnalysisSourceError("STALE_INPUT", "분석 입력 또는 실행 권한이 변경되었습니다. 다시 준비하세요."); };
+    const valid = () => Boolean(grant && this.activeView(signal, connected) === grant && admitted());
+    if (!grant || !valid()) return stale();
+    const project = await this.options.context().status();
+    if (!valid() || !project.project || project.project.revision !== revision) return stale();
+    const projectId = project.project.id;
+    const summary = this.sources.snapshotSummary(signal, grant.generation, grant.path, revision, snapshotId);
+    const loadSegment = async (index: number) => {
+      if (!valid()) return stale();
+      const files = this.sources.snapshotFiles(signal, grant.generation, grant.path, revision, snapshotId);
+      for (const file of files) {
+        let current: Awaited<ReturnType<Options["readSource"]>>;
+        try { current = await this.options.readSource(grant.path, path.resolve(grant.path, ...file.relativePath.split("/")), signal); }
+        catch { return stale(); }
+        if (!valid() || current.relativePath !== file.relativePath || current.bytes !== file.bytes || current.sha256 !== file.sha256) return stale();
+        this.sources.snapshotFiles(signal, grant.generation, grant.path, revision, snapshotId);
+      }
+      const currentProject = await this.options.context().status();
+      if (!valid() || !currentProject.project || currentProject.project.id !== projectId || currentProject.project.revision !== revision) return stale();
+      return this.sources.analysisSegment(signal, grant.generation, grant.path, revision, snapshotId, index);
+    };
+    return new AnalysisBatch(new AnalysisDraft(snapshotId, revision, summary.totalSegments, loadSegment));
   }
   async handle(raw: string, uiOrigin: boolean, connected: () => boolean, signal?: AbortSignal): Promise<IssueProjectReply> {
     let clientRequestId = "", action: Action = "status";

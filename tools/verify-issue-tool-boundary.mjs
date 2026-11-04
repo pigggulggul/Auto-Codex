@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { buildUnverifiedAnalysisToolPolicy } from '../build-server/server/issues/analysis-tool-policy.js';
 import { buildSegmentAnalysisRequest } from '../build-server/server/issues/analysis-request.js';
 import { AnalysisDraft } from '../build-server/server/issues/analysis-draft.js';
+import { createProbeDeadline, waitForProbeTurn } from './issue-probe-control.mjs';
 
 // This probe invokes the installed CLI with a new temporary CODEX_HOME and a fake
 // loopback Responses provider. It never uses the user's project, account or model.
@@ -57,10 +58,14 @@ const fake = createServer((request, response) => {
     response.end();
   });
 });
-let child;
+let child, cancelled = false, deadline, rejectPending = () => {};
 let phase = 'starting'; const signals = new Set();
 try {
-  await new Promise((resolve, reject) => { fake.once('error', reject); fake.listen(0, '127.0.0.1', resolve); });
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Synthetic loopback listener timed out.')), 5000);
+    fake.once('error', error => { clearTimeout(timer); reject(error); });
+    fake.listen(0, '127.0.0.1', () => { clearTimeout(timer); resolve(); });
+  });
   const port = fake.address().port;
   const quote = value => JSON.stringify(value);
   const mcp = path.resolve('tools/fixtures/issue-tool-probe-mcp.mjs');
@@ -81,7 +86,9 @@ try {
   child = spawn(executable, ['/d', '/s', '/c', 'codex app-server'], { cwd: workspace, env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
   child.stderr.on('data', data => { const text = String(data); if (/access.*denied|os error 5|EPERM/i.test(text)) signals.add('access-denied'); if (/failed to|error/i.test(text)) signals.add('cli-error'); }); // Do not echo diagnostics.
   const pending = new Map(), completed = new Map(), finalMessages = new Map(); let next = 0;
-  child.once('exit', () => { for (const wait of pending.values()) wait.reject(new Error('Synthetic CLI exited.')); pending.clear(); });
+  rejectPending = error => { for (const wait of pending.values()) wait.reject(error); pending.clear(); };
+  child.once('exit', () => rejectPending(new Error('Synthetic CLI exited.')));
+  child.once('error', () => rejectPending(new Error('Synthetic CLI could not start.')));
   createInterface({ input: child.stdout }).on('line', line => {
     let message; try { message = JSON.parse(line); } catch { return; }
     if (message.id !== undefined && typeof message.method !== 'string') { const wait = pending.get(message.id); if (!wait) return; pending.delete(message.id); if (message.error) wait.reject(new Error(`Synthetic RPC failed: ${message.error.code}`)); else wait.resolve(message.result); }
@@ -89,8 +96,9 @@ try {
     if (message.method === 'item/completed' && message.params?.item?.type === 'agentMessage' && typeof message.params?.turnId === 'string' && typeof message.params.item.text === 'string') finalMessages.set(message.params.turnId, message.params.item.text);
     if (message.id !== undefined && typeof message.method === 'string') { serverRequests.push(message.method); child.stdin.write(`${JSON.stringify({ id: message.id, error: { code: -32003, message: 'Synthetic probe denies requests.' } })}\n`); }
   });
-  const send = (method, params) => new Promise((resolve, reject) => { const id = ++next; pending.set(id, { resolve, reject }); child.stdin.write(`${JSON.stringify({ id, method, params })}\n`); });
-  const deadline = new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error(`Synthetic App Server probe timed out at ${phase}; signals: ${[...signals].join(',') || 'none'}.`)), 50_000); timer.unref(); });
+  const send = (method, params) => new Promise((resolve, reject) => { if (cancelled) { reject(new Error('Synthetic probe cancelled.')); return; } const id = ++next; pending.set(id, { resolve, reject }); child.stdin.write(`${JSON.stringify({ id, method, params })}\n`); });
+  deadline = createProbeDeadline(50_000, () => { cancelled = true; const error = new Error(`Synthetic App Server probe timed out at ${phase}; signals: ${[...signals].join(',') || 'none'}.`); rejectPending(error); return error; });
+  const waitForTurn = turnId => waitForProbeTurn(completed, turnId, () => cancelled);
   const run = async () => {
     phase = 'initialize';
     await send('initialize', { clientInfo: { name: 'issue-tool-probe', version: '1.0.0' }, capabilities: { experimentalApi: true } });
@@ -146,13 +154,13 @@ try {
         const turn = await send('turn/start', { threadId: started.thread.id, input: [{ type: 'text', text: 'Synthetic issue text. Return an empty requirements array.', text_elements: [] }], sandboxPolicy: { type: 'readOnly', networkAccess: false }, approvalPolicy: 'never', environments: [], ...(test.disabledPluginIds ? { disabledPluginIds: test.disabledPluginIds } : {}) });
         assert.ok(turn?.turn?.id, 'No synthetic turn ID');
         phase = `${test.name}-turn-completion`;
-        while (!completed.has(turn.turn.id)) await new Promise(resolve => setTimeout(resolve, 25));
+        await waitForTurn(turn.turn.id);
         assert.ok(observations.length > previous, 'No synthetic provider request');
         let calls = 0; try { calls = (await readFile(marker, 'utf8')).trim().split('\n').filter(Boolean).length; } catch (error) { if (error.code !== 'ENOENT') throw error; }
         let pluginCalls = 0; try { pluginCalls = (await readFile(path.join(scratch, 'synthetic-plugin-calls.txt'), 'utf8')).trim().split('\n').filter(Boolean).length; } catch (error) { if (error.code !== 'ENOENT') throw error; }
         cases.push({ name: test.name, tools: observations[previous], context: contextObservations[previous], providerRequests: observations.length - previous, toolOutputs: toolOutputClasses.slice(previous), serverRequests: serverRequests.slice(previousServerRequests), turnStatus: completed.get(turn.turn.id), syntheticMcpCalls: calls, syntheticPluginCalls: pluginCalls });
       } catch (error) {
-        if (test.name === 'configured-mcp') throw error;
+        if (cancelled || test.name === 'configured-mcp') throw error;
         cases.push({ name: test.name, error: 'RPC_OR_PROBE_FAILED' });
       }
     }
@@ -194,7 +202,7 @@ try {
       assert.ok(!request.input[0].text.includes(segment.sourcePath));
       const started = await send('thread/start', { cwd: workspace, model: 'synthetic-model', sandbox: 'read-only', approvalPolicy: 'never', ephemeral: true, environments: [], config: { ...policy.config, 'features.plugins': false, 'features.hooks': false } });
       const turn = await send('turn/start', { threadId: started.thread.id, ...request, sandboxPolicy: { type: 'readOnly', networkAccess: false }, approvalPolicy: 'never', environments: [] });
-      while (!completed.has(turn.turn.id)) await new Promise(resolve => setTimeout(resolve, 25));
+      await waitForTurn(turn.turn.id);
       assert.equal(completed.get(turn.turn.id), 'completed');
       return finalMessages.get(turn.turn.id) || '';
     });
@@ -210,16 +218,29 @@ try {
     cases.push({ name: 'analysis-e2e', tools: observations.at(-1), context: contextObservations.at(-1), turnStatus: 'completed', providerRequests: caseRequests, toolOutputs: [], syntheticMcpCalls: finalMcpCalls, syntheticPluginCalls: finalPluginCalls });
     return { cli: version, provider: 'loopback-synthetic', environment: 'empty', inventory, cases };
   };
-  observations.result = await Promise.race([run(), deadline]);
+  observations.result = await Promise.race([run(), deadline.promise]);
 } finally {
-  if (child && child.exitCode === null) { const stopped = once(child, 'exit'); spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore', timeout: 5000 }); await Promise.race([stopped, new Promise(resolve => setTimeout(resolve, 5000))]); }
+  cancelled = true; deadline?.clear(); rejectPending(new Error('Synthetic probe ended.'));
+  let childStopped = !child, terminationResult = child ? 'unconfirmed' : 'not-started';
+  if (child && child.exitCode === null && child.signalCode === null && child.pid) {
+    const stopped = once(child, 'exit').then(() => true, () => false);
+    const killed = spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore', timeout: 5000 });
+    terminationResult = Number.isInteger(killed.status) ? `helper-exit-${killed.status}` : 'helper-unavailable-or-timeout';
+    childStopped = killed.status === 0 && await Promise.race([stopped, new Promise(resolve => setTimeout(() => resolve(false), 5000))]);
+  }
+  if (child && !childStopped) {
+    // Do not keep the diagnostic process alive indefinitely if the sandbox cannot
+    // confirm termination. The child and its scratch data remain untrusted.
+    child.stdin.destroy(); child.stdout.destroy(); child.stderr.destroy(); child.unref();
+  }
   fake.closeAllConnections();
-  await new Promise(resolve => fake.close(resolve));
+  if (fake.listening) await new Promise(resolve => fake.close(resolve));
   assert.equal((await lstat(scratch)).isSymbolicLink(), false);
   assert.equal((await realpath(scratch)).toLowerCase(), path.resolve(scratch).toLowerCase());
   assert.equal(path.dirname(await realpath(scratch)).toLowerCase(), (await realpath(parent)).toLowerCase());
   assert.ok(path.basename(scratch).startsWith('issue-tool-probe-'));
-  await rm(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
+  if (childStopped) await rm(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
+  else throw new Error(`Synthetic CLI termination was not confirmed at ${phase} (${terminationResult}); signals: ${[...signals].join(',') || 'none'}. Its isolated scratch directory was preserved.`);
 }
 const { cases, ...summary } = observations.result;
 console.log(JSON.stringify({ ...summary, cases: cases.map(item => ({ name: item.name, ...(item.tools ? { tools: item.tools.map(tool => tool.name), context: item.context, turnStatus: item.turnStatus, providerRequests: item.providerRequests, toolOutputs: item.toolOutputs, syntheticMcpCalls: item.syntheticMcpCalls, syntheticPluginCalls: item.syntheticPluginCalls } : { error: item.error }) })) }));

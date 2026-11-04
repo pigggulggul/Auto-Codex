@@ -1,5 +1,5 @@
 import { comparePlannedIssues, normalizeVersion } from "../../shared/issues/planning.js";
-import type { IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueFinding, IssueFilters, IssueRequirementView, IssueSummary, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage } from "../../shared/issues/view.js";
+import type { IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueFinding, IssueFilters, IssueRequirementView, IssueSummary, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage, RequirementDetail } from "../../shared/issues/view.js";
 import { IssueStore, IssueStoreError } from "./store.js";
 
 const PAGE_SIZE = 32;
@@ -7,10 +7,11 @@ const SEARCH_DOCUMENT_LIMIT = 8;
 const MAX_RESPONSE_BYTES = 240 * 1024;
 const invalidOffset = () => { throw new IssueStoreError("LIMIT_EXCEEDED", "이슈 목록 위치가 올바르지 않습니다."); };
 function offsetValue(offset: number): number { if (!Number.isSafeInteger(offset) || offset < 0) invalidOffset(); return offset; }
-function boundedPage<T>(values: T[], offset: number): Page<T> {
+function boundedPage<T>(values: T[], offset: number, reservedBytes = 512): Page<T> {
   offsetValue(offset);
   if (offset > values.length) invalidOffset();
-  const items: T[] = []; let size = 512;
+  if (reservedBytes > MAX_RESPONSE_BYTES) throw new IssueStoreError("LIMIT_EXCEEDED", "이 항목이 표시 크기 제한을 초과했습니다.");
+  const items: T[] = []; let size = reservedBytes;
   for (const value of values.slice(offset, offset + PAGE_SIZE)) {
     const bytes = Buffer.byteLength(JSON.stringify(value)) + 1;
     if (size + bytes > MAX_RESPONSE_BYTES) break;
@@ -53,11 +54,16 @@ export class IssueView {
     const { document } = await this.load(projectId, documentId, revision);
     const linked = new Set(document.issues.flatMap(issue => issue.requirementIds));
     const sources = new Map(document.sources.map(source => [source.id, source.name]));
+    const requirementTexts = new Map<string, string>(), issueTitles = new Map<string, string>();
+    const comparisonKey = (text: string) => text.normalize("NFC").trim().replace(/\s+/gu, " ").toLowerCase();
     const findings: IssueFinding[] = [];
     for (const requirement of [...document.requirements].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
       const provenance = { origin: requirement.origin, sourceName: requirement.sourceId ? sources.get(requirement.sourceId) ?? null : null, locator: requirement.locator ?? null };
       if (!linked.has(requirement.id)) findings.push({ code: "requirement-unlinked", entityId: requirement.id, title: requirement.text, provenance });
       if (!requirement.categoryId) findings.push({ code: "requirement-uncategorized", entityId: requirement.id, title: requirement.text, provenance });
+      const key = comparisonKey(requirement.text), relatedEntityId = requirementTexts.get(key);
+      if (key && relatedEntityId) findings.push({ code: "requirement-same-text", entityId: requirement.id, title: requirement.text, provenance, relatedEntityId });
+      else if (key) requirementTexts.set(key, requirement.id);
     }
     for (const issue of [...document.issues].sort(comparePlannedIssues)) {
       const add = (code: IssueFinding["code"]) => findings.push({ code, entityId: issue.id, title: issue.title, provenance: null });
@@ -66,8 +72,27 @@ export class IssueView {
       if (!issue.description.trim()) add("issue-missing-description");
       if (!issue.acceptanceCriteria.length) add("issue-missing-criteria");
       if (issue.status === "completed") add("issue-unverified-completion");
+      const key = comparisonKey(issue.title), relatedEntityId = issueTitles.get(key);
+      if (key && relatedEntityId) findings.push({ code: "issue-same-title", entityId: issue.id, title: issue.title, provenance: null, relatedEntityId });
+      else if (key) issueTitles.set(key, issue.id);
     }
     return { documentRevision: document.revision, issueCount: document.issues.length, requirementCount: document.requirements.length, linkedRequirementCount: document.requirements.filter(item => linked.has(item.id)).length, totalFindings: findings.length, findings: boundedPage(findings, offset) };
+  }
+  /** Requirement and linked issues are limited to the authorized document and fixed revision. */
+  async requirementDetail(projectId: string, documentId: string, revision: number, requirementId: string, offset: number): Promise<{ requirement: RequirementDetail; page: Page<IssueSummary> }> {
+    const { document, issues } = await this.load(projectId, documentId, revision);
+    const item = document.requirements.find(entry => entry.id === requirementId);
+    if (!item) throw new IssueStoreError("NOT_FOUND", "이 문서의 요구사항을 찾을 수 없습니다.");
+    const states = new Map(issues.map(issue => [issue.issueId, issue]));
+    const categories = new Map(document.categories.map(category => [category.id, category.title]));
+    const linked = document.issues.filter(issue => issue.requirementIds.includes(requirementId)).sort(comparePlannedIssues);
+    const requirement: RequirementDetail = { id: item.id, text: item.text, origin: item.origin, sourceName: item.sourceId ? document.sources.find(source => source.id === item.sourceId)?.name ?? null : null, locator: item.locator ?? null, category: item.categoryId ? categories.get(item.categoryId) ?? null : null, linkedIssueCount: linked.length };
+    const summaries = linked.map(issue => {
+      const state = states.get(issue.id);
+      if (!state) throw new IssueStoreError("STORAGE_FAILED", "연결된 이슈의 저장 상태를 확인할 수 없습니다.");
+      return { id: issue.id, title: issue.title, version: issue.version, category: issue.categoryId ? categories.get(issue.categoryId) ?? null : null, localStatus: state.localStatus, importedStatus: state.importedStatus, missingCriteria: issue.acceptanceCriteria.length === 0, unverifiedDependencies: issue.dependencyIds.length };
+    });
+    return { requirement, page: boundedPage(summaries, offset, 1024 + Buffer.byteLength(JSON.stringify(requirement))) };
   }
   async list(projectId: string, documentId: string, revision: number, offset: number, filters: IssueFilters = {}): Promise<Page<IssueSummary>> {
     const { document, issues } = await this.load(projectId, documentId, revision);

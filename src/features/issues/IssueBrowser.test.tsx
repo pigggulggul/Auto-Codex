@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { Children, isValidElement, type ReactNode } from "react";
 import { expect, it } from "vitest";
-import { IssueCategoryNavigation, IssueDiagnostics, IssueRow, ProjectIssueSearch } from "./IssueBrowser";
+import { IssueCategoryNavigation, IssueDiagnostics, IssueRow, ProjectIssueSearch, RequirementDetailPanel } from "./IssueBrowser";
 import { AnalysisSources } from "./AnalysisSources";
 import { IssueApi } from "./api";
 
@@ -27,6 +28,56 @@ it("labels diagnostic scope and escapes untrusted titles", () => {
   expect(html).toContain("원문 누락, 의미적 완전성, 실제 코드 동작은 확인하지 않았습니다.");
   expect(html).toContain("&lt;script&gt;unsafe&lt;/script&gt;"); expect(html).not.toContain("<script>");
   expect(html).toContain("완료 조건이 없는 이슈");
+});
+
+it("shows matching text as a review candidate with its comparison ID", () => {
+  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 2, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "issue-same-title", entityId: "issue-2", title: "같은 제목", provenance: null, relatedEntityId: "issue-1" }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenIssue={() => {}} />);
+  expect(html).toContain("제목이 같은 이슈 · 중복 여부 확인");
+  expect(html).toContain("비교 대상 ID: "); expect(html).toContain("issue-1");
+  expect(html).toContain("실제 중복인지는 확인이 필요합니다");
+  expect(html).toContain('aria-label="issue-2 이슈 상세 보기"'); expect(html).toContain('aria-label="issue-1 비교 이슈 상세 보기"');
+});
+
+it("disables issue navigation while loading and never treats requirement IDs as issues", () => {
+  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 1, requirementCount: 1, linkedRequirementCount: 0, totalFindings: 2, findings: { items: [{ code: "requirement-unlinked", entityId: "req-1", title: "요구사항", provenance: { origin: "user", sourceName: null, locator: null } }, { code: "issue-missing-criteria", entityId: "issue-1", title: "이슈", provenance: null }], nextOffset: null } }} revision={2} offset={0} history={[]} loading onPrevious={() => {}} onNext={() => {}} onOpenIssue={() => {}} />);
+  expect(html).toContain('disabled="" aria-label="issue-1 이슈 상세 보기"');
+  expect(html).not.toContain('aria-label="req-1 이슈 상세 보기"');
+});
+
+it("routes each diagnostic action to the corresponding issue ID", () => {
+  const opened: { id: string; button: HTMLButtonElement }[] = [];
+  const node = IssueDiagnostics({ report: { documentRevision: 1, issueCount: 2, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "issue-same-title", entityId: "issue-2", title: "이슈", provenance: null, relatedEntityId: "issue-1" }], nextOffset: null } }, revision: 2, offset: 0, history: [], loading: false, onPrevious: () => {}, onNext: () => {}, onOpenIssue: (id, button) => opened.push({ id, button }) });
+  const buttons: { label: string; click: (event: { currentTarget: HTMLButtonElement }) => void }[] = [];
+  const visit = (value: ReactNode): void => { Children.forEach(value, child => { if (!isValidElement<{ children?: ReactNode; "aria-label"?: string; onClick?: (event: { currentTarget: HTMLButtonElement }) => void }>(child)) return; if (child.type === "button" && child.props["aria-label"] && child.props.onClick) buttons.push({ label: child.props["aria-label"], click: child.props.onClick }); visit(child.props.children); }); };
+  visit(node);
+  const first = {} as HTMLButtonElement, second = {} as HTMLButtonElement;
+  buttons.find(button => button.label === "issue-2 이슈 상세 보기")!.click({ currentTarget: first });
+  buttons.find(button => button.label === "issue-1 비교 이슈 상세 보기")!.click({ currentTarget: second });
+  expect(opened).toEqual([{ id: "issue-2", button: first }, { id: "issue-1", button: second }]);
+});
+
+it("offers requirement and comparison detail actions with distinct accessible IDs", () => {
+  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 0, requirementCount: 2, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "requirement-same-text", entityId: "req-2", title: "요구사항", provenance: { origin: "source", sourceName: "자료", locator: "1절" }, relatedEntityId: "req-1" }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenRequirement={() => {}} />);
+  expect(html).toContain('aria-label="req-2 요구사항 상세 보기"'); expect(html).toContain('aria-label="req-1 비교 요구사항 상세 보기"');
+});
+
+it("routes a linked requirement issue to the selected issue and preserves its return target", () => {
+  const opened: { id: string; button: HTMLButtonElement }[] = [];
+  const issue = { id: "issue-1", title: "이슈", version: "1.0.0", category: null, localStatus: "ready" as const, importedStatus: "ready" as const, missingCriteria: false, unverifiedDependencies: 0 };
+  const node = RequirementDetailPanel({ requirement: { id: "req-1", text: "요구사항", category: null, origin: "user", sourceName: null, locator: null, linkedIssueCount: 1 }, page: { items: [issue], nextOffset: null }, offset: 0, history: [], loading: false, onBack: () => {}, onOpenIssue: (value, button) => opened.push({ id: value.id, button }), onPrevious: () => {}, onNext: () => {} });
+  const buttons: ((event: { currentTarget: HTMLButtonElement }) => void)[] = [];
+  const visit = (value: ReactNode): void => { Children.forEach(value, child => { if (!isValidElement<{ children?: ReactNode; onClick?: (event: { currentTarget: HTMLButtonElement }) => void }>(child)) return; if (child.type === "button" && child.props.onClick) buttons.push(child.props.onClick); visit(child.props.children); }); };
+  visit(node);
+  const target = {} as HTMLButtonElement; buttons[0]({ currentTarget: target });
+  expect(opened).toEqual([{ id: "issue-1", button: target }]);
+});
+
+it("shows the requirement origin, bounded issue page and honest imported status", () => {
+  const issue = { id: "issue-1", title: "<script>unsafe</script>", version: "1.0.0", category: null, localStatus: "needs_review" as const, importedStatus: "completed" as const, missingCriteria: false, unverifiedDependencies: 0 };
+  const html = renderToStaticMarkup(<RequirementDetailPanel requirement={{ id: "req-1", text: "<img src=x>", category: null, origin: "source", sourceName: "계획서", locator: "2절", linkedIssueCount: 33 }} page={{ items: [issue], nextOffset: 1 }} offset={0} history={[]} loading={false} onBack={() => {}} onOpenIssue={() => {}} onPrevious={() => {}} onNext={() => {}} />);
+  expect(html).toContain("&lt;img src=x&gt;"); expect(html).toContain("&lt;script&gt;unsafe&lt;/script&gt;");
+  expect(html).toContain("계획서"); expect(html).toContain("2절"); expect(html).toContain("다음 연결 이슈");
+  expect(html).toContain("로컬 검증 결과가 아닙니다"); expect(html).not.toContain("<script>");
 });
 
 it("offers optional input preparation without claiming analysis was run", () => {

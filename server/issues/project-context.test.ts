@@ -73,6 +73,15 @@ describe("bridge-owned issue project context", () => {
     await expect(result).rejects.toMatchObject({ code: "STALE_SELECTION" });
     expect(operations).toEqual(["project.lookup"]);
   });
+  it("binds requirement detail to the selected project and discards it if the view grant expires", async () => {
+    const waiting = deferred<IssueWorkerResult>(), started = deferred<void>(), calls: IssueWorkerRequest[] = []; let allowed = true;
+    const context = new IssueProjectContext(initial, { request: input => { calls.push(input); if (input.operation === "project.lookup") return Promise.resolve({ kind: "project.lookup", project }); started.resolve(); return waiting.promise; } });
+    const pending = context.view({ kind: "requirementDetail", documentId: "doc-1", expectedRevision: 1, requirementId: "req-1", offset: 0 }, () => allowed);
+    await started.promise;
+    expect(calls[1]).toEqual({ operation: "requirement.detail", projectId: project.id, documentId: "doc-1", expectedRevision: 1, requirementId: "req-1", offset: 0 });
+    allowed = false; waiting.resolve({ kind: "requirement.detail", requirement: { id: "req-1", text: "합성", origin: "user", sourceName: null, locator: null, category: null, linkedIssueCount: 0 }, page: { items: [], nextOffset: null } });
+    await expect(pending).rejects.toMatchObject({ code: "STALE_SELECTION" });
+  });
   it("preserves an unknown document import result after project selection changes", async () => {
     let selection = initial(); const importing = deferred<IssueWorkerResult>(), started = deferred<void>();
     const context = new IssueProjectContext(() => selection, { request: input => { if (input.operation === "project.lookup") return Promise.resolve({ kind: "project.lookup", project }); started.resolve(); return importing.promise; } });

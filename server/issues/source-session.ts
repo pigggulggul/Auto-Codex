@@ -99,6 +99,11 @@ export class IssueSourceSessions {
     if (!session || !snapshot || snapshot.summary.id !== snapshotId || snapshot.summary.projectRevision !== revision || snapshot.summary.sources.length !== session.items.length || session.items.some((source, index) => source.id !== snapshot.summary.sources[index]?.id || source.sha256 !== snapshot.summary.sources[index]?.sha256 || source.projectRevision !== revision)) return fail("STALE_INPUT", "분석 입력 또는 프로젝트 버전이 변경되었습니다. 다시 준비하세요.");
     return session.items.map(({ id, relativePath, bytes, sha256, projectRevision }) => ({ id, relativePath, bytes, sha256, projectRevision }));
   }
+  /** Server-only summary of the same validated snapshot; contains no source text. */
+  snapshotSummary(signal: AbortSignal, generation: number, projectPath: string, revision: number, snapshotId: string): AnalysisSnapshotSummary {
+    this.snapshotFiles(signal, generation, projectPath, revision, snapshotId);
+    return structuredClone(this.sessions.get(signal)!.snapshot!.summary);
+  }
   read(signal: AbortSignal, generation: number, projectPath: string, sourceId: string, offset: number): AnalysisSourceChunk {
     const source = this.current(signal, generation, projectPath)?.items.find(item => item.id === sourceId);
     if (!source) return fail("NOT_FOUND", "선택한 자료를 찾을 수 없습니다.");
