@@ -1,0 +1,121 @@
+import { validProjectIssueCursor, type IssueViewQuery, type IssueViewResult } from "../../../shared/issues/view";
+import type { AnalysisFreshness, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../../shared/issues/sources";
+
+type Action = "status" | "bind" | "import" | "export" | "authorizeView" | "view" | "releaseView" | "sourceAdd" | "sourceList" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck";
+type FreshnessRequest = { snapshotId: string; expectedRevision: number; expectedIds: string[] };
+export class IssueApiError extends Error {
+  constructor(readonly code: string, message: string) { super(message); }
+}
+export type IssueBindingResult = { bound: boolean; cancelled?: boolean; issueCount?: number; alreadyImported?: boolean; cleanupWarning?: boolean; authorized?: boolean; authorizedForMs?: number; view?: IssueViewResult; sources?: AnalysisSourceList; chunk?: AnalysisSourceChunk; snapshot?: AnalysisSnapshotSummary; freshness?: AnalysisFreshness };
+type Pending = { id: string; action: Action; sourceId?: string; offset?: number; snapshotRequest?: Pick<AnalysisSnapshotRequest, "expectedRevision" | "expectedSources"> & { hasInstruction: boolean }; freshnessRequest?: FreshnessRequest; promise: Promise<IssueBindingResult>; resolve: (result: IssueBindingResult) => void; reject: (error: IssueApiError) => void; timer: ReturnType<typeof setTimeout> };
+const uncertainMessage = (action: Action) => action === "import" ? "등록 결과를 확인하지 못했습니다. 같은 문서를 다시 선택하면 중복 등록 없이 확인할 수 있습니다." : action === "export" ? "저장 결과를 확인하지 못했습니다. 다시 시도하기 전에 선택한 위치를 확인하세요." : action === "sourceAdd" || action === "sourceRemove" ? "자료 선택 상태를 확인하지 못했습니다. 목록을 다시 확인하세요." : "연결 결과를 확인하지 못했습니다. 다시 연결한 뒤 상태를 확인하세요.";
+const mutating = (action: Action) => action === "bind" || action === "import" || action === "export" || action === "sourceAdd" || action === "sourceRemove";
+const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
+const nonnegative = (value: unknown) => Number.isSafeInteger(value) && Number(value) >= 0;
+const shortId = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
+const label = (value: unknown, max: number) => typeof value === "string" && value.length <= max;
+const sourceId = (value: unknown) => typeof value === "string" && /^source_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value);
+function validSources(value: unknown): value is AnalysisSourceList {
+  if (!record(value) || !Array.isArray(value.items) || value.items.length > 16 || !nonnegative(value.totalBytes) || Number(value.totalBytes) > 4 * 1024 * 1024) return false;
+  let total = 0; const ids = new Set<string>();
+  for (const item of value.items) {
+    if (!record(item) || !sourceId(item.id) || ids.has(String(item.id)) || !label(item.relativePath, 1024) || typeof item.relativePath !== "string" || !item.relativePath || item.relativePath.includes("\\") || item.relativePath.split("/").some(part => !part || part === "." || part === ".." || part.includes(":")) || !nonnegative(item.bytes) || Number(item.bytes) > 1024 * 1024 || typeof item.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(item.sha256) || !Number.isSafeInteger(item.projectRevision) || Number(item.projectRevision) < 1) return false;
+    total += Number(item.bytes); ids.add(String(item.id));
+  }
+  return total === value.totalBytes;
+}
+function validChunk(value: unknown, pending: Pending): value is AnalysisSourceChunk {
+  return record(value) && value.sourceId === pending.sourceId && value.offset === pending.offset && label(value.text, 8192) && typeof value.text === "string" && (value.nextOffset === null || nonnegative(value.nextOffset) && value.text.length > 0 && Number(value.nextOffset) === Number(value.offset) + value.text.length);
+}
+function validSnapshot(value: unknown, pending: Pending): value is AnalysisSnapshotSummary {
+  const request = pending.snapshotRequest;
+  if (!request || !record(value) || typeof value.id !== "string" || !/^snapshot_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value.id) || value.projectRevision !== request.expectedRevision || value.hasInstruction !== request.hasInstruction || value.processedSegments !== 0 || !nonnegative(value.totalSegments) || Number(value.totalSegments) > 2048 || !Array.isArray(value.sources) || value.sources.length !== request.expectedSources.length) return false;
+  let total = 0;
+  for (let index = 0; index < value.sources.length; index++) {
+    const item = value.sources[index], expected = request.expectedSources[index];
+    if (!record(item) || item.id !== expected.id || item.sha256 !== expected.sha256 || !label(item.relativePath, 1024) || typeof item.relativePath !== "string" || !item.relativePath || item.relativePath.includes("\\") || item.relativePath.split("/").some(part => !part || part === "." || part === ".." || part.includes(":")) || !nonnegative(item.segmentCount) || Number(item.segmentCount) > 2048) return false;
+    total += Number(item.segmentCount);
+  }
+  return total === value.totalSegments;
+}
+function validFreshness(value: unknown, pending: Pending): value is AnalysisFreshness {
+  const request = pending.freshnessRequest;
+  return Boolean(request && record(value) && value.snapshotId === request.snapshotId && value.projectRevision === request.expectedRevision && Array.isArray(value.files) && value.files.length === request.expectedIds.length && value.files.every((item, index) => record(item) && item.id === request.expectedIds[index] && typeof item.state === "string" && ["unchanged", "changed", "unavailable"].includes(item.state)));
+}
+const localStatus = (value: unknown) => ["ready", "retryable", "failed", "needs_review"].includes(String(value));
+const dependency = (value: unknown) => record(value) && shortId(value.id) && label(value.title, 255) && localStatus(value.localStatus) && (localStatus(value.importedStatus) || value.importedStatus === "completed");
+const summary = (value: unknown) => dependency(value) && record(value) && label(value.version, 1024) && (value.category === null || label(value.category, 255)) && typeof value.missingCriteria === "boolean" && nonnegative(value.unverifiedDependencies);
+function validView(value: unknown): value is IssueViewResult {
+  if (!record(value) || !Number.isSafeInteger(value.revision) || Number(value.revision) < 1) return false;
+  if (value.kind === "documents") return Array.isArray(value.documents) && value.documents.length <= 32 && value.documents.every(item => record(item) && shortId(item.id) && Number.isSafeInteger(item.documentRevision) && Number(item.documentRevision) > 0 && nonnegative(item.issueCount)) && (value.nextAfterId === null || shortId(value.nextAfterId));
+  if (value.kind === "diagnostics") {
+    const r = value.report;
+    return record(r) && Number.isSafeInteger(r.documentRevision) && Number(r.documentRevision) > 0 && nonnegative(r.issueCount) && nonnegative(r.requirementCount) && nonnegative(r.linkedRequirementCount) && Number(r.linkedRequirementCount) <= Number(r.requirementCount) && nonnegative(r.totalFindings) && record(r.findings) && Array.isArray(r.findings.items) && r.findings.items.length <= 32 && r.findings.items.length <= Number(r.totalFindings) && r.findings.items.every(item => record(item) && typeof item.code === "string" && ["requirement-unlinked", "requirement-uncategorized", "issue-unlinked", "issue-uncategorized", "issue-missing-description", "issue-missing-criteria", "issue-unverified-completion"].includes(item.code) && shortId(item.entityId) && (item.title === null || label(item.title, 32768)) && (item.code.startsWith("requirement-") ? record(item.provenance) && typeof item.provenance.origin === "string" && ["source", "user", "ai-proposal"].includes(item.provenance.origin) && (item.provenance.sourceName === null || label(item.provenance.sourceName, 255)) && (item.provenance.locator === null || label(item.provenance.locator, 1024)) : item.provenance === null)) && (r.findings.nextOffset === null || r.findings.items.length > 0 && nonnegative(r.findings.nextOffset) && Number(r.findings.nextOffset) < Number(r.totalFindings));
+  }
+  if (value.kind === "projectIssues") {
+    const p = value.page;
+    return record(p) && (p.documentId === null || shortId(p.documentId)) && Array.isArray(p.items) && p.items.length <= 32 && p.items.every(summary) && (p.documentId === null ? p.items.length === 0 : p.items.length > 0) && nonnegative(p.scannedDocuments) && Number(p.scannedDocuments) <= 8 && (p.items.length === 0 && p.nextCursor === null || Number(p.scannedDocuments) > 0) && (p.nextCursor === null || validProjectIssueCursor(p.nextCursor));
+  }
+  if (value.kind === "detail") return summary(value.issue) && record(value.issue) && label(value.issue.description, 32768) && nonnegative(value.issue.criteriaCount) && nonnegative(value.issue.requirementCount) && nonnegative(value.issue.dependencyCount);
+  if (!record(value.page) || !Array.isArray(value.page.items) || value.page.items.length > 32 || !(value.page.nextOffset === null || nonnegative(value.page.nextOffset))) return false;
+  if (value.kind === "issues") return value.page.items.every(summary);
+  if (value.kind === "categories") return value.page.items.every(item => record(item) && shortId(item.id) && label(item.title, 255) && typeof item.hasChildren === "boolean");
+  if (value.kind === "criteria") return value.page.items.every(item => label(item, 32768));
+  if (value.kind === "dependencies") return value.page.items.every(dependency);
+  if (value.kind === "requirements") return value.page.items.every(item => record(item) && shortId(item.id) && label(item.text, 32768) && ["source", "user", "ai-proposal"].includes(String(item.origin)) && (item.sourceName === null || label(item.sourceName, 255)) && (item.locator === null || label(item.locator, 1024)));
+  return false;
+}
+
+export class IssueApi {
+  private send: ((raw: string) => void) | null = null;
+  private pending: Pending | null = null;
+  connect(send: (raw: string) => void): void { this.send = send; }
+  disconnect(): void {
+    this.send = null;
+    const pending = this.pending; if (!pending) return;
+    clearTimeout(pending.timer); this.pending = null;
+    pending.reject(new IssueApiError(mutating(pending.action) ? "OUTCOME_UNKNOWN" : "DISCONNECTED", mutating(pending.action) ? uncertainMessage(pending.action) : "브리지 연결이 끊겼습니다."));
+  }
+  request(action: "export", query: { documentId: string; expectedRevision: number }): Promise<IssueBindingResult>;
+  request(action: "sourceRead", query: { sourceId: string; offset: number }): Promise<IssueBindingResult>;
+  request(action: "sourceRemove", query: { sourceId: string }): Promise<IssueBindingResult>;
+  request(action: "snapshotPrepare", query: AnalysisSnapshotRequest): Promise<IssueBindingResult>;
+  request(action: "snapshotCheck", query: FreshnessRequest): Promise<IssueBindingResult>;
+  request(action: Exclude<Action, "export" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck">, query?: IssueViewQuery): Promise<IssueBindingResult>;
+  request(action: Action, query?: IssueViewQuery | { documentId: string; expectedRevision: number } | { sourceId: string; offset?: number } | AnalysisSnapshotRequest | FreshnessRequest): Promise<IssueBindingResult> {
+    if (!this.send) return Promise.reject(new IssueApiError("DISCONNECTED", "브리지 연결이 끊겼습니다."));
+    if (this.pending) {
+      if (action === "status" && this.pending.action === "status") return this.pending.promise;
+      return Promise.reject(new IssueApiError("BUSY", "이전 이슈 요청이 끝날 때까지 기다려 주세요."));
+    }
+    const id = crypto.randomUUID();
+    let resolve!: Pending["resolve"], reject!: Pending["reject"];
+    const promise = new Promise<IssueBindingResult>((yes, no) => { resolve = yes; reject = no; });
+    const timer = setTimeout(() => {
+      if (this.pending?.id !== id) return;
+      this.pending = null;
+      reject(new IssueApiError(mutating(action) ? "OUTCOME_UNKNOWN" : "TIMEOUT", mutating(action) ? uncertainMessage(action) : "이슈 요청 시간이 초과되었습니다."));
+    }, action === "bind" || action === "import" || action === "export" || action === "sourceAdd" || action === "authorizeView" || action === "snapshotCheck" ? 360_000 : 45_000);
+    const sourceQuery = query && "sourceId" in query ? query : undefined;
+    const snapshotQuery = action === "snapshotPrepare" ? query as AnalysisSnapshotRequest : undefined;
+    const freshnessQuery = action === "snapshotCheck" ? query as FreshnessRequest : undefined;
+    this.pending = { id, action, ...(sourceQuery ? { sourceId: sourceQuery.sourceId, offset: sourceQuery.offset } : {}), ...(snapshotQuery ? { snapshotRequest: { expectedRevision: snapshotQuery.expectedRevision, expectedSources: snapshotQuery.expectedSources.map(item => ({ ...item })), hasInstruction: !!snapshotQuery.instruction.trim() } } : {}), ...(freshnessQuery ? { freshnessRequest: { ...freshnessQuery, expectedIds: [...freshnessQuery.expectedIds] } } : {}), promise, resolve, reject, timer };
+    const type = action === "import" ? "issues.document.import" : action === "export" ? "issues.document.export" : action === "authorizeView" ? "issues.view.authorize" : action === "view" ? "issues.view.query" : action === "releaseView" ? "issues.view.release" : action === "sourceAdd" ? "issues.sources.add" : action === "sourceList" ? "issues.sources.list" : action === "sourceRead" ? "issues.sources.read" : action === "sourceRemove" ? "issues.sources.remove" : action === "snapshotPrepare" ? "issues.analysis.prepare" : action === "snapshotCheck" ? "issues.analysis.check" : `issues.project.${action}`;
+    try { this.send(JSON.stringify({ type, v: 1, clientRequestId: id, ...(action === "view" ? { query } : {}), ...(action === "export" || action === "sourceRead" || action === "sourceRemove" || action === "snapshotPrepare" ? query : {}), ...(freshnessQuery ? { snapshotId: freshnessQuery.snapshotId, expectedRevision: freshnessQuery.expectedRevision } : {}) })); }
+    catch { clearTimeout(timer); this.pending = null; reject(new IssueApiError("DISCONNECTED", "브리지에 요청을 전달하지 못했습니다.")); }
+    return promise;
+  }
+  receive(input: unknown): boolean {
+    if (!input || typeof input !== "object" || Array.isArray(input) || !("type" in input) || input.type !== "issues.project.result") return false;
+    const message = input as Record<string, unknown>, pending = this.pending;
+    if (!pending || message.v !== 1 || message.clientRequestId !== pending.id || message.action !== pending.action) return true;
+    clearTimeout(pending.timer); this.pending = null;
+    if (message.ok === true && typeof message.bound === "boolean" && (message.cancelled === undefined || message.cancelled === true) && (pending.action !== "import" || message.bound && (message.cancelled === true || nonnegative(message.issueCount) && typeof message.alreadyImported === "boolean")) && (pending.action !== "export" || message.bound && (message.cancelled === true || typeof message.cleanupWarning === "boolean")) && (!["sourceAdd", "sourceList", "sourceRemove"].includes(pending.action) || message.bound && (pending.action === "sourceAdd" && message.cancelled === true || validSources(message.sources))) && (pending.action !== "sourceRead" || message.bound && validChunk(message.chunk, pending)) && (pending.action !== "snapshotPrepare" || message.bound && validSnapshot(message.snapshot, pending)) && (pending.action !== "snapshotCheck" || message.bound && validFreshness(message.freshness, pending)) && (pending.action !== "view" || validView(message.view)) && (pending.action !== "authorizeView" || typeof message.authorized === "boolean" && (!message.authorized || nonnegative(message.authorizedForMs) && Number(message.authorizedForMs) > 0 && Number(message.authorizedForMs) <= 15 * 60_000))) {
+      pending.resolve({ bound: message.bound, ...(message.cancelled === true ? { cancelled: true } : {}), ...(pending.action === "import" && message.cancelled !== true ? { issueCount: Number(message.issueCount), alreadyImported: message.alreadyImported as boolean } : {}), ...(pending.action === "export" && message.cancelled !== true ? { cleanupWarning: message.cleanupWarning as boolean } : {}), ...(["sourceAdd", "sourceList", "sourceRemove"].includes(pending.action) && message.cancelled !== true ? { sources: message.sources as AnalysisSourceList } : {}), ...(pending.action === "sourceRead" ? { chunk: message.chunk as AnalysisSourceChunk } : {}), ...(pending.action === "snapshotPrepare" ? { snapshot: message.snapshot as AnalysisSnapshotSummary } : {}), ...(pending.action === "snapshotCheck" ? { freshness: message.freshness as AnalysisFreshness } : {}), ...(pending.action === "view" ? { view: message.view as IssueViewResult } : {}), ...(pending.action === "authorizeView" ? { authorized: message.authorized as boolean, ...(message.authorized ? { authorizedForMs: Number(message.authorizedForMs) } : {}) } : {}) });
+    } else if (message.ok === false && message.error && typeof message.error === "object") {
+      const error = message.error as Record<string, unknown>;
+      pending.reject(new IssueApiError(typeof error.code === "string" ? error.code.slice(0, 64) : "INVALID_RESPONSE", error.code === "OUTCOME_UNKNOWN" ? uncertainMessage(pending.action) : typeof error.message === "string" ? error.message.slice(0, 200) : "이슈 응답을 확인할 수 없습니다."));
+    } else pending.reject(new IssueApiError(mutating(pending.action) ? "OUTCOME_UNKNOWN" : "INVALID_RESPONSE", mutating(pending.action) ? uncertainMessage(pending.action) : "이슈 응답을 확인할 수 없습니다."));
+    return true;
+  }
+}

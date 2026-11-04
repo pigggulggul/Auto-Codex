@@ -223,6 +223,8 @@ export type BridgeSnapshot = {
   appServerReady: boolean;
   projectPath: string | null;
   workspaceMode: WorkspaceMode;
+  /** Presentation invalidation only; never an authorization credential. */
+  projectSelectionGeneration: number;
   researchNetworkAccess: boolean;
   threadId: string | null;
   turnId: string | null;

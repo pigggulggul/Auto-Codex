@@ -9,6 +9,7 @@ import {sha256} from './resources.js';
 import {InputStaging} from './staging.js';
 import {generationStartRule} from './execution.js';
 import {AtelierExecutionRuntime} from './execution-runtime.js';
+import {IssueWriteAdmission} from '../issue-write-admission.js';
 import type {AtelierClient} from './client.js';
 
 async function fixture(){
@@ -40,6 +41,15 @@ it('stages only snapshot-owned bytes and durable InputManifest without changing 
     const again=await t.service.execution.prepare(request,t.context);expect(again.reused).toBe(true);expect(again.generation.id).toBe(g.id);
     await expect(t.service.execution.prepare({...request,executionMode:'team'},t.context)).rejects.toMatchObject({code:'IDEMPOTENCY_CONFLICT'});
   }finally{await t.close();}
+});
+it('does not prepare or dispatch generation while an issue export holds admission',async()=>{
+ const t=await fixture();try{
+  const admission=new IssueWriteAdmission(),release=admission.tryAcquire(()=>false)!;let prepared=false;
+  const storage={executionCall:async(method:string)=>{if(method==='lookup')return {};prepared=true;return {};}} as unknown as AtelierClient;
+  const runtime=new AtelierExecutionRuntime(storage,{busy:()=>admission.busy,context:async()=>t.context,start:async()=>{prepared=true;},interrupt:async()=>{},stop:async()=>{},flush:async()=>{},emit:()=>{}});
+  const raw=JSON.stringify({type:'atelier.generation.start',v:1,clientRequestId:randomUUID(),payload:t.request});
+  expect(await runtime.request(raw)).toMatchObject({ok:false,error:{code:'BUSY'}});expect(prepared).toBe(false);expect(runtime.busy).toBe(false);release();
+ }finally{await t.close();}
 });
 it('history failure never dispatches a turn; uncertain termination retains the shared admission lock',async()=>{
  const t=await fixture();try{

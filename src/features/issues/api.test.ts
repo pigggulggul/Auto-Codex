@@ -1,0 +1,135 @@
+import { describe, expect, it } from "vitest";
+import { IssueApi } from "./api";
+
+describe("issue project transport", () => {
+  it("correlates responses and never sends a project path or permissions", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = [];
+    api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const pending = api.request("status");
+    expect(api.request("status")).toBe(pending);
+    expect(Object.keys(sent[0]).sort()).toEqual(["clientRequestId", "type", "v"]);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: "foreign", action: "status", ok: true, bound: true });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "status", ok: true, bound: false });
+    expect(await pending).toEqual({ bound: false }); api.disconnect();
+  });
+  it("reports uncertain binding on disconnect and never retries automatically", async () => {
+    const api = new IssueApi(), sent: string[] = []; api.connect(raw => sent.push(raw));
+    const pending = api.request("bind"); api.disconnect();
+    await expect(pending).rejects.toMatchObject({ code: "OUTCOME_UNKNOWN" });
+    api.connect(raw => sent.push(raw)); expect(sent).toHaveLength(1); api.disconnect();
+  });
+  it("preserves picker cancellation and rejects overlapping mutations", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const pending = api.request("bind");
+    await expect(api.request("bind")).rejects.toMatchObject({ code: "BUSY" });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "bind", ok: true, bound: false, cancelled: true });
+    expect(await pending).toEqual({ bound: false, cancelled: true }); api.disconnect();
+  });
+  it("sends no path or contents for native document selection and checks the import receipt", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const pending = api.request("import"); expect(sent[0].type).toBe("issues.document.import");
+    expect(Object.keys(sent[0]).sort()).toEqual(["clientRequestId", "type", "v"]);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "import", ok: true, bound: true, issueCount: 4, alreadyImported: false });
+    expect(await pending).toEqual({ bound: true, issueCount: 4, alreadyImported: false });
+    const uncertain = api.request("import"); api.disconnect(); await expect(uncertain).rejects.toMatchObject({ code: "OUTCOME_UNKNOWN" });
+  });
+  it("accepts bounded issue views only for the correlated request", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const pending = api.request("view", { kind: "issues", documentId: "doc-1", expectedRevision: 2, offset: 0 });
+    expect(sent[0].type).toBe("issues.view.query");
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "issues", revision: 2, page: { items: [{ id: "issue-1", title: "합성", version: "1.2.0", category: null, localStatus: "needs_review", importedStatus: "completed", missingCriteria: false, unverifiedDependencies: 0 }], nextOffset: null } } });
+    expect((await pending).view?.kind).toBe("issues");
+    const invalid = api.request("view", { kind: "documents" });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "documents", revision: 2, documents: "invalid", nextAfterId: null } });
+    await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("requires an explicit bounded lifetime for an issue view grant", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const pending = api.request("authorizeView");
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "authorizeView", ok: true, bound: true, authorized: true, authorizedForMs: 900000 });
+    expect(await pending).toEqual({ bound: true, authorized: true, authorizedForMs: 900000 });
+    const invalid = api.request("authorizeView");
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "authorizeView", ok: true, bound: true, authorized: true, authorizedForMs: 900001 });
+    await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("rejects issue summaries that omit prerequisite information", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const pending = api.request("view", { kind: "issues", documentId: "doc-1", expectedRevision: 2, offset: 0 });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "issues", revision: 2, page: { items: [{ id: "issue-1", title: "합성", version: "1.0.0", category: null, localStatus: "ready", importedStatus: "ready" }], nextOffset: null } } });
+    await expect(pending).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("sends only document identity and revision for a native save and treats disconnect as uncertain", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const pending = api.request("export", { documentId: "doc-1", expectedRevision: 2 });
+    expect(sent[0]).toMatchObject({ type: "issues.document.export", documentId: "doc-1", expectedRevision: 2 });
+    expect(Object.keys(sent[0]).sort()).toEqual(["clientRequestId", "documentId", "expectedRevision", "type", "v"]);
+    api.disconnect(); await expect(pending).rejects.toMatchObject({ code: "OUTCOME_UNKNOWN" });
+  });
+  it("validates the document diagnostic scope and result counts", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const pending = api.request("view", { kind: "diagnostics", documentId: "doc-1", expectedRevision: 2, offset: 0 });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 1, requirementCount: 1, linkedRequirementCount: 1, totalFindings: 1, findings: { items: [{ code: "issue-unlinked", entityId: "i-1", title: "예시", provenance: null }], nextOffset: null } } } });
+    expect((await pending).view?.kind).toBe("diagnostics");
+    const invalid = api.request("view", { kind: "diagnostics", documentId: "doc-1", expectedRevision: 2, offset: 0 });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 1, requirementCount: 0, linkedRequirementCount: 1, totalFindings: 0, findings: { items: [], nextOffset: null } } } });
+    await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("accepts only bounded category pages with explicit child indicators", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "categories" as const, documentId: "doc-1", expectedRevision: 2, parentId: null, offset: 0 };
+    const pending = api.request("view", query);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "categories", revision: 2, page: { items: [{ id: "cat-1", title: "기능", hasChildren: true }], nextOffset: null } } });
+    expect((await pending).view?.kind).toBe("categories");
+    const invalid = api.request("view", query);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "categories", revision: 2, page: { items: [{ id: "cat-1", title: "기능", hasChildren: "yes" }], nextOffset: null } } });
+    await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("checks freshness using only a snapshot ID and validates each returned source", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const snapshotId = "snapshot_12345678-1234-4123-8123-123456789abc", sourceId = "source_12345678-1234-4123-8123-123456789abc";
+    const query = { snapshotId, expectedRevision: 2, expectedIds: [sourceId] };
+    const pending = api.request("snapshotCheck", query);
+    expect(sent[0]).toMatchObject({ type: "issues.analysis.check", snapshotId, expectedRevision: 2 }); expect(sent[0]).not.toHaveProperty("expectedIds");
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "snapshotCheck", ok: true, bound: true, freshness: { snapshotId, projectRevision: 2, files: [{ id: sourceId, state: "changed" }] } });
+    expect((await pending).freshness?.files[0].state).toBe("changed");
+    const invalid = api.request("snapshotCheck", query);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "snapshotCheck", ok: true, bound: true, freshness: { snapshotId, projectRevision: 2, files: [{ id: sourceId, state: ["unchanged"] }] } });
+    await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("requires a matching revision and complete unprocessed snapshot summary", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const sourceId = "source_12345678-1234-4123-8123-123456789abc", sha256 = "a".repeat(64);
+    const request = { expectedRevision: 2, expectedSources: [{ id: sourceId, sha256 }], instruction: "synthetic" };
+    const pending = api.request("snapshotPrepare", request);
+    expect(sent[0]).toMatchObject({ type: "issues.analysis.prepare", ...request });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "snapshotPrepare", ok: true, bound: true, snapshot: { id: "snapshot_12345678-1234-4123-8123-123456789abc", projectRevision: 2, sources: [{ id: sourceId, sha256, relativePath: "plan.md", segmentCount: 1 }], totalSegments: 1, processedSegments: 0, hasInstruction: true } });
+    expect((await pending).snapshot?.processedSegments).toBe(0);
+    const invalid = api.request("snapshotPrepare", request);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "snapshotPrepare", ok: true, bound: true, snapshot: { id: "snapshot_12345678-1234-4123-8123-123456789abc", projectRevision: 3, sources: [{ id: sourceId, sha256, relativePath: "plan.md", segmentCount: 1 }], totalSegments: 1, processedSegments: 1, hasInstruction: true } });
+    await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("sends source selection without paths and validates preview identity", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const sourceId = "source_12345678-1234-4123-8123-123456789abc";
+    const added = api.request("sourceAdd");
+    expect(Object.keys(sent[0]).sort()).toEqual(["clientRequestId", "type", "v"]);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "sourceAdd", ok: true, bound: true, sources: { items: [{ id: sourceId, relativePath: "plan.md", bytes: 4, sha256: "a".repeat(64), projectRevision: 1 }], totalBytes: 4 } });
+    expect((await added).sources?.items[0].id).toBe(sourceId);
+    const read = api.request("sourceRead", { sourceId, offset: 0 });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "sourceRead", ok: true, bound: true, chunk: { sourceId: "source_other", offset: 0, text: "data", nextOffset: null } });
+    await expect(read).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const list = api.request("sourceList");
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[2].clientRequestId, action: "sourceList", ok: true, bound: true, sources: { items: [{ id: sourceId, relativePath: "../secret.txt", bytes: 4, sha256: "a".repeat(64), projectRevision: 1 }], totalBytes: 4 } });
+    await expect(list).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("validates bounded project search cursors and partial empty results", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "projectIssues" as const, expectedRevision: 2, cursor: { issueOffset: 0 }, filters: { search: "합성" } };
+    const pending = api.request("view", query);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "projectIssues", revision: 2, page: { documentId: null, items: [], scannedDocuments: 8, nextCursor: { afterId: "doc-8", issueOffset: 0 } } } });
+    expect((await pending).view?.kind).toBe("projectIssues");
+    const invalid = api.request("view", query);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "projectIssues", revision: 2, page: { documentId: null, items: [], scannedDocuments: 9, nextCursor: { afterId: "../outside", issueOffset: 0 } } } });
+    await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+});

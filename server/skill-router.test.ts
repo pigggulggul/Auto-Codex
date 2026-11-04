@@ -102,4 +102,10 @@ describe("routeSkill", () => {
     expect(routeSkill("프론트엔드 stylesheet 수정", [skills[1], frontend]).skill?.path).toBe("frontend");
     expect(routeSkill("프론트엔드 스타일시트 수정", [skills[1], frontend]).skill?.path).toBe("frontend");
   });
+
+  it("keeps explicit image and spreadsheet work ahead of product UI design", () => {
+    const design = { name: "product-ui-ux-design", description: "Design product UI and UX", path: "design", enabled: true };
+    expect(routeSkill("캐릭터 이미지를 디자인해줘", [design, ...skills]).skill?.name).toBe("imagegen");
+    expect(routeSkill("엑셀 스프레드시트 디자인을 개선해줘", [design, ...skills]).skill?.name).toBe("spreadsheets");
+  });
 });

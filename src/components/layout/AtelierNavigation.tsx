@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import {TABS} from '../../../shared/atelier/guide';
 import {TAB_LABELS} from '../../features/atelier/guidance';
 
-export type AtelierPage = "home" | "work" | "results" | "operations" | "pixel" | "settings" | "design";
+export type AtelierPage = "home" | "work" | "results" | "operations" | "pixel" | "settings" | "design" | "issues";
 
 export const DESIGN_STEPS = TABS.map(([id,,icon])=>[icon,TAB_LABELS[id]] as const);
 
@@ -15,6 +15,7 @@ export const PAGE_INFO: Record<AtelierPage, { title: string; english: string; de
   pixel: { title: "픽셀 화면", english: "A small world, real activity.", description: "역할별 캐릭터와 픽셀 공간에서 실제 작업 흐름을 살펴보세요." },
   settings: { title: "작업실 설정", english: "A workspace that fits you.", description: "프로젝트·모델·스킬을 설정하고 화면 표시 방식을 선택하세요." },
   design: { title: "디자인 작업실", english: "Intention before decoration.", description: "아이디어를 정리하고, 원하는 분위기와 화면을 하나씩 구체화해요." },
+  issues: { title: "이슈 처리", english: "From requirements to verified work.", description: "프로젝트의 요구사항과 이슈를 살펴보고 순서에 따라 처리합니다." },
 };
 
 const MAIN_PAGES = [

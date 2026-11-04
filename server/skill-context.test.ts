@@ -37,4 +37,9 @@ describe("conversation-aware skill routing", () => {
     expect(routeContextualSkill("프론트엔드 구현", skills, options).skill?.name).toBe("frontend-feature-delivery");
     expect(routeContextualSkill("검증", skills, { ...options, expectedRole: "qa" }).skill).toBeNull();
   });
+
+  it("does not reintroduce a skill excluded in the current request from prior conversation context", () => {
+    const options = { currentRequest: "모바일 앱 스킬을 쓰지 말고 이 화면을 고쳐줘", previousRequest: "모바일 앱 구현", expectedRole: "builder" as const };
+    expect(routeContextualSkill("모바일 앱 화면 구현", skills, options).skill?.name).not.toBe("mobile-app-delivery");
+  });
 });

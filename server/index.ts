@@ -31,6 +31,7 @@ import {
   type ProtocolServerRequest,
 } from "./codex-app-server.js";
 import { priorUserRequest, routeContextualSkill } from "./skill-context.js";
+import { isSkillExcluded } from "./skill-routing-intent.js";
 import { projectSkills, researchSkills } from "./skill-discovery.js";
 import { assignTaskSkills } from "./task-skills.js";
 import { pickProjectDirectory } from "./folder-picker.js";
@@ -51,6 +52,14 @@ import { approvalResponse, type ApprovalProtocol } from "./approval-response.js"
 import { parseTokenUsage } from "./token-usage.js";
 import { ConversationStore, type ConversationRecord } from "./conversation-store.js";
 import { AtelierClient } from "./atelier/client.js";
+import { IssueWorkerClient } from "./issues/worker-client.js";
+import { IssueProjectContext } from "./issues/project-context.js";
+import { IssueBridgeApi } from "./issues/bridge-api.js";
+import { pickAnalysisSource, pickIssueDocument, pickIssueExportPath } from "./issues/document-picker.js";
+import { readSelectedIssueDocument } from "./issues/selected-document.js";
+import { readAnalysisSource } from "./issues/analysis-source.js";
+import { createIssueExport } from "./issues/export-file.js";
+import { IssueWriteAdmission } from "./issue-write-admission.js";
 import {AtelierProposalRuntime} from "./atelier/proposal-runtime.js";
 import {AtelierExecutionRuntime} from "./atelier/execution-runtime.js";
 import {check as atelierCheck} from "./atelier/errors.js";
@@ -122,6 +131,14 @@ const taskAssistantText = new Map<string, string>();
 let appServerReady = false;
 let projectPath: string | null = null;
 let workspaceMode: WorkspaceMode = "project";
+let issueSelectionGeneration = 0;
+let clearIssueSources = () => {};
+function setWorkspaceSelection(mode: WorkspaceMode, selectedPath: string | null): void {
+  clearIssueSources();
+  workspaceMode = mode;
+  projectPath = selectedPath;
+  issueSelectionGeneration++;
+}
 let researchNetworkAccess = false;
 let skills: SkillInfo[] = [];
 let models: ModelInfo[] = [];
@@ -215,6 +232,7 @@ function snapshot(connected = true): BridgeSnapshot {
     appServerReady,
     projectPath,
     workspaceMode,
+    projectSelectionGeneration: issueSelectionGeneration,
     researchNetworkAccess,
     threadId,
     turnId,
@@ -383,8 +401,7 @@ async function selectConversation(conversationId: string): Promise<void> {
   }
   syncActiveConversation();
   activeConversationId = conversationId;
-  projectPath = restoredPath;
-  workspaceMode = conversation.workspaceMode;
+  setWorkspaceSelection(conversation.workspaceMode, restoredPath);
   researchNetworkAccess = false;
   projectTrust = restoredPath ? await readProjectTrust(restoredPath) : "untrusted";
   selectedSkill = null;
@@ -580,8 +597,7 @@ async function selectProject(inputPath: string): Promise<void> {
   if (turnId || runIsActive()) throw new Error("진행 중인 작업을 중단한 뒤 프로젝트를 바꿔주세요.");
   const resolved = await validateProject(inputPath);
   syncActiveConversation();
-  projectPath = resolved;
-  workspaceMode = "project";
+  setWorkspaceSelection("project", resolved);
   projectTrust = await readProjectTrust(resolved);
   restoreWorkspaceConversation();
   selectedSkill = null;
@@ -597,12 +613,11 @@ async function setWorkspaceMode(mode: WorkspaceMode): Promise<void> {
   if (turnId || runIsActive()) throw new Error("진행 중인 작업을 중단한 뒤 사용 모드를 바꿔주세요.");
   if (mode === workspaceMode) return;
   syncActiveConversation();
-  workspaceMode = mode;
+  setWorkspaceSelection(mode, mode === "research" ? null : projectPath);
   selectedSkill = null;
   activeRole = "general";
   skills = [];
   if (mode === "research") {
-    projectPath = null;
     projectTrust = "untrusted";
     researchNetworkAccess = false;
     restoreWorkspaceConversation();
@@ -951,12 +966,17 @@ async function startTeamRun(prompt: string): Promise<void> {
 }
 
 async function startTurn(message: Extract<ClientMessage, { type: "turn.start" }>, designExecution=false): Promise<void> {
+  if (issueWriteAdmission.busy) throw new Error("이슈 문서를 저장하는 동안에는 작업을 시작할 수 없습니다. 저장이 끝난 뒤 다시 시도하세요.");
   if(executionRuntime.busy&&!designExecution)throw new Error('Atelier generation is active; finish or interrupt it first.');
   if (proposalRuntime.busy) throw new Error("Atelier proposal is active; finish or interrupt it first.");
   if (workspaceMode === "project" && !projectPath) throw new Error("프로젝트 모드에서는 먼저 프로젝트 폴더를 선택하세요.");
   if (turnId || runIsActive()) throw new Error("이미 작업이 진행 중입니다.");
   const prompt = message.prompt.trim();
   if (!prompt) throw new Error("Codex에 전달할 업무를 입력하세요.");
+  if (message.skillMode === "manual" && message.skillPath) {
+    const requested = skills.find(skill => skill.path === message.skillPath && skill.enabled);
+    if (requested && isSkillExcluded(prompt, requested, skills)) throw new Error("선택한 스킬이 요청의 사용 금지 조건과 충돌합니다. 스킬 선택 또는 요청을 변경하세요.");
+  }
   if (projectPath) await validateProject(projectPath);
   await ensureAppServer();
   if (message.model && models.length > 0 && !models.some((candidate) => candidate.model === message.model)) {
@@ -1562,13 +1582,14 @@ let clientQueue: Promise<void> = Promise.resolve();
 let queuedTurnStarts = 0;
 let queuedClientOperations = 0;
 let interruptQueuedStarts = false;
+const issueWriteAdmission = new IssueWriteAdmission();
 const proposalRuntime=new AtelierProposalRuntime(appServer,atelier,{
   cwd:()=>validateProject(ROOT),ensure:ensureAppServer,models:()=>models,
-  busy:()=>queuedTurnStarts>0||executionRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
+  busy:()=>issueWriteAdmission.busy||queuedTurnStarts>0||executionRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
   emit:event=>{for(const socket of sockets)if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(event));}
 });
 const executionRuntime=new AtelierExecutionRuntime(atelier,{
-  busy:()=>queuedClientOperations>0||proposalRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
+  busy:()=>issueWriteAdmission.busy||queuedClientOperations>0||proposalRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
   context:async b=>{
     atelierCheck(workspaceMode==='project'&&projectPath,'제작에는 선택한 실제 프로젝트 폴더가 필요합니다.','WORKSPACE_INVALID');
     const workspacePath=await validateProject(projectPath);
@@ -1588,6 +1609,31 @@ const executionRuntime=new AtelierExecutionRuntime(atelier,{
   flush:async()=>{syncActiveConversation();if(!historyWritable)throw new Error('History is read only');await saveConversations();},
   emit:event=>{for(const socket of sockets)if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(event));}
 });
+let issueWorker: IssueWorkerClient | null = null;
+let issueProjectContext: IssueProjectContext | null = null;
+const issueSelection = () => ({ workspaceMode, projectPath, generation: issueSelectionGeneration });
+const issueApi = new IssueBridgeApi({
+  selection: issueSelection,
+  context: () => {
+    if (!issueProjectContext) {
+      issueWorker = new IssueWorkerClient(ROOT);
+      issueProjectContext = new IssueProjectContext(issueSelection, issueWorker);
+    }
+    return issueProjectContext;
+  },
+  pick: signal => pickProjectDirectory("issues-bind", signal),
+  pickView: signal => pickProjectDirectory("issues-view", signal),
+  pickDocument: pickIssueDocument,
+  pickExport: pickIssueExportPath,
+  pickSource: pickAnalysisSource,
+  readSource: readAnalysisSource,
+  readDocument: readSelectedIssueDocument,
+  writeExport: createIssueExport,
+  tryAcquireWrite: () => issueWriteAdmission.tryAcquire(() => queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
+  canonical: validateProject,
+  busy: () => queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0,
+});
+clearIssueSources = () => issueApi.clearSources();
 httpServer.on("upgrade", (request, socket, head) => {
   if (request.url !== "/ws" || !isAllowedOrigin(request)) {
     socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
@@ -1597,12 +1643,15 @@ httpServer.on("upgrade", (request, socket, head) => {
   wsServer.handleUpgrade(request, socket, head, (webSocket) => wsServer.emit("connection", webSocket, request));
 });
 
-wsServer.on("connection", (socket) => {
+wsServer.on("connection", (socket, request) => {
   if (sockets.size >= 32) { socket.close(1013, "Local connection limit"); return; }
   const atelierOwner = randomUUID();
   let atelierDownloadPaused = false;
   let priorityTokens = 10;
   let priorityAt = Date.now();
+  const issueUiOrigin = typeof request.headers.origin === "string" && isAllowedOrigin(request);
+  const issueAbort = new AbortController();
+  let issueBusy = false, issueTokens = 16, issueAt = Date.now();
   sockets.add(socket);
   send(socket, { type: "bridge.state", snapshot: snapshot(true) });
   send(socket, { type: "conversation.state", state: conversationState() });
@@ -1627,6 +1676,20 @@ wsServer.on("connection", (socket) => {
     const raw = data.toString();
     let type = "";
     try { const input: unknown = JSON.parse(raw); if (input && typeof input === "object" && "type" in input && typeof input.type === "string") type = input.type; } catch { /* Existing parser reports malformed legacy input. */ }
+    if (type.startsWith("issues.")) {
+      issueTokens = Math.min(16, issueTokens + (Date.now() - issueAt) / 250); issueAt = Date.now();
+      if (issueBusy || issueTokens < 1) {
+        let clientRequestId = ""; try { const input = JSON.parse(raw) as {clientRequestId?:unknown}; if (typeof input.clientRequestId === "string") clientRequestId = input.clientRequestId.slice(0,64); } catch { /* Invalid message. */ }
+        const action = type === "issues.project.bind" ? "bind" : type === "issues.document.import" ? "import" : type === "issues.document.export" ? "export" : type === "issues.view.authorize" ? "authorizeView" : type === "issues.view.query" ? "view" : type === "issues.view.release" ? "releaseView" : type === "issues.sources.add" ? "sourceAdd" : type === "issues.sources.list" ? "sourceList" : type === "issues.sources.read" ? "sourceRead" : type === "issues.sources.remove" ? "sourceRemove" : type === "issues.analysis.prepare" ? "snapshotPrepare" : type === "issues.analysis.check" ? "snapshotCheck" : "status";
+        socket.send(JSON.stringify({type:"issues.project.result",v:1,clientRequestId,action,ok:false,error:{code:"BUSY",message:"이전 이슈 요청을 기다린 뒤 다시 시도하세요."}})); return;
+      }
+      issueTokens--; issueBusy = true;
+      void issueApi.handle(raw, issueUiOrigin, () => socket.readyState === WebSocket.OPEN, issueAbort.signal)
+        .then(reply => { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(reply)); })
+        .catch(() => { /* A disconnected socket cannot receive a response. */ })
+        .finally(() => { issueBusy = false; });
+      return;
+    }
     if (type.startsWith("atelier.")) {
       if(type==='atelier.generation.interrupt'){
         priorityTokens=Math.min(10,priorityTokens+(Date.now()-priorityAt)/100);priorityAt=Date.now();
@@ -1660,6 +1723,14 @@ wsServer.on("connection", (socket) => {
       void handleClientMessage(socket, raw).catch((error) => send(socket, {type:"error",message:errorMessage(error),recoverable:true}));
       return;
     }
+    if (issueWriteAdmission.busy) {
+      const message = "이슈 문서를 저장하는 동안에는 이 작업을 시작할 수 없습니다. 저장이 끝난 뒤 다시 시도하세요.";
+      if (type === "conversation.rename" || type === "conversation.delete") {
+        let clientRequestId = ""; try { const input = JSON.parse(raw) as { clientRequestId?: unknown }; if (typeof input.clientRequestId === "string") clientRequestId = input.clientRequestId.slice(0, 64); } catch { /* Existing parser handles invalid input. */ }
+        socket.send(JSON.stringify({ type: `${type}.result`, clientRequestId, ok: false, error: message }));
+      } else send(socket, { type: "error", message, recoverable: true });
+      return;
+    }
     if (type === "turn.start") queuedTurnStarts++;
     queuedClientOperations++;
     clientQueue = clientQueue.then(async () => {
@@ -1680,8 +1751,8 @@ wsServer.on("connection", (socket) => {
       broadcastConversationState();
     });
   });
-  socket.on("close", () => { sockets.delete(socket); void atelier.disconnect(atelierOwner).catch(() => {}); });
-  socket.on("error", () => sockets.delete(socket));
+  socket.on("close", () => { issueAbort.abort(); sockets.delete(socket); void atelier.disconnect(atelierOwner).catch(() => {}); });
+  socket.on("error", () => { issueAbort.abort(); sockets.delete(socket); });
 });
 
 try {
@@ -1691,15 +1762,14 @@ try {
     for (const conversation of archive.conversations) conversations.set(conversation.id, conversation);
     activeConversationId = archive.activeConversationId;
     const restored = activeConversation();
-    projectPath = restored.projectPath;
-    workspaceMode = restored.workspaceMode;
+    setWorkspaceSelection(restored.workspaceMode, restored.projectPath);
     restoreConversationRuntime(restored);
     if (projectPath) {
       try {
         await validateProject(projectPath);
         projectTrust = await readProjectTrust(projectPath);
       } catch {
-        projectPath = null;
+        setWorkspaceSelection(workspaceMode, null);
         historyError = "이전 프로젝트 폴더를 찾을 수 없습니다. 폴더를 다시 연결하세요. 저장된 기록은 유지됩니다.";
       }
     }
@@ -1748,6 +1818,7 @@ async function shutdown(): Promise<void> {
   }
   for (const socket of sockets) socket.close(1001, "Server shutting down");
   appServer.stop();
+  await issueWorker?.close().catch(() => {});
   await atelier.close().catch(() => {});
   httpServer.close(() => process.exit(0));
 }

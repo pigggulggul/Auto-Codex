@@ -33,19 +33,22 @@ try {
 }
 `;
 
-export async function pickProjectDirectory(): Promise<string | null> {
+export async function pickProjectDirectory(purpose: "project" | "issues-bind" | "issues-view" = "project", signal?: AbortSignal): Promise<string | null> {
   if (process.platform !== "win32") {
     throw new Error("현재 폴더 선택창은 Windows에서만 지원합니다. 경로를 직접 입력해 주세요.");
   }
 
   const { stdout } = await execFileAsync(
     "powershell.exe",
-    ["-NoLogo", "-NoProfile", "-STA", "-Command", WINDOWS_PICKER_SCRIPT],
+    ["-NoLogo", "-NoProfile", "-STA", "-Command", purpose !== "project"
+      ? WINDOWS_PICKER_SCRIPT.replace("Auto Codex에서 사용할 프로젝트 폴더를 선택하세요.", purpose === "issues-bind" ? "이슈 저장소에 연결할 현재 프로젝트 폴더를 다시 선택하세요." : "이슈 목록과 내용을 확인할 현재 프로젝트 폴더를 선택하세요.")
+      : WINDOWS_PICKER_SCRIPT],
     {
       encoding: "utf8",
       // FolderBrowserDialog is an interactive desktop window. Keep its host
       // visible so Windows does not suppress or background the picker.
       windowsHide: false,
+      signal,
       timeout: 5 * 60_000,
       maxBuffer: 16 * 1024,
     },

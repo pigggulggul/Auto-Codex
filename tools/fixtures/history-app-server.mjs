@@ -22,6 +22,9 @@ createInterface({ input: process.stdin }).on("line", (line) => {
     : message.method === "model/list" ? { data: [] }
     : message.method === "skills/list" ? { data: (message.params.cwds ?? []).map(cwd => ({ cwd, skills: [
       { name: "mobile-app-delivery", description: "Build mobile Android and iOS apps", path: "synthetic-mobile", scope: "user", enabled: true },
+      { name: "frontend-feature-delivery", description: "Implement frontend UI features in web applications", path: "synthetic-frontend", scope: "repo", enabled: true },
+      { name: "backend-feature-delivery", description: "Implement backend services and API validation", path: "synthetic-backend", scope: "repo", enabled: true },
+      { name: "product-ui-ux-design", description: "Design product UI and UX", path: "synthetic-design", scope: "repo", enabled: true },
       { name: "repo-only", description: "Repository-only instructions", path: "synthetic-repo", scope: "repo", enabled: true },
       { name: "unknown-scope", description: "Unknown scope", path: "synthetic-unknown", enabled: true },
     ] })) } : {};

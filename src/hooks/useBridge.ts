@@ -14,12 +14,14 @@ import type {
 } from "../../shared/protocol";
 import { loadTokenUsage, mergeTokenUsage, saveTokenUsage, summarizeTokenUsage } from "../lib/tokenUsage";
 import { AtelierApi } from '../features/atelier/api';
+import { IssueApi } from '../features/issues/api';
 
 const EMPTY_SNAPSHOT: BridgeSnapshot = {
   connected: false,
   appServerReady: false,
   projectPath: null,
   workspaceMode: "project",
+  projectSelectionGeneration: 0,
   researchNetworkAccess: false,
   threadId: null,
   turnId: null,
@@ -48,6 +50,9 @@ export function useBridge() {
   const atelierRef = useRef<AtelierApi | null>(null);
   if (!atelierRef.current) atelierRef.current = new AtelierApi();
   const atelierApi = atelierRef.current;
+  const issueRef = useRef<IssueApi | null>(null);
+  if (!issueRef.current) issueRef.current = new IssueApi();
+  const issueApi = issueRef.current;
   const socketRef = useRef<WebSocket | null>(null);
   const retryRef = useRef<number | null>(null);
   const retryCountRef = useRef(0);
@@ -82,6 +87,7 @@ export function useBridge() {
       socketRef.current = socket;
       socket.addEventListener("open", () => {
         atelierApi.connect(text => socket.send(text));
+        issueApi.connect(text => socket.send(text));
         retryCountRef.current = 0;
         setLastError(null);
       });
@@ -90,6 +96,7 @@ export function useBridge() {
         try {
           const decoded: unknown = JSON.parse(String(event.data));
           if (atelierApi.receive(decoded)) return;
+          if (issueApi.receive(decoded)) return;
           message = decoded as ServerMessage;
         } catch {
           setLastError("브리지에서 해석할 수 없는 메시지를 받았습니다.");
@@ -189,6 +196,7 @@ export function useBridge() {
         failDelete('연결이 끊겨 삭제 결과를 확인하지 못했습니다. 재연결 후 목록을 확인하세요.');
         failRename('연결이 끊겨 이름 저장 결과를 확인하지 못했습니다. 재연결 후 저장된 이름을 확인하세요.');
         atelierApi.disconnect();
+        issueApi.disconnect();
         setSnapshot((current) => ({ ...current, connected: false, appServerReady: false, petState: "connecting" }));
         setApprovals([]);
         setTurnStatus("idle");
@@ -210,6 +218,7 @@ export function useBridge() {
       if (retryRef.current !== null) window.clearTimeout(retryRef.current);
       socketRef.current?.close();
       atelierApi.disconnect();
+      issueApi.disconnect();
     };
   }, []);
 
@@ -226,6 +235,7 @@ export function useBridge() {
 
   return {
     atelierApi,
+    issueApi,
     snapshot,
     skills,
     skillErrors,

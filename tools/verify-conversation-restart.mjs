@@ -103,10 +103,31 @@ try {
   const calls = (await readFile(requests, "utf8")).trim().split("\n").map(JSON.parse);
   const contextualTurn = calls.filter(call => call.method === "turn/start").at(-1);
   assert.ok(contextualTurn.params.input.some(item => item.type === "skill" && item.name === "mobile-app-delivery"));
+  for (const [prompt, expected] of [
+    ["모바일 웹 반응형 화면을 개선해줘", "frontend-feature-delivery"],
+    ["서버에서 유효성 검증을 구현해줘", "backend-feature-delivery"],
+    ["화면 디자인을 전문 디자이너처럼 개선해줘", "product-ui-ux-design"],
+    ["mobile-app-delivery 스킬은 사용하지 말고 프론트엔드 화면을 수정해줘", "frontend-feature-delivery"],
+  ]) {
+    await turn(prompt);
+    const lastCall = (await readFile(requests, "utf8")).trim().split("\n").map(JSON.parse).findLast(call => call.method === "turn/start");
+    assert.deepEqual(lastCall.params.input.filter(item => item.type === "skill").map(item => item.name), [expected]);
+  }
+  await turn("스킬을 사용하지 말고 백엔드 API를 구현해줘");
+  const withoutSkill = (await readFile(requests, "utf8")).trim().split("\n").map(JSON.parse).findLast(call => call.method === "turn/start");
+  assert.ok(!withoutSkill.params.input.some(item => item.type === "skill"));
+  const teamStart = (await readFile(requests, "utf8")).trim().split("\n").length;
+  await exchange({ type: "turn.start", prompt: "mobile-app-delivery 스킬은 사용하지 말고 프론트엔드 화면을 수정해줘", skillMode: "auto", executionMode: "team" }, message => message.type === "run.state" && message.run?.status === "completed", "team skill exclusion");
+  const teamCalls = (await readFile(requests, "utf8")).trim().split("\n").map(JSON.parse).slice(teamStart).filter(call => call.method === "turn/start");
+  assert.ok(teamCalls.length >= 2);
+  assert.ok(teamCalls.every(call => !call.params.input.some(item => item.type === "skill" && item.name === "mobile-app-delivery")));
+  const beforeManual = (await readFile(requests, "utf8")).trim().split("\n").length;
+  await exchange({ type: "turn.start", prompt: "mobile-app-delivery 스킬은 사용하지 말고 화면을 수정해줘", skillMode: "manual", skillPath: "synthetic-mobile", executionMode: "solo" }, message => message.type === "error" && message.message.includes("사용 금지 조건"), "conflicting manual skill rejected");
+  assert.equal((await readFile(requests, "utf8")).trim().split("\n").length, beforeManual);
   assert.ok(calls.some((call) => call.method === "thread/resume" && call.params.threadId === threadA));
   assert.ok(calls.filter((call) => call.method === "turn/start").every((call) => call.params.sandboxPolicy.networkAccess === false));
   assert.ok(calls.filter((call) => call.method.startsWith("thread/")).every((call) => call.params.approvalPolicy === "on-request"));
-  const readOnlyStart = calls.length;
+  const readOnlyStart = (await readFile(requests, "utf8")).trim().split("\n").length;
   await turn("파일은 수정하지 말고 구조를 분석해줘", "solo");
   await exchange({ type: "turn.start", prompt: "파일은 수정하지 말고 테스트를 검토해줘", skillMode: "auto", executionMode: "team" }, (message) => message.type === "run.state" && message.run?.prompt.includes("테스트를 검토") && message.run.status === "completed", "read-only team run");
   const readOnlyCalls = (await readFile(requests, "utf8")).trim().split("\n").map(JSON.parse).slice(readOnlyStart).filter((call) => call.method === "turn/start");

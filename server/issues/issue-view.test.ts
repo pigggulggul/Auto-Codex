@@ -1,0 +1,184 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import path from "node:path";
+import { IssueStore } from "./store.js";
+import { IssueView } from "./issue-view.js";
+
+const scratch = path.resolve(".cache"), roots: string[] = [], stores: IssueStore[] = [];
+afterEach(async () => { for (const store of stores.splice(0)) store.close(); for (const root of roots.splice(0)) { expect(path.dirname(await realpath(root))).toBe(await realpath(scratch)); await rm(root, { recursive: true, force: true }); } });
+async function setup() {
+  await mkdir(scratch, { recursive: true }); const root = await mkdtemp(path.join(scratch, "issue-view-")); roots.push(root);
+  const workspace = path.join(root, "workspace"); await mkdir(workspace);
+  const store = await IssueStore.open(root); stores.push(store); const project = await store.createProject(workspace);
+  const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-1", revision: 1,
+    sources: [{ id: "source-1", name: "기획서", contentHash: `sha256:${"a".repeat(64)}` }],
+    categories: [{ id: "cat-1", parentId: null, title: "기능", order: 0 }],
+    requirements: [{ id: "req-1", categoryId: "cat-1", text: "근거 요구사항", origin: "source", sourceId: "source-1", locator: "2절" }],
+    issues: [
+      { id: "issue-later", categoryId: "cat-1", requirementIds: [], version: "1.10.0", order: 0, title: "나중", description: "", acceptanceCriteria: [], dependencyIds: ["issue-first"], status: "ready" },
+      { id: "issue-first", categoryId: "cat-1", requirementIds: ["req-1"], version: "1.2.0", order: 0, title: "<script>unsafe</script>", description: "상세 설명", acceptanceCriteria: Array.from({ length: 40 }, (_, i) => `조건 ${i}`), dependencyIds: [], status: "completed" },
+    ] };
+  await store.importDocument(project.id, 1, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+  return { root, store, project, view: new IssueView(store) };
+}
+describe("bounded issue views", () => {
+  it("shows numeric version order and separates imported completion from local status", async () => {
+    const t = await setup(), page = await t.view.list(t.project.id, "doc-1", 2, 0);
+    expect(page.items.map(item => item.id)).toEqual(["issue-first", "issue-later"]);
+    expect(page.items[0]).toMatchObject({ importedStatus: "completed", localStatus: "needs_review", category: "기능", missingCriteria: false, unverifiedDependencies: 0 });
+    expect(page.items[1]).toMatchObject({ localStatus: "needs_review", missingCriteria: true, unverifiedDependencies: 1 });
+    expect(page.nextOffset).toBeNull();
+    expect(await t.view.detail(t.project.id, "doc-1", 2, "issue-first")).toMatchObject({ description: "상세 설명", criteriaCount: 40, requirementCount: 1, missingCriteria: false, unverifiedDependencies: 0 });
+    expect(await t.view.detail(t.project.id, "doc-1", 2, "issue-later")).toMatchObject({ missingCriteria: true, unverifiedDependencies: 1 });
+  });
+  it("pages criteria and includes requirement origin without exposing other projects", async () => {
+    const t = await setup(), first = await t.view.criteria(t.project.id, "doc-1", 2, "issue-first", 0);
+    expect(first.items).toHaveLength(32); expect(first.nextOffset).toBe(32);
+    expect((await t.view.criteria(t.project.id, "doc-1", 2, "issue-first", 32)).items).toHaveLength(8);
+    expect((await t.view.requirements(t.project.id, "doc-1", 2, "issue-first", 0)).items).toEqual([{ id: "req-1", text: "근거 요구사항", origin: "source", sourceName: "기획서", locator: "2절" }]);
+    expect((await t.view.dependencies(t.project.id, "doc-1", 2, "issue-later", 0)).items).toEqual([{ id: "issue-first", title: "<script>unsafe</script>", localStatus: "needs_review", importedStatus: "completed" }]);
+    await expect(t.view.detail("project_00000000-0000-4000-8000-000000000000", "doc-1", 2, "issue-first")).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(t.view.list(t.project.id, "doc-1", 1, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    await expect(t.view.criteria(t.project.id, "doc-1", 2, "issue-first", 41)).rejects.toMatchObject({ code: "LIMIT_EXCEEDED" });
+  });
+  it("reports scoped missing links and fields without treating imported completion as verified", async () => {
+    const t = await setup(), report = await t.view.diagnostics(t.project.id, "doc-1", 2, 0);
+    expect(report).toMatchObject({ documentRevision: 1, issueCount: 2, requirementCount: 1, linkedRequirementCount: 1, totalFindings: 4 });
+    expect(report.findings.items).toEqual([
+      { code: "issue-unverified-completion", entityId: "issue-first", title: "<script>unsafe</script>", provenance: null },
+      { code: "issue-unlinked", entityId: "issue-later", title: "나중", provenance: null },
+      { code: "issue-missing-description", entityId: "issue-later", title: "나중", provenance: null },
+      { code: "issue-missing-criteria", entityId: "issue-later", title: "나중", provenance: null },
+    ]);
+    expect(await t.store.readProject(t.project.id)).toMatchObject({ revision: 2 });
+    await expect(t.view.diagnostics(t.project.id, "doc-1", 1, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    await expect(t.view.diagnostics("project_00000000-0000-4000-8000-000000000000", "doc-1", 2, 0)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+  it("counts each linked requirement once and lists uncategorized or unlinked requirements", async () => {
+    const t = await setup();
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-links", revision: 1, sources: [{ id: "src-link", name: "원본", contentHash: `sha256:${"b".repeat(64)}` }], categories: [], requirements: [{ id: "req-a", categoryId: null, text: "연결", origin: "user" }, { id: "req-b", categoryId: null, text: "미연결", origin: "source", sourceId: "src-link", locator: "3절" }], issues: ["issue-a", "issue-b"].map((id, order) => ({ id, categoryId: null, requirementIds: ["req-a"], version: "1.0.0", order, title: id, description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" })) };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const report = await t.view.diagnostics(t.project.id, "doc-links", 3, 0);
+    expect(report).toMatchObject({ issueCount: 2, requirementCount: 2, linkedRequirementCount: 1, totalFindings: 5 });
+    expect(report.findings.items.slice(0, 3)).toEqual([{ code: "requirement-uncategorized", entityId: "req-a", title: "연결", provenance: { origin: "user", sourceName: null, locator: null } }, { code: "requirement-unlinked", entityId: "req-b", title: "미연결", provenance: { origin: "source", sourceName: "원본", locator: "3절" } }, { code: "requirement-uncategorized", entityId: "req-b", title: "미연결", provenance: { origin: "source", sourceName: "원본", locator: "3절" } }]);
+  });
+  it("pages large requirement findings without truncating their text", async () => {
+    const t = await setup(), longText = "\u0001".repeat(32768);
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-large-findings", revision: 1, sources: [], categories: [], requirements: [{ id: "req-big", categoryId: null, text: longText, origin: "user" }], issues: [] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const first = await t.view.diagnostics(t.project.id, "doc-large-findings", 3, 0);
+    expect(first.findings.items).toHaveLength(1); expect(first.findings.items[0].title).toBe(longText); expect(first.findings.nextOffset).toBe(1);
+    const last = await t.view.diagnostics(t.project.id, "doc-large-findings", 3, 1);
+    expect(last.findings.items[0].title).toBe(longText); expect(last.findings.nextOffset).toBeNull();
+  });
+  it("reports zero findings only for the explicit checks, including an empty document", async () => {
+    const t = await setup();
+    const clean = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-clean", revision: 1, sources: [], categories: [{ id: "clean-cat", parentId: null, title: "분류", order: 0 }], requirements: [{ id: "clean-req", categoryId: "clean-cat", text: "요구사항", origin: "user" }], issues: [{ id: "clean-issue", categoryId: "clean-cat", requirementIds: ["clean-req"], version: "1.0.0", order: 0, title: "이슈", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(clean)}\n\`\`\``));
+    expect(await t.view.diagnostics(t.project.id, "doc-clean", 3, 0)).toMatchObject({ totalFindings: 0, linkedRequirementCount: 1, requirementCount: 1, findings: { items: [], nextOffset: null } });
+    const empty = { ...clean, documentId: "doc-empty", categories: [], requirements: [], issues: [] };
+    await t.store.importDocument(t.project.id, 3, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(empty)}\n\`\`\``));
+    expect(await t.view.diagnostics(t.project.id, "doc-empty", 4, 0)).toMatchObject({ totalFindings: 0, linkedRequirementCount: 0, requirementCount: 0, issueCount: 0, findings: { items: [], nextOffset: null } });
+  });
+  it("splits large escaped conditions without truncating their contents", async () => {
+    const t = await setup(), condition = "\u0001".repeat(32768);
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-large", revision: 1, sources: [], categories: [], requirements: [], issues: [{ id: "issue-large", categoryId: null, requirementIds: [], version: "1.0.0", order: 0, title: "큰 조건", description: "", acceptanceCriteria: [condition, condition], dependencyIds: [], status: "ready" }] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const page = await t.view.criteria(t.project.id, "doc-large", 3, "issue-large", 0);
+    expect(page.items).toEqual([condition]); expect(page.nextOffset).toBe(1);
+    expect((await t.view.criteria(t.project.id, "doc-large", 3, "issue-large", 1)).items).toEqual([condition]);
+  });
+  it("filters the complete document before paging, combining text, local status and numeric version", async () => {
+    const t = await setup();
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-filter", revision: 1, sources: [], categories: [{ id: "cat", parentId: null, title: "검색 분류", order: 0 }], requirements: [], issues: Array.from({ length: 75 }, (_, i) => ({ id: `item-${String(i).padStart(2, "0")}`, categoryId: "cat", requirementIds: [], version: i < 70 ? "1.2.0" : "1.10.0", order: i, title: i < 70 ? `Alpha ${i}` : `Beta ${i}`, description: i === 72 ? "특별한 설명" : "", acceptanceCriteria: ["검증"], dependencyIds: [], status: i === 71 ? "completed" : "ready" })) };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const first = await t.view.list(t.project.id, "doc-filter", 3, 0, { search: "alpha", status: "ready", version: "01.02.00" });
+    expect(first.items).toHaveLength(32); expect(first.nextOffset).toBe(32);
+    const third = await t.view.list(t.project.id, "doc-filter", 3, 64, { search: "ALPHA", status: "ready", version: "1.2.0" });
+    expect(third.items.map(issue => issue.id)).toEqual(["item-64", "item-65", "item-66", "item-67", "item-68", "item-69"]); expect(third.nextOffset).toBeNull();
+    expect((await t.view.list(t.project.id, "doc-filter", 3, 0, { search: "특별한 설명" })).items.map(issue => issue.id)).toEqual(["item-72"]);
+    expect((await t.view.list(t.project.id, "doc-filter", 3, 0, { search: "검색 분류", status: "needs_review" })).items.map(issue => issue.id)).toEqual(["item-71"]);
+    expect((await t.view.list(t.project.id, "doc-filter", 3, 0, { search: "not found" })).items).toEqual([]);
+    const seen: string[] = []; let offset: number | null = 0, total = 0;
+    while (offset !== null) { const report = await t.view.diagnostics(t.project.id, "doc-filter", 3, offset); total = report.totalFindings; seen.push(...report.findings.items.map(item => `${item.code}:${item.entityId}`)); offset = report.findings.nextOffset; }
+    expect(seen.length).toBe(total); expect(new Set(seen).size).toBe(total); expect(total).toBeGreaterThan(32);
+    await expect(t.view.diagnostics(t.project.id, "doc-filter", 3, total + 1)).rejects.toMatchObject({ code: "LIMIT_EXCEEDED" });
+  });
+  it("pages all unresolved prerequisites, including those beyond the first page", async () => {
+    const t = await setup();
+    const predecessors = Array.from({ length: 35 }, (_, i) => ({ id: `dep-${i}`, categoryId: null, requirementIds: [], version: "1.0.0", order: i, title: `선행 ${i}`, description: "", acceptanceCriteria: ["조건"], dependencyIds: [], status: i === 34 ? "completed" : "ready" }));
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-deps", revision: 1, sources: [], categories: [], requirements: [], issues: [...predecessors, { id: "dependent", categoryId: null, requirementIds: [], version: "2.0.0", order: 0, title: "후행", description: "", acceptanceCriteria: ["조건"], dependencyIds: predecessors.map(item => item.id), status: "ready" }] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    expect(await t.view.detail(t.project.id, "doc-deps", 3, "dependent")).toMatchObject({ localStatus: "ready", missingCriteria: false, unverifiedDependencies: 35 });
+    const first = await t.view.dependencies(t.project.id, "doc-deps", 3, "dependent", 0), last = await t.view.dependencies(t.project.id, "doc-deps", 3, "dependent", 32);
+    expect(first.items).toHaveLength(32); expect(first.nextOffset).toBe(32);
+    expect(last.items).toHaveLength(3); expect(last.nextOffset).toBeNull();
+    expect(last.items[2]).toMatchObject({ id: "dep-34", importedStatus: "completed", localStatus: "needs_review" });
+    await expect(t.view.dependencies(t.project.id, "doc-deps", 2, "dependent", 32)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+  });
+  it("pages sibling categories and filters every descendant without mixing in unclassified issues", async () => {
+    const t = await setup();
+    const roots = Array.from({ length: 40 }, (_, i) => ({ id: `root-${String(i).padStart(2, "0")}`, parentId: null, title: `분류 ${i}`, order: i }));
+    const categories = [...roots, { id: "child-1", parentId: "root-00", title: "하위", order: 0 }, { id: "child-2", parentId: "root-00", title: "빈 분류", order: 1 }, { id: "grandchild", parentId: "child-1", title: "더 아래", order: 0 }];
+    const entries = ["root-00", "child-1", "grandchild", "root-01", null];
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-categories", revision: 1, sources: [], categories, requirements: [], issues: entries.map((categoryId, index) => ({ id: `issue-cat-${index}`, categoryId, requirementIds: [], version: "1.0.0", order: index, title: `제목 ${index}`, description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" })) };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const first = await t.view.categories(t.project.id, "doc-categories", 3, null, 0), last = await t.view.categories(t.project.id, "doc-categories", 3, null, 32);
+    expect(first.items).toHaveLength(32); expect(first.nextOffset).toBe(32); expect(first.items[0]).toEqual({ id: "root-00", title: "분류 0", hasChildren: true });
+    expect(last.items).toHaveLength(8); expect(last.nextOffset).toBeNull();
+    expect((await t.view.categories(t.project.id, "doc-categories", 3, "root-00", 0)).items).toEqual([{ id: "child-1", title: "하위", hasChildren: true }, { id: "child-2", title: "빈 분류", hasChildren: false }]);
+    expect((await t.view.list(t.project.id, "doc-categories", 3, 0, { categoryId: "root-00" })).items.map(item => item.id)).toEqual(["issue-cat-0", "issue-cat-1", "issue-cat-2"]);
+    expect((await t.view.list(t.project.id, "doc-categories", 3, 0, { categoryId: "child-1", search: "제목 2", status: "ready" })).items.map(item => item.id)).toEqual(["issue-cat-2"]);
+    expect((await t.view.list(t.project.id, "doc-categories", 3, 0, { categoryId: null })).items.map(item => item.id)).toEqual(["issue-cat-4"]);
+    expect((await t.view.list(t.project.id, "doc-categories", 3, 0, { categoryId: "child-2" })).items).toEqual([]);
+    await expect(t.view.categories(t.project.id, "doc-categories", 3, "foreign", 0)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(t.view.list(t.project.id, "doc-categories", 3, 0, { categoryId: "foreign" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(t.view.categories(t.project.id, "doc-categories", 2, null, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+  });
+  it("handles deep category ancestry iteratively", async () => {
+    const t = await setup();
+    const categories = Array.from({ length: 2000 }, (_, i) => ({ id: `node-${i}`, parentId: i ? `node-${i - 1}` : null, title: `분류 ${i}`, order: 0 }));
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-deep", revision: 1, sources: [], categories, requirements: [], issues: [{ id: "deep-issue", categoryId: "node-1999", requirementIds: [], version: "1.0.0", order: 0, title: "깊은 항목", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    expect((await t.view.list(t.project.id, "doc-deep", 3, 0, { categoryId: "node-0" })).items.map(item => item.id)).toEqual(["deep-issue"]);
+    expect((await t.view.categories(t.project.id, "doc-deep", 3, "node-1998", 0)).items[0].id).toBe("node-1999");
+  });
+  it("continues a project search across empty document batches and multiple issue pages", async () => {
+    const t = await setup(); let revision = 2;
+    for (let i = 0; i < 12; i++) {
+      const data = { format: "auto-codex-issues", formatVersion: 1, documentId: `glob-${String(i).padStart(2, "0")}`, revision: 1, sources: [], categories: [], requirements: [], issues: Array.from({ length: i === 8 ? 35 : 1 }, (_, j) => ({ id: `glob-issue-${i}-${j}`, categoryId: null, requirementIds: [], version: "1.2.0", order: j, title: i === 8 ? `target ${j}` : `other ${j}`, description: "", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" })) };
+      await t.store.importDocument(t.project.id, revision++, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    }
+    const filters = { search: "TARGET", status: "ready" as const, version: "01.2.0" };
+    const first = await t.view.projectSearch(t.project.id, revision, { issueOffset: 0 }, filters);
+    expect(first).toEqual({ documentId: null, items: [], scannedDocuments: 8, nextCursor: { afterId: "glob-06", issueOffset: 0 } });
+    expect(await t.view.projectSearch(t.project.id, revision, { issueOffset: 0 }, filters)).toEqual(first);
+    const second = await t.view.projectSearch(t.project.id, revision, first.nextCursor!, filters);
+    expect(second.documentId).toBe("glob-08"); expect(second.items).toHaveLength(32); expect(second.scannedDocuments).toBe(2);
+    expect(second.nextCursor).toEqual({ afterId: "glob-07", issueOffset: 32 });
+    const third = await t.view.projectSearch(t.project.id, revision, second.nextCursor!, filters);
+    expect(third.documentId).toBe("glob-08"); expect(third.items).toHaveLength(3); expect(third.nextCursor).toEqual({ afterId: "glob-08", issueOffset: 0 });
+    expect(new Set([...second.items, ...third.items].map(item => item.id)).size).toBe(35);
+    const final = await t.view.projectSearch(t.project.id, revision, third.nextCursor!, filters);
+    expect(final).toEqual({ documentId: null, items: [], scannedDocuments: 3, nextCursor: null });
+    await expect(t.view.projectSearch(t.project.id, revision - 1, { issueOffset: 0 }, filters)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+  });
+  it("keeps project searches isolated and reports an empty project without a continuation", async () => {
+    const t = await setup(), otherPath = path.join(t.root, "other"); await mkdir(otherPath);
+    const other = await t.store.createProject(otherPath);
+    expect(await t.view.projectSearch(other.id, 1, { issueOffset: 0 })).toEqual({ documentId: null, items: [], scannedDocuments: 0, nextCursor: null });
+    expect((await t.view.projectSearch(t.project.id, 2, { issueOffset: 0 })).items.length).toBe(2);
+  });
+  it("rejects the whole search when the project revision changes during a scan", async () => {
+    const t = await setup();
+    const empty = (documentId: string) => new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify({ format: "auto-codex-issues", formatVersion: 1, documentId, revision: 1, sources: [], categories: [], requirements: [], issues: [] })}\n\`\`\``);
+    await t.store.importDocument(t.project.id, 2, empty("doc-next"));
+    const original = t.store.listDocuments.bind(t.store); let calls = 0;
+    const spy = vi.spyOn(t.store, "listDocuments").mockImplementation(async (...args) => {
+      if (++calls === 2) await t.store.importDocument(t.project.id, 3, empty("doc-added"));
+      return original(...args);
+    });
+    try { await expect(t.view.projectSearch(t.project.id, 3, { issueOffset: 0 }, { search: "no-match" })).rejects.toMatchObject({ code: "VERSION_CONFLICT" }); }
+    finally { spy.mockRestore(); }
+  });
+});

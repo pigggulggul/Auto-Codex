@@ -3,6 +3,7 @@ import { AtelierNavigation, PAGE_INFO, type AtelierPage } from "./components/lay
 import { AtelierHome } from "./components/layout/AtelierPages";
 import { ConversationSidebar } from "./components/layout/ConversationSidebar";
 import {AtelierWorkspace} from './features/atelier/Workspace';
+import {IssueWorkspace} from './features/issues/Workspace';
 import type {Entry} from '../shared/atelier/types';
 import { ApprovalDialog } from "./components/ApprovalDialog";
 import { ModelPicker } from "./components/ModelPicker";
@@ -314,9 +315,15 @@ export default function App() {
           {atelier && busy && <button type="button" className="atelier-global-stop" onClick={bridge.interruptTurn}>■ 작업 중단</button>}
         </div>
       </header>
-      {!atelier && <div className="atelier-return-bar"><span>기존 Auto-Codex 화면</span><button type="button" onClick={() => changeShell("atelier")}>Atelier 화면으로 돌아가기 →</button></div>}
+      {!atelier && <div className="atelier-return-bar"><span>기존 Auto-Codex 화면</span><button type="button" onClick={() => { changeShell("atelier"); navigate("issues"); }}>이슈 처리</button><button type="button" onClick={() => changeShell("atelier")}>Atelier 화면으로 돌아가기 →</button></div>}
 
       {atelier && <div className="atelier-workspace-heading"><div><p className="atelier-kicker">AUTO CODEX / LOCAL WORKSPACE</p><h1 id="workspace-heading" tabIndex={-1} ref={pageHeading}>{PAGE_INFO[page].title}</h1><p>{PAGE_INFO[page].description}</p></div><span className={`atelier-run-indicator ${busy ? "is-active" : ""}`} role="status">{bridge.approvals.length ? `승인 대기 ${bridge.approvals.length}건` : busy ? "작업 진행 중" : "진행 작업 없음"}</span></div>}
+
+      {atelier && <nav className="workspace-modes" aria-label="작업 모드">
+        <button type="button" aria-current={page === "work" ? "page" : undefined} onClick={() => navigate("work")}>Codex 대화</button>
+        <button type="button" aria-current={page === "design" ? "page" : undefined} onClick={() => navigate("design")}>아뜰리에 디자인</button>
+        <button type="button" aria-current={page === "issues" ? "page" : undefined} onClick={() => navigate("issues")}>이슈 처리</button>
+      </nav>}
 
       {bridge.lastError && (
         <div className="error-banner" role="alert">
@@ -333,9 +340,10 @@ export default function App() {
 
       {atelier && page==='home'&&<div className="atelier-introduction"><AtelierHome onNavigate={navigate} conversations={bridge.conversations} busy={busy} onStartDesign={entry=>{setDesignEntry({entry,nonce:Date.now()});navigate('design');}} onSelectConversation={(id) => { if (bridge.selectConversation(id)) navigate("work"); }} /></div>}
       <AtelierWorkspace production={{snapshot:bridge.snapshot,executionMode,skillMode,skillPath:skillPath||undefined,model:selectedModel||undefined,effort:selectedEffort||undefined,onInterrupt:bridge.interruptTurn}} aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'} entryRequest={designEntry}/>
+      <IssueWorkspace hidden={!atelier || page !== "issues"} projectPath={projectPath} workspaceMode={workspaceMode} selectionGeneration={bridge.snapshot.projectSelectionGeneration} connected={bridge.snapshot.connected} appServerReady={bridge.snapshot.appServerReady} busy={busy} isPicking={bridge.isPickingProject} onPickProject={bridge.pickProject} api={bridge.issueApi} />
 
 
-      <div className="metaverse-layout" hidden={atelier && (page === "home" || page === "design")}>
+      <div className="metaverse-layout" hidden={atelier && (page === "home" || page === "design" || page === "issues")}>
         <div className="left-rail" hidden={!showControls && !showOperations}>
           <nav className="left-rail-switch" aria-label="좌측 패널 선택" role="tablist" hidden={atelier}>
             <button

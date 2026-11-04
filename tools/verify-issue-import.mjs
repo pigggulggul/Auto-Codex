@@ -1,0 +1,107 @@
+import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
+import { IssueBridgeApi } from '../build-server/server/issues/bridge-api.js';
+import { IssueProjectContext } from '../build-server/server/issues/project-context.js';
+import { IssueWorkerClient } from '../build-server/server/issues/worker-client.js';
+import { readSelectedIssueDocument } from '../build-server/server/issues/selected-document.js';
+import { readAnalysisSource } from '../build-server/server/issues/analysis-source.js';
+import { createIssueExport } from '../build-server/server/issues/export-file.js';
+import { parseIssueDocument } from '../build-server/server/issues/document.js';
+import { IssueWriteAdmission } from '../build-server/server/issue-write-admission.js';
+
+// Synthetic local files, real worker/reader and mocked native selections; no actual Codex process.
+const parent = path.resolve('.cache'); await mkdir(parent, { recursive: true });
+const root = await mkdtemp(path.join(parent, 'issue-import-integration-'));
+const workspace = path.join(root, 'workspace'); await mkdir(workspace);
+const source = path.join(root, 'external.md'), plain = path.join(root, 'plain.md');
+const json = { format: 'auto-codex-issues', formatVersion: 1, documentId: 'doc-1', revision: 1, sources: [], categories: [{ id: 'cat-root', parentId: null, title: 'root', order: 0 }, { id: 'cat-child', parentId: 'cat-root', title: 'child', order: 0 }], requirements: [], issues: [
+  { id: 'issue-1', categoryId: 'cat-child', requirementIds: [], version: '1.0.0', order: 0, title: 'synthetic', description: '', acceptanceCriteria: ['synthetic'], dependencyIds: [], status: 'completed' },
+  { id: 'issue-2', categoryId: null, requirementIds: [], version: '1.1.0', order: 0, title: 'dependent', description: '', acceptanceCriteria: ['synthetic'], dependencyIds: ['issue-1'], status: 'ready' },
+] };
+const original = Buffer.from(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(json)}\n\`\`\`\n`, 'utf8');
+await writeFile(source, original); await writeFile(plain, '# 일반 문서');
+const client = new IssueWorkerClient(root);
+const selection = () => ({ workspaceMode: 'project', projectPath: workspace, generation: 1 });
+const context = new IssueProjectContext(selection, client);
+let selectedDocument = source;
+const destination = path.join(workspace, 'exported.md');
+const admission = new IssueWriteAdmission();
+const api = new IssueBridgeApi({ selection, context: () => context, pick: async () => workspace, pickView: async () => workspace, pickDocument: async () => selectedDocument, pickExport: async () => destination, pickSource: async () => path.join(workspace, 'analysis.txt'), readSource: readAnalysisSource, readDocument: readSelectedIssueDocument, writeExport: async (...args) => { assert.equal(admission.busy, true); return createIssueExport(...args); }, tryAcquireWrite: () => admission.tryAcquire(() => false), canonical: realpath, busy: () => false });
+const session = new AbortController();
+const ask = (type, extra = {}, signal = session.signal) => api.handle(JSON.stringify({ type, v: 1, clientRequestId: randomUUID(), ...extra }), true, () => true, signal);
+try {
+  assert.equal((await ask('issues.project.bind')).bound, true);
+  const imported = await ask('issues.document.import');
+  assert.equal(imported.ok, true); assert.equal(imported.issueCount, 2); assert.equal(imported.alreadyImported, false);
+  const repeated = await ask('issues.document.import');
+  assert.equal(repeated.ok, true); assert.equal(repeated.alreadyImported, true);
+  assert.equal((await ask('issues.view.query', { query: { kind: 'documents' } })).error.code, 'VIEW_AUTH_REQUIRED');
+  assert.equal((await ask('issues.view.authorize')).authorized, true);
+  const docs = (await ask('issues.view.query', { query: { kind: 'documents' } })).view;
+  assert.equal(docs.documents[0].id, 'doc-1');
+  const issues = (await ask('issues.view.query', { query: { kind: 'issues', documentId: 'doc-1', expectedRevision: docs.revision, offset: 0 } })).view;
+  assert.equal(issues.page.items[0].localStatus, 'needs_review');
+  assert.equal(issues.page.items[1].localStatus, 'ready'); assert.equal(issues.page.items[1].unverifiedDependencies, 1);
+  const categories = (await ask('issues.view.query', { query: { kind: 'categories', documentId: 'doc-1', expectedRevision: docs.revision, parentId: null, offset: 0 } })).view;
+  assert.deepEqual(categories.page.items, [{ id: 'cat-root', title: 'root', hasChildren: true }]);
+  const subtree = (await ask('issues.view.query', { query: { kind: 'issues', documentId: 'doc-1', expectedRevision: docs.revision, offset: 0, filters: { categoryId: 'cat-root' } } })).view;
+  assert.deepEqual(subtree.page.items.map(item => item.id), ['issue-1']);
+  const unclassified = (await ask('issues.view.query', { query: { kind: 'issues', documentId: 'doc-1', expectedRevision: docs.revision, offset: 0, filters: { categoryId: null } } })).view;
+  assert.deepEqual(unclassified.page.items.map(item => item.id), ['issue-2']);
+  const projectSearch = (await ask('issues.view.query', { query: { kind: 'projectIssues', expectedRevision: docs.revision, cursor: { issueOffset: 0 }, filters: { search: 'dependent' } } })).view;
+  assert.equal(projectSearch.page.documentId, 'doc-1'); assert.deepEqual(projectSearch.page.items.map(item => item.id), ['issue-2']); assert.equal(projectSearch.page.nextCursor, null);
+  assert.equal((await ask('issues.view.query', { query: { kind: 'projectIssues', expectedRevision: docs.revision, cursor: { issueOffset: 0 } } }, new AbortController().signal)).error.code, 'VIEW_AUTH_REQUIRED');
+  const filtered = (await ask('issues.view.query', { query: { kind: 'issues', documentId: 'doc-1', expectedRevision: docs.revision, offset: 0, filters: { search: 'SYNTHETIC', status: 'needs_review', version: '01.0.0' } } })).view;
+  assert.equal(filtered.page.items[0].id, 'issue-1');
+  const absent = (await ask('issues.view.query', { query: { kind: 'issues', documentId: 'doc-1', expectedRevision: docs.revision, offset: 0, filters: { status: 'ready', version: '1.0.0' } } })).view;
+  assert.deepEqual(absent.page.items, []);
+  const detail = (await ask('issues.view.query', { query: { kind: 'detail', documentId: 'doc-1', expectedRevision: docs.revision, issueId: 'issue-1' } })).view;
+  assert.equal(detail.issue.importedStatus, 'completed');
+  const diagnostics = (await ask('issues.view.query', { query: { kind: 'diagnostics', documentId: 'doc-1', expectedRevision: docs.revision, offset: 0 } })).view;
+  assert.equal(diagnostics.report.totalFindings, 6); assert.equal(diagnostics.report.requirementCount, 0);
+  assert.ok(diagnostics.report.findings.items.some(item => item.code === 'issue-unverified-completion' && item.entityId === 'issue-1'));
+  const criteria = (await ask('issues.view.query', { query: { kind: 'criteria', documentId: 'doc-1', expectedRevision: docs.revision, issueId: 'issue-1', offset: 0 } })).view;
+  assert.deepEqual(criteria.page.items, ['synthetic']);
+  const dependencies = (await ask('issues.view.query', { query: { kind: 'dependencies', documentId: 'doc-1', expectedRevision: docs.revision, issueId: 'issue-2', offset: 0 } })).view;
+  assert.deepEqual(dependencies.page.items, [{ id: 'issue-1', title: 'synthetic', localStatus: 'needs_review', importedStatus: 'completed' }]);
+  assert.equal((await ask('issues.view.query', { query: { kind: 'documents' } }, new AbortController().signal)).error.code, 'VIEW_AUTH_REQUIRED');
+  selectedDocument = plain;
+  const unsupported = await ask('issues.document.import');
+  assert.equal(unsupported.ok, false); assert.equal(unsupported.error.code, 'UNSUPPORTED_FORMAT');
+  assert.deepEqual(await readFile(source), original); assert.deepEqual(await readdir(workspace), []);
+  await writeFile(path.join(workspace, 'analysis.txt'), 'synthetic source');
+  const selectedSource = await ask('issues.sources.add');
+  assert.equal(selectedSource.ok, true, JSON.stringify(selectedSource.error));
+  assert.equal(selectedSource.sources.items[0].relativePath, 'analysis.txt');
+  assert.equal((await ask('issues.sources.read', { sourceId: selectedSource.sources.items[0].id, offset: 0 })).chunk.text, 'synthetic source');
+  assert.equal((await ask('issues.sources.list', {}, new AbortController().signal)).error.code, 'VIEW_AUTH_REQUIRED');
+  const expectedSources = selectedSource.sources.items.map(({ id, sha256 }) => ({ id, sha256 }));
+  const prepared = await ask('issues.analysis.prepare', { expectedRevision: docs.revision, expectedSources, instruction: 'synthetic request' });
+  assert.equal(prepared.ok, true, JSON.stringify(prepared.error)); assert.equal(prepared.snapshot.totalSegments, 1); assert.equal(prepared.snapshot.processedSegments, 0);
+  assert.equal((await ask('issues.analysis.prepare', { expectedRevision: docs.revision + 1, expectedSources, instruction: '' })).error.code, 'STALE_INPUT');
+  const check = { snapshotId: prepared.snapshot.id, expectedRevision: docs.revision };
+  assert.equal((await ask('issues.analysis.check', check)).freshness.files[0].state, 'unchanged');
+  await writeFile(path.join(workspace, 'analysis.txt'), 'synthetic changed');
+  assert.equal((await ask('issues.analysis.check', check)).freshness.files[0].state, 'changed');
+  assert.equal((await ask('issues.analysis.check', check, new AbortController().signal)).error.code, 'VIEW_AUTH_REQUIRED');
+  const db = new DatabaseSync(path.join(root, '.local-data/issues/issues.sqlite'), { readOnly: true });
+  try {
+    assert.deepEqual(db.prepare('SELECT original_bytes FROM documents WHERE id=?').get('doc-1').original_bytes, new Uint8Array(original));
+    assert.equal(db.prepare('SELECT local_status FROM imported_issues WHERE issue_id=?').get('issue-1').local_status, 'needs_review');
+  } finally { db.close(); }
+  const exported = await ask('issues.document.export', { documentId: 'doc-1', expectedRevision: docs.revision });
+  assert.equal(exported.ok, true, JSON.stringify(exported.error)); assert.equal(exported.cleanupWarning, false);
+  assert.equal(admission.busy, false);
+  assert.equal(parseIssueDocument(await readFile(destination)).issues.length, 2);
+  assert.equal((await ask('issues.document.export', { documentId: 'doc-1', expectedRevision: docs.revision })).error.code, 'FILE_EXISTS');
+  assert.equal(admission.busy, false);
+  assert.equal(parseIssueDocument(await readFile(destination)).issues[0].status, 'completed');
+  console.log('Issue import/export/source integration passed: synthetic selections, input preparation, validation, idempotency and non-overwriting export.');
+} finally {
+  await client.close();
+  assert.equal(path.dirname(await realpath(root)), await realpath(parent));
+  await rm(root, { recursive: true, force: true });
+}

@@ -1,5 +1,6 @@
 import type { ConversationMessage, SkillInfo, SkillRole } from "../shared/protocol.js";
 import { routeSkill, type RouteResult } from "./skill-router.js";
+import { positiveRoutingText } from "./skill-routing-intent.js";
 
 /** Only the last successfully answered user request from this conversation is eligible. */
 export function priorUserRequest(messages: readonly ConversationMessage[]): string {
@@ -18,10 +19,10 @@ const SPECIFIC_DOMAIN = /(?:모바일|안드로이드|아이폰|스프레드시�
 export function routeContextualSkill(
   taskText: string, skills: SkillInfo[], options: { currentRequest: string; previousRequest: string; expectedRole?: SkillRole },
 ): RouteResult {
-  const direct = routeSkill(taskText, skills, options.expectedRole);
+  const direct = routeSkill(taskText, skills, options.expectedRole, options.currentRequest);
   if (!options.previousRequest || !FOLLOW_UP.test(options.currentRequest)
     || SPECIFIC_DOMAIN.test(options.currentRequest) || SPECIFIC_DOMAIN.test(taskText)) return direct;
-  const contextual = routeSkill(`${taskText}\n${options.previousRequest}`, skills, options.expectedRole);
+  const contextual = routeSkill(`${taskText}\n${positiveRoutingText(options.previousRequest)}`, skills, options.expectedRole, options.currentRequest);
   if (!contextual.skill) return direct;
   return { ...contextual, rationale: `현재 작업과 직전 완료된 사용자 요청의 맥락을 참고했습니다. ${contextual.rationale}` };
 }

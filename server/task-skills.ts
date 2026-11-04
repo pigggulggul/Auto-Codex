@@ -1,6 +1,7 @@
 import type { SkillInfo, TaskDefinition } from "../shared/protocol.js";
 import { classifySkill } from "../shared/skill-catalog.js";
 import { routeContextualSkill } from "./skill-context.js";
+import { isSkillExcluded } from "./skill-routing-intent.js";
 
 /** Manual mode assigns the selected skill at most once, to a compatible role. */
 export function assignTaskSkills(
@@ -11,7 +12,7 @@ export function assignTaskSkills(
   return tasks.map((task) => {
     if (task.kind === "coordinate" || task.kind === "report") return task;
     if (mode === "manual") {
-      if (!selected || !selected.enabled || assigned || task.agentRole !== classifySkill(selected)) return task;
+      if (!selected || !selected.enabled || assigned || isSkillExcluded(context.currentRequest, selected, skills) || task.agentRole !== classifySkill(selected)) return task;
       assigned = true;
       return { ...task, skillPath: selected.path, skillName: selected.name, skillRationale: "사용자가 선택한 스킬을 같은 역할의 작업에 배정했습니다." };
     }
