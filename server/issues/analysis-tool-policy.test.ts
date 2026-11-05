@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { AnalysisToolPolicyError, buildUnverifiedAnalysisToolPolicy, requireUnchangedAnalysisInventory, sameUnverifiedAnalysisInventory } from "./analysis-tool-policy.js";
+import { AnalysisToolPolicyError, buildUnverifiedAnalysisToolPolicy as buildPolicy, requireCompatibleAnalysisRequirements, requireUnchangedAnalysisInventory, sameUnverifiedAnalysisInventory } from "./analysis-tool-policy.js";
+
+const buildUnverifiedAnalysisToolPolicy = (config: unknown, pages: { cursor: string | null; response: unknown }[], plugins: unknown, requirements: unknown = { requirements: null }) => buildPolicy(config, pages, plugins, requirements);
 
 const config = () => ({ config: { mcp_servers: { alpha: { env: { TOKEN: "synthetic-private-value" } }, beta: { url: "https://synthetic.invalid/private" } }, plugins: { 'fixture@local': { enabled: true } } } });
 const pages = () => [
@@ -9,9 +11,18 @@ const pages = () => [
 const plugins = () => ({ marketplaces: [{ plugins: [{ id: 'fixture@local', installed: true, enabled: true }, { id: 'unused@local', installed: false, enabled: false }] }], marketplaceLoadErrors: [] });
 
 describe("unverified analysis tool restriction candidate", () => {
+  it("requires a readable requirements reply and rejects managed hooks or incompatible mandatory settings", () => {
+    for (const response of [undefined, {}, { requirements: false }, { requirements: { featureRequirements: { hooks: true } } }, { requirements: { featureRequirements: { codex_hooks: true } } }, { requirements: { featureRequirements: { plugins: true } } }, { requirements: { featureRequirements: { shell_tool: true } } }, { requirements: { featureRequirements: { hooks: "false" } } }, { requirements: { hooks: { SessionStart: [{ hooks: [{ command: "synthetic-private-hook" }] }] } } }, { requirements: { hooks: { windowsManagedDir: "synthetic-private-path" } } }, { requirements: { hooks: { UnknownFutureHook: [] } } }, { requirements: { additionalDeveloperInstructions: "synthetic-private-instruction" } }, { requirements: { allowedSandboxModes: ["workspace-write"] } }, { requirements: { allowedApprovalPolicies: ["on-request"] } }, { requirements: { allowedWebSearchModes: ["live"] } }]) {
+      expect(() => requireCompatibleAnalysisRequirements(response)).toThrow(AnalysisToolPolicyError);
+      expect(() => buildPolicy(config(), pages(), plugins(), response)).toThrow(AnalysisToolPolicyError);
+    }
+    expect(() => requireCompatibleAnalysisRequirements({ requirements: null })).not.toThrow();
+    expect(() => requireCompatibleAnalysisRequirements({ requirements: { featureRequirements: { hooks: false }, hooks: { SessionStart: [], windowsManagedDir: null }, allowedSandboxModes: ["read-only"], allowedApprovalPolicies: ["never"], allowedWebSearchModes: ["disabled"] } })).not.toThrow();
+    expect(() => buildPolicy(config(), pages(), plugins(), undefined)).toThrow(AnalysisToolPolicyError);
+  });
   it("combines configuration and paginated inventory without returning secret-bearing fields", () => {
     const result = buildUnverifiedAnalysisToolPolicy(config(), pages(), plugins());
-    expect(result).toMatchObject({ verified: false, serverCount: 2, pluginCount: 2, disabledPluginIds: ['fixture@local', 'other@local'], config: { 'mcp_servers.alpha.enabled': false, 'mcp_servers.beta.enabled': false, 'features.shell_tool': false, 'web_search': 'disabled' } });
+    expect(result).toMatchObject({ verified: false, serverCount: 2, pluginCount: 2, disabledPluginIds: ['fixture@local', 'other@local'], config: { 'mcp_servers.alpha.enabled': false, 'mcp_servers.beta.enabled': false, 'features.shell_tool': false, 'features.plugins': false, 'features.hooks': false, 'web_search': 'disabled' } });
     expect(JSON.stringify(result)).not.toContain("synthetic-private-value"); expect(JSON.stringify(result)).not.toContain("synthetic.invalid");
   });
   it("rejects incomplete, reordered or cyclic pagination and discovery errors", () => {
@@ -46,6 +57,8 @@ describe("unverified analysis tool restriction candidate", () => {
     expect(sameUnverifiedAnalysisInventory(malformed, malformed)).toBe(false);
     expect(first.config).toEqual(changed.config);
     expect(JSON.stringify(changed)).not.toContain("another-synthetic-private-value");
+    const policyChanged = buildUnverifiedAnalysisToolPolicy(config(), pages(), plugins(), { requirements: { featureRequirements: { hooks: false } } });
+    expect(sameUnverifiedAnalysisInventory(first, policyChanged)).toBe(false);
   });
   it("rejects oversized and unserializable inventory without revealing its contents", () => {
     const oversized = { config: { notes: "x".repeat(2 * 1024 * 1024) } };

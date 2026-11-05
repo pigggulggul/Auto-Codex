@@ -1,6 +1,7 @@
 import { comparePlannedIssues, normalizeVersion } from "../../shared/issues/planning.js";
-import type { IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueFinding, IssueFilters, IssueRequirementView, IssueSummary, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage, RequirementDetail } from "../../shared/issues/view.js";
+import { MAX_PREVIEW_DEPENDENCIES, validCandidateIds, validCandidateOptions, type IssueCandidateOptions, type IssueCandidatePreview, type IssueCategoryView, type IssueDependencyView, type IssueDetail, type IssueDiagnosticReport, type IssueFinding, type IssueFilters, type IssueRequirementView, type IssueSummary, type Page, type ProjectIssueCursor, type ProjectIssueFilters, type ProjectIssuePage, type RequirementDetail } from "../../shared/issues/view.js";
 import { IssueStore, IssueStoreError } from "./store.js";
+import { selectExecutionCandidates } from "./execution-candidates.js";
 
 const PAGE_SIZE = 32;
 const SEARCH_DOCUMENT_LIMIT = 8;
@@ -26,6 +27,33 @@ export class IssueView {
   constructor(private readonly store: IssueStore) {}
   private async load(projectId: string, documentId: string, revision: number) {
     return this.store.readDocument(projectId, documentId, revision);
+  }
+  private previewSnapshot(snapshot: Awaited<ReturnType<IssueStore["readDocument"]>>, issueIds: string[], options: IssueCandidateOptions = { includeRetryable: false, includeFailed: false }): IssueCandidatePreview[] {
+    if (!validCandidateIds(issueIds) || !validCandidateOptions(options)) throw new IssueStoreError("LIMIT_EXCEEDED", "이슈 선택이 올바르지 않습니다.");
+    const { document, issues } = snapshot, states = new Map(issues.map(entry => [entry.issueId, entry]));
+    const byId = new Map(document.issues.map(issue => [issue.id, issue]));
+    if (issueIds.some(id => !byId.has(id))) throw new IssueStoreError("NOT_FOUND", "이 문서의 이슈를 찾을 수 없습니다.");
+    const eligibleStates: ("ready" | "retryable" | "failed")[] = ["ready"];
+    if (options.includeRetryable) eligibleStates.push("retryable");
+    if (options.includeFailed) eligibleStates.push("failed");
+    const candidates = selectExecutionCandidates(document.issues.map(entry => {
+      const current = states.get(entry.id);
+      if (!current) throw new IssueStoreError("STORAGE_FAILED", "이슈의 저장 상태를 확인할 수 없습니다.");
+      return { id: entry.id, version: entry.version, order: entry.order, dependencyIds: entry.dependencyIds, localState: current.localStatus, locallyVerifiedComplete: false, hasAcceptanceCriteria: entry.acceptanceCriteria.length > 0, requiresReview: current.localStatus === "needs_review" };
+    }), { selectedIds: issueIds, states: eligibleStates });
+    if (candidates.kind !== "candidates") throw new IssueStoreError("STORAGE_FAILED", "이슈의 선행 관계를 확인할 수 없습니다.");
+    const reasons = new Map<string, IssueCandidatePreview["candidateReasons"]>();
+    for (const id of candidates.eligibleIds) { if (reasons.has(id)) throw new IssueStoreError("STORAGE_FAILED", "이슈 후보를 확인할 수 없습니다."); reasons.set(id, []); }
+    for (const item of candidates.excluded) { if (reasons.has(item.id) || !item.reasons.length) throw new IssueStoreError("STORAGE_FAILED", "이슈 후보를 확인할 수 없습니다."); reasons.set(item.id, item.reasons); }
+    if (reasons.size !== issueIds.length || issueIds.some(id => !reasons.has(id))) throw new IssueStoreError("STORAGE_FAILED", "이슈 후보를 확인할 수 없습니다.");
+    // v2 has no local completion evidence, so every direct dependency is unverified.
+    return issueIds.map(id => {
+      const issue = byId.get(id)!;
+      return { id, title: issue.title, version: issue.version, order: issue.order, localStatus: states.get(id)!.localStatus, candidateReasons: reasons.get(id)!, unverifiedDependencyCount: issue.dependencyIds.length, dependencyPreview: issue.dependencyIds.slice(0, MAX_PREVIEW_DEPENDENCIES).map(dependencyId => ({ id: dependencyId, title: byId.get(dependencyId)!.title })) };
+    });
+  }
+  async candidatePreview(projectId: string, documentId: string, revision: number, issueIds: string[], options?: IssueCandidateOptions): Promise<IssueCandidatePreview[]> {
+    return this.previewSnapshot(await this.load(projectId, documentId, revision), issueIds, options);
   }
   /** Search at most eight documents per request; the cursor represents unsearched work. */
   async projectSearch(projectId: string, revision: number, cursor: ProjectIssueCursor, filters: ProjectIssueFilters = {}): Promise<ProjectIssuePage> {
@@ -81,6 +109,20 @@ export class IssueView {
       if (firstWithOrder) findings.push({ code: "issue-same-version-order", entityId: issue.id, title: issue.title, provenance: null, relatedEntityId: firstWithOrder });
       else issueOrders.set(orderKey, issue.id);
     }
+    // Inspect only leaves: parents may intentionally group work in their children.
+    const parentIds = new Set(document.categories.map(category => category.parentId).filter((id): id is string => id !== null));
+    const requirementCategories = new Set(document.requirements.map(item => item.categoryId).filter((id): id is string => id !== null));
+    const issueCategories = new Set(document.issues.map(item => item.categoryId).filter((id): id is string => id !== null));
+    for (const category of [...document.categories].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
+      if (parentIds.has(category.id)) continue;
+      const hasRequirements = requirementCategories.has(category.id), hasIssues = issueCategories.has(category.id);
+      if (!hasRequirements || !hasIssues) findings.push({ code: !hasRequirements && !hasIssues ? "category-empty" : !hasRequirements ? "category-no-requirements" : "category-no-issues", entityId: category.id, title: category.title, provenance: null });
+    }
+    // A stored source ID reference is not evidence that its contents were analyzed.
+    const referencedSources = new Set(document.requirements.map(item => item.sourceId).filter((id): id is string => id !== undefined));
+    for (const source of [...document.sources].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
+      if (!referencedSources.has(source.id)) findings.push({ code: "source-unreferenced", entityId: source.id, title: source.name, provenance: null });
+    }
     return { documentRevision: document.revision, issueCount: document.issues.length, requirementCount: document.requirements.length, linkedRequirementCount: document.requirements.filter(item => linked.has(item.id)).length, totalFindings: findings.length, findings: boundedPage(findings, offset) };
   }
   /** Requirement and linked issues are limited to the authorized document and fixed revision. */
@@ -126,10 +168,11 @@ export class IssueView {
     return boundedPage(items, offset);
   }
   async detail(projectId: string, documentId: string, revision: number, issueId: string): Promise<IssueDetail> {
-    const { document, issues } = await this.load(projectId, documentId, revision);
+    const snapshot = await this.load(projectId, documentId, revision), { document, issues } = snapshot;
     const issue = document.issues.find(entry => entry.id === issueId), state = issues.find(entry => entry.issueId === issueId);
     if (!issue || !state) throw new IssueStoreError("NOT_FOUND", "이 문서의 이슈를 찾을 수 없습니다.");
-    const result: IssueDetail = { id: issue.id, title: issue.title, version: issue.version, category: document.categories.find(category => category.id === issue.categoryId)?.title ?? null, localStatus: state.localStatus, importedStatus: state.importedStatus, missingCriteria: issue.acceptanceCriteria.length === 0, unverifiedDependencies: issue.dependencyIds.length, description: issue.description, criteriaCount: issue.acceptanceCriteria.length, requirementCount: issue.requirementIds.length, dependencyCount: issue.dependencyIds.length };
+    const candidateReasons = this.previewSnapshot(snapshot, [issue.id])[0].candidateReasons;
+    const result: IssueDetail = { id: issue.id, title: issue.title, version: issue.version, category: document.categories.find(category => category.id === issue.categoryId)?.title ?? null, localStatus: state.localStatus, importedStatus: state.importedStatus, missingCriteria: issue.acceptanceCriteria.length === 0, unverifiedDependencies: issue.dependencyIds.length, description: issue.description, criteriaCount: issue.acceptanceCriteria.length, requirementCount: issue.requirementIds.length, dependencyCount: issue.dependencyIds.length, candidateReasons };
     if (Buffer.byteLength(JSON.stringify(result)) > MAX_RESPONSE_BYTES) throw new IssueStoreError("LIMIT_EXCEEDED", "이슈 설명이 표시 크기 제한을 초과했습니다.");
     return result;
   }

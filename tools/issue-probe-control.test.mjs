@@ -1,6 +1,14 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { createProbeDeadline, waitForProbeTurn } from './issue-probe-control.mjs';
+import { classifyProbeFailure, createProbeDeadline, waitForProbeTurn } from './issue-probe-control.mjs';
+
+test('failure classification returns only bounded diagnostic labels', () => {
+  assert.equal(classifyProbeFailure({ code: 'ERR_ASSERTION', message: 'private detail' }, false), 'assertion-failed');
+  assert.equal(classifyProbeFailure(new Error('Synthetic CLI exited.'), false), 'cli-exited');
+  assert.equal(classifyProbeFailure(new Error('Synthetic RPC failed: private detail'), false), 'rpc-failed');
+  assert.equal(classifyProbeFailure(new Error('private detail'), true), 'deadline');
+  assert.equal(classifyProbeFailure(new Error('private detail'), false), 'probe-error');
+});
 
 test('deadline cancels an unresolved turn wait instead of leaving a live polling loop', async () => {
   let cancelled = false;

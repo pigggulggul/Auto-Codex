@@ -71,7 +71,7 @@ describe("issue project transport", () => {
     respond({ kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [], nextOffset: null } } });
     await expect(diagnostic).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
     const detail = api.request("view", { kind: "detail", documentId: "doc-1", expectedRevision: 2, issueId: "issue-1" });
-    respond({ kind: "detail", revision: 2, issue: { id: "issue-2", title: "합성", version: "1.0.0", category: null, localStatus: "ready", importedStatus: "ready", missingCriteria: false, unverifiedDependencies: 0, description: "", criteriaCount: 0, requirementCount: 0, dependencyCount: 0 } });
+    respond({ kind: "detail", revision: 2, issue: { id: "issue-2", title: "합성", version: "1.0.0", category: null, localStatus: "ready", importedStatus: "ready", missingCriteria: false, unverifiedDependencies: 0, description: "", criteriaCount: 0, requirementCount: 0, dependencyCount: 0, candidateReasons: [] } });
     await expect(detail).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
     const documents = api.request("view", { kind: "documents", expectedRevision: 2, afterId: "doc-a" });
     respond({ kind: "documents", revision: 2, documents: [{ id: "doc-a", documentRevision: 1, issueCount: 0 }], nextAfterId: null });
@@ -121,6 +121,56 @@ describe("issue project transport", () => {
     for (const relatedEntityId of [undefined, "issue-2", "../outside", "x".repeat(129)]) {
       const invalid = api.request("view", query); api.receive(reply({ ...finding, relatedEntityId }));
       await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    }
+    api.disconnect();
+  });
+  it("accepts category findings only without comparison IDs or provenance", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "diagnostics" as const, documentId: "doc-1", expectedRevision: 2, offset: 0 };
+    const reply = (finding: Record<string, unknown>) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [finding], nextOffset: null } } } });
+    for (const code of ["category-empty", "category-no-requirements", "category-no-issues"]) {
+      const pending = api.request("view", query); api.receive(reply({ code, entityId: "cat-1", title: "분류", provenance: null })); expect((await pending).view?.kind).toBe("diagnostics");
+    }
+    for (const finding of [{ code: "category-empty", entityId: "cat-1", title: "분류", provenance: null, relatedEntityId: "cat-2" }, { code: "category-no-issues", entityId: "cat-1", title: "분류", provenance: { origin: "user", sourceName: null, locator: null } }, { code: "category-unknown", entityId: "cat-1", title: "분류", provenance: null }]) {
+      const pending = api.request("view", query); api.receive(reply(finding)); await expect(pending).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    }
+    api.disconnect();
+  });
+  it("correlates a candidate preview with the immutable requested IDs and rejects partial or malformed results", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const ids = ["i-2", "i-1"], query = { kind: "candidatePreview" as const, documentId: "doc-1", expectedRevision: 2, issueIds: ids };
+    const reply = (items: unknown, options: unknown = { includeRetryable: false, includeFailed: false }) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "candidatePreview", revision: 2, options, items } });
+    const item = (id: string) => ({ id, title: "합성", version: "1.0.0", order: 0, localStatus: "ready", candidateReasons: [], unverifiedDependencyCount: 0, dependencyPreview: [] });
+    const pending = api.request("view", query); ids.reverse(); api.receive(reply([item("i-2"), item("i-1")])); expect((await pending).view?.kind).toBe("candidatePreview");
+    const bounded = api.request("view", query); api.receive(reply([item("i-1"), { ...item("i-2"), candidateReasons: ["dependency"], unverifiedDependencyCount: 4, dependencyPreview: [{ id: "dep-1", title: "하나" }, { id: "dep-2", title: "둘" }, { id: "dep-3", title: "셋" }] }])); expect((await bounded).view?.kind).toBe("candidatePreview");
+    for (const items of [[item("i-1")], [item("i-2"), item("i-1")], [item("i-1"), { ...item("i-2"), candidateReasons: ["unknown"] }], [item("i-1"), { ...item("i-2"), candidateReasons: ["state", "state"] }], [item("i-1"), { ...item("i-2"), version: "1.2" }], [item("i-1"), { ...item("i-2"), order: -1 }], [item("i-1"), { ...item("i-2"), order: Number.MAX_SAFE_INTEGER + 1 }], [item("i-1"), { ...item("i-2"), candidateReasons: ["dependency"], unverifiedDependencyCount: 1, dependencyPreview: [] }], [item("i-1"), { ...item("i-2"), unverifiedDependencyCount: 1, dependencyPreview: [{ id: "dep", title: "선행" }] }], [item("i-1"), { ...item("i-2"), candidateReasons: ["dependency"], unverifiedDependencyCount: 2, dependencyPreview: [{ id: "dep", title: "선행" }, { id: "dep", title: "중복" }] }], [item("i-1"), { ...item("i-2"), candidateReasons: ["dependency"], unverifiedDependencyCount: 1, dependencyPreview: [{ id: "i-2", title: "자기 자신" }] }]]) {
+      const invalid = api.request("view", query); api.receive(reply(items)); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    }
+    const mismatch = api.request("view", query); api.receive(reply([item("i-1"), item("i-2")], { includeRetryable: true, includeFailed: false })); await expect(mismatch).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const concealed = api.request("view", query); api.receive(reply([item("i-1"), { ...item("i-2"), localStatus: "failed" }])); await expect(concealed).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const options = { includeRetryable: true, includeFailed: false };
+    const selected = api.request("view", { ...query, options }); options.includeRetryable = false;
+    api.receive(reply([item("i-1"), { ...item("i-2"), localStatus: "retryable" }], { includeRetryable: true, includeFailed: false })); expect((await selected).view?.kind).toBe("candidatePreview");
+    api.disconnect();
+  });
+  it("accepts only known, unique candidate preview reasons in issue details", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "detail" as const, documentId: "doc-1", expectedRevision: 2, issueId: "issue-1" };
+    const reply = (candidateReasons: unknown) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "detail", revision: 2, issue: { id: "issue-1", title: "합성", version: "1.0.0", category: null, localStatus: "needs_review", importedStatus: "completed", missingCriteria: true, unverifiedDependencies: 1, description: "설명", criteriaCount: 0, requirementCount: 0, dependencyCount: 1, candidateReasons } } });
+    const pending = api.request("view", query); api.receive(reply(["state", "missing-criteria", "review", "dependency"])); expect((await pending).view?.kind).toBe("detail");
+    for (const reasons of [undefined, ["state", "state"], ["unknown"], [null], "state"]) {
+      const invalid = api.request("view", query); api.receive(reply(reasons)); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    }
+    api.disconnect();
+  });
+  it("validates unreferenced source findings", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "diagnostics" as const, documentId: "doc-1", expectedRevision: 2, offset: 0 };
+    const reply = (finding: Record<string, unknown>) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [finding], nextOffset: null } } } });
+    const finding = { code: "source-unreferenced", entityId: "source-1", title: "자료", provenance: null };
+    const pending = api.request("view", query); api.receive(reply(finding)); expect((await pending).view?.kind).toBe("diagnostics");
+    for (const invalidFinding of [{ ...finding, relatedEntityId: "source-2" }, { ...finding, provenance: { origin: "source", sourceName: "자료", locator: null } }, { ...finding, entityId: "../outside" }]) {
+      const invalid = api.request("view", query); api.receive(reply(invalidFinding)); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
     }
     api.disconnect();
   });

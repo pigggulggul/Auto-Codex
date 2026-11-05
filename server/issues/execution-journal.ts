@@ -25,6 +25,8 @@ export const EXECUTION_JOURNAL_SCHEMA = `
 
 type Identity = { projectId: string; issueId: string; idempotencyKey: string; projectRevision: number; requestDigest: string };
 export type JournalRecord = Identity & { attemptId: string; phase: "prepared" | "dispatching" | "running" | "outcome_unknown" | "settled"; outcome: "interrupted" | "failed" | "verification_required" | null; threadId: string | null; turnId: string | null };
+export type JournalHistoryEntry = Pick<JournalRecord, "attemptId" | "issueId" | "projectRevision" | "phase" | "outcome"> & { hasRuntimeReference: boolean };
+export type JournalHistoryPage = { items: JournalHistoryEntry[]; nextAfterId: string | null };
 type JournalCode = "INVALID_INPUT" | "IDEMPOTENCY_CONFLICT" | "PROJECT_BUSY" | "INVALID_TRANSITION" | "NOT_FOUND";
 export class ExecutionJournalError extends Error {
   constructor(readonly code: JournalCode) { super(code); }
@@ -58,6 +60,17 @@ export class ExecutionJournal {
   get(projectId: string, attemptId: string): JournalRecord {
     if (!boundedId(projectId) || !boundedId(attemptId)) return fail("INVALID_INPUT");
     return this.read(projectId, attemptId);
+  }
+
+  /** Read a bounded, project-scoped page without exposing request or runtime identifiers. */
+  history(projectId: string, afterId: string | null = null, limit = 32): JournalHistoryPage {
+    if (!boundedId(projectId) || afterId !== null && !boundedId(afterId) || !Number.isSafeInteger(limit) || limit < 1 || limit > 32) return fail("INVALID_INPUT");
+    const rows = this.db.prepare(`SELECT attempt_id AS attemptId, issue_id AS issueId, project_revision AS projectRevision,
+      phase, outcome, CASE WHEN thread_id IS NOT NULL AND turn_id IS NOT NULL THEN 1 ELSE 0 END AS hasRuntimeReference
+      FROM issue_dispatch_journal WHERE project_id=? AND (? IS NULL OR attempt_id>?) ORDER BY attempt_id LIMIT ?`)
+      .all(projectId, afterId, afterId, limit + 1) as unknown as (Omit<JournalHistoryEntry, "hasRuntimeReference"> & { hasRuntimeReference: number })[];
+    const items = rows.slice(0, limit).map(row => ({ attemptId: row.attemptId, issueId: row.issueId, projectRevision: row.projectRevision, phase: row.phase, outcome: row.outcome, hasRuntimeReference: row.hasRuntimeReference === 1 }));
+    return { items, nextAfterId: rows.length > limit ? items[items.length - 1].attemptId : null };
   }
 
   /** The digest must be computed by trusted server code from the frozen request. */

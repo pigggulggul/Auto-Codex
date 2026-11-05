@@ -49,7 +49,8 @@
 .issues-category-list small { color: #5e5a50; }
 .issues-status { flex: none; padding: 5px 8px; border-radius: 999px; background: #f0eadc; color: #4c422e; font-size: .8rem; }
 .issues-list .issues-block-reason { color: #7a4219; font-weight: 700; }
-.issues-prerequisites { margin-top: 14px; padding: 12px 16px; border: 1px solid #e8d5b3; border-radius: 9px; background: #fff7e9; color: #593c12; }
+.issues-selection-checkbox { display: inline-flex; align-items: center; gap: 6px; margin: 4px 0; }
+.issues-prerequisites { margin-top: 14px; padding: 12px 16px; border: 1px solid #e8d5b3; border-radius: 9px; background: #fff7e9; color: #593c12; overflow-wrap: anywhere; }
 .issues-prerequisites ul { margin: 8px 0; padding-left: 1.3em; }
 .issues-prerequisites p { margin: 0; font-size: .88rem; }
 .issues-pagination { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }

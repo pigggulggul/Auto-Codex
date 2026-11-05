@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { Children, isValidElement, type ReactNode } from "react";
 import { expect, it } from "vitest";
-import { IssueCategoryNavigation, IssueDependencyList, IssueDetailBack, IssueDiagnostics, IssueRow, ProjectIssueSearch, RequirementDetailPanel } from "./IssueBrowser";
+import { IssueCandidateCheck, IssueCategoryNavigation, IssueDependencyList, IssueDetailBack, IssueDiagnostics, IssueRow, IssueSelectionPreview, ProjectIssueSearch, RequirementDetailPanel } from "./IssueBrowser";
 import { AnalysisSources } from "./AnalysisSources";
 import { IssueApi } from "./api";
 
@@ -11,6 +11,51 @@ it("renders untrusted issue text as escaped text with a readable status", () => 
   expect(html).not.toContain("<script>");
   expect(html).toContain("검토 필요");
   expect(html).toContain("완료 조건 없음"); expect(html).toContain("선행 이슈 2개 미확인");
+});
+it("explains basic candidate checks without promising execution or completion", () => {
+  const blocked = renderToStaticMarkup(<IssueCandidateCheck reasons={["state", "missing-criteria", "review", "dependency"]} />);
+  expect(blocked).toContain("현재 상태가 기본 대상인 대기가 아닙니다."); expect(blocked).toContain("완료 조건이 없습니다."); expect(blocked).toContain("선행 이슈의 로컬 완료 근거가 확인되지 않았습니다.");
+  expect(blocked).toContain("실행 허가나 완료 판정이 아닙니다.");
+  const ready = renderToStaticMarkup(<IssueCandidateCheck reasons={[]} />);
+  expect(ready).toContain("현재 확인한 기본 조건에 제외 사유가 없습니다."); expect(ready).toContain("준비 중입니다.");
+});
+it("exposes accessible selection controls and labels preview as non-execution", () => {
+  const issue = { id: "issue-1", title: "<script>합성</script>", version: "1.0.0", category: null, localStatus: "ready" as const, importedStatus: "ready" as const, missingCriteria: false, unverifiedDependencies: 0 };
+  const row = renderToStaticMarkup(<IssueRow issue={issue} disabled={false} selectionDisabled onSelect={() => {}} onOpen={() => {}} />);
+  expect(row).toContain('disabled="" aria-label="issue-1 사전 점검에 선택"');
+  const result = { ...issue, order: 0, description: "", criteriaCount: 1, requirementCount: 0, dependencyCount: 0, candidateReasons: [], unverifiedDependencyCount: 0, dependencyPreview: [] };
+  const html = renderToStaticMarkup(<IssueSelectionPreview selected={[issue]} results={[result]} loading={false} onRemove={() => {}} onPreview={() => {}} onClear={() => {}} />);
+  expect(html).toContain("선택 1개"); expect(html).toContain('aria-label="issue-1 선택 해제"');
+  expect(html).toContain("실행 순서가 아닙니다"); expect(html).toContain("&lt;script&gt;합성&lt;/script&gt;"); expect(html).not.toContain("<script>");
+  const sorted = renderToStaticMarkup(<IssueSelectionPreview selected={[issue]} results={[{ id: "later", title: "나중", version: "1.10.0", order: 0, localStatus: "ready", candidateReasons: [], unverifiedDependencyCount: 0, dependencyPreview: [] }, { id: "first", title: "먼저", version: "1.2.0", order: 1, localStatus: "ready", candidateReasons: ["dependency"], unverifiedDependencyCount: 1, dependencyPreview: [{ id: "dep-1", title: "선행" }] }]} loading={false} onRemove={() => {}} onPreview={() => {}} onClear={() => {}} />);
+  expect(sorted.indexOf("먼저 · first")).toBeLessThan(sorted.indexOf("나중 · later")); expect(sorted).toContain("선행 이슈의 로컬 완료 근거가 확인되지 않았습니다."); expect(sorted).toContain("선택한 선행 이슈가 완료된다고 가정하지 않습니다.");
+  const empty = renderToStaticMarkup(<IssueSelectionPreview selected={[]} results={null} loading={false} onRemove={() => {}} onPreview={() => {}} onClear={() => {}} />);
+  expect(empty).toContain('disabled="">선택 항목 점검');
+});
+it("opens unverified dependencies and offers the selected issue when more are omitted", () => {
+  const issue = { id: "issue-1", title: "후행", version: "1.0.0", order: 0, localStatus: "ready" as const, candidateReasons: ["dependency" as const], unverifiedDependencyCount: 4, dependencyPreview: [{ id: "dep-1", title: "<script>선행</script>" }, { id: "dep-2", title: "둘" }, { id: "dep-3", title: "셋" }] };
+  const opened: { id: string; button: HTMLButtonElement }[] = [];
+  const props = { selected: [], results: [issue], loading: false, onRemove: () => {}, onPreview: () => {}, onClear: () => {}, onOpenIssue: (id: string, button: HTMLButtonElement) => opened.push({ id, button }) };
+  const html = renderToStaticMarkup(<IssueSelectionPreview {...props} />);
+  expect(html).toContain("미확인 선행 이슈 4개 중 3개 표시"); expect(html).toContain("&lt;script&gt;선행&lt;/script&gt;"); expect(html).not.toContain("<script>");
+  expect(html).toContain('aria-label="issue-1 이슈 상세에서 선행 이슈 더 보기"');
+  const node = IssueSelectionPreview(props), buttons: { label: string; click: (event: { currentTarget: HTMLButtonElement }) => void }[] = [];
+  const visit = (value: ReactNode): void => { Children.forEach(value, child => { if (!isValidElement<{ children?: ReactNode; "aria-label"?: string; onClick?: (event: { currentTarget: HTMLButtonElement }) => void }>(child)) return; if (child.type === "button" && child.props["aria-label"] && child.props.onClick) buttons.push({ label: child.props["aria-label"], click: child.props.onClick }); visit(child.props.children); }); };
+  visit(node); const clicked = {} as HTMLButtonElement;
+  buttons.find(button => button.label === "dep-1 선행 이슈 상세 보기")?.click({ currentTarget: clicked });
+  buttons.find(button => button.label === "issue-1 이슈 상세에서 선행 이슈 더 보기")?.click({ currentTarget: clicked });
+  expect(opened).toEqual([{ id: "dep-1", button: clicked }, { id: "issue-1", button: clicked }]);
+  expect(renderToStaticMarkup(<IssueSelectionPreview {...props} loading />)).toContain('disabled="" aria-label="dep-1 선행 이슈 상세 보기"');
+});
+it("requires explicit selection for retry and failed states and displays the applied local state", () => {
+  const changes: { includeRetryable: boolean; includeFailed: boolean }[] = [];
+  const props = { selected: [], results: null, loading: false, onRemove: () => {}, onPreview: () => {}, onClear: () => {}, options: { includeRetryable: false, includeFailed: false }, onOptionsChange: (value: { includeRetryable: boolean; includeFailed: boolean }) => changes.push(value) };
+  const node = IssueSelectionPreview(props), inputs: ((event: { target: { checked: boolean } }) => void)[] = [];
+  const visit = (value: ReactNode): void => { Children.forEach(value, child => { if (!isValidElement<{ children?: ReactNode; onChange?: (event: { target: { checked: boolean } }) => void }>(child)) return; if (child.type === "input" && child.props.onChange) inputs.push(child.props.onChange); visit(child.props.children); }); };
+  visit(node); expect(inputs).toHaveLength(2); inputs[0]({ target: { checked: true } }); inputs[1]({ target: { checked: true } });
+  expect(changes).toEqual([{ includeRetryable: true, includeFailed: false }, { includeRetryable: false, includeFailed: true }]);
+  const html = renderToStaticMarkup(<IssueSelectionPreview {...props} options={{ includeRetryable: true, includeFailed: true }} results={[{ id: "failed", title: "실패 이슈", version: "1.0.0", order: 0, localStatus: "failed", candidateReasons: [], unverifiedDependencyCount: 0, dependencyPreview: [] }]} />);
+  expect(html).toContain("재시도 필요 포함"); expect(html).toContain("실패 포함"); expect(html).toContain("로컬 상태 ✕ 실패"); expect(html).toContain("선택 조건에 제외 사유가 없습니다"); expect(html).toContain("실행 허가나 완료 판정이 아닙니다");
 });
 it("opens a dependency without treating imported completion as verified", () => {
   const opened: { id: string; button: HTMLButtonElement }[] = [];
@@ -56,6 +101,27 @@ it("labels diagnostic scope and escapes untrusted titles", () => {
   expect(html).toContain("원문 누락, 의미적 완전성, 실제 코드 동작은 확인하지 않았습니다.");
   expect(html).toContain("&lt;script&gt;unsafe&lt;/script&gt;"); expect(html).not.toContain("<script>");
   expect(html).toContain("완료 조건이 없는 이슈");
+});
+
+it("labels unreferenced document sources without implying their contents were analyzed", () => {
+  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "source-unreferenced", entityId: "source-1", title: "<script>unsafe</script>", provenance: null }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenIssue={() => {}} onOpenRequirement={() => {}} onOpenCategory={() => {}} />);
+  expect(html).toContain("요구사항에서 참조하지 않은 문서상 원본 자료");
+  expect(html).toContain("원본 자료는 문서에 기록된 참조만 확인하며 파일을 읽지 않습니다.");
+  expect(html).toContain("&lt;script&gt;unsafe&lt;/script&gt;"); expect(html).not.toContain("<script>");
+  expect(html).not.toContain('aria-label="source-1 이슈 상세 보기"'); expect(html).not.toContain('aria-label="source-1 분류 이슈 보기"');
+});
+
+it("offers accessible category navigation and preserves the filter explanation", () => {
+  const report = { documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "category-empty" as const, entityId: "cat-empty", title: "<script>unsafe</script>", provenance: null }], nextOffset: null } };
+  const common = { report, revision: 2, offset: 0, history: [], loading: false, onPrevious: () => {}, onNext: () => {} };
+  const opened: string[] = [], node = IssueDiagnostics({ ...common, onOpenCategory: id => opened.push(id) });
+  const visit = (value: ReactNode): void => { Children.forEach(value, child => { if (!isValidElement<{ children?: ReactNode; "aria-label"?: string; onClick?: () => void }>(child)) return; if (child.type === "button" && child.props["aria-label"] === "cat-empty 분류 이슈 보기") child.props.onClick?.(); visit(child.props.children); }); };
+  visit(node); expect(opened).toEqual(["cat-empty"]);
+  const html = renderToStaticMarkup(<IssueDiagnostics {...common} loading onOpenCategory={() => {}} />);
+  expect(html).toContain("&lt;script&gt;unsafe&lt;/script&gt;"); expect(html).not.toContain("<script>");
+  expect(html).toContain('disabled="" aria-label="cat-empty 분류 이슈 보기"'); expect(html).toContain("현재 검색·상태·버전 필터가 유지됩니다.");
+  const nav = renderToStaticMarkup(<IssueCategoryNavigation page={{ items: [], nextOffset: null }} path={[]} selected="cat-empty" history={[]} loading={false} onAll={() => {}} onUncategorized={() => {}} onParent={() => {}} onSelect={() => {}} onPrevious={() => {}} onNext={() => {}} />);
+  expect(nav).toContain("cat-empty (점검에서 선택)");
 });
 
 it("shows matching text as a review candidate with its comparison ID", () => {

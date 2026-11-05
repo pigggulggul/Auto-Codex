@@ -6,10 +6,10 @@ import { createServer } from 'node:http';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
-import { buildUnverifiedAnalysisToolPolicy } from '../build-server/server/issues/analysis-tool-policy.js';
+import { buildUnverifiedAnalysisToolPolicy, requireCompatibleAnalysisRequirements } from '../build-server/server/issues/analysis-tool-policy.js';
 import { buildSegmentAnalysisRequest } from '../build-server/server/issues/analysis-request.js';
 import { AnalysisDraft } from '../build-server/server/issues/analysis-draft.js';
-import { createProbeDeadline, waitForProbeTurn } from './issue-probe-control.mjs';
+import { classifyProbeFailure, createProbeDeadline, waitForProbeTurn } from './issue-probe-control.mjs';
 
 // This probe invokes the installed CLI with a new temporary CODEX_HOME and a fake
 // loopback Responses provider. It never uses the user's project, account or model.
@@ -58,7 +58,7 @@ const fake = createServer((request, response) => {
     response.end();
   });
 });
-let child, cancelled = false, deadline, rejectPending = () => {};
+let child, cancelled = false, deadline, rejectPending = () => {}, failureKind = 'none', wrapperExit = 'not-observed';
 let phase = 'starting'; const signals = new Set();
 try {
   await new Promise((resolve, reject) => {
@@ -87,7 +87,7 @@ try {
   child.stderr.on('data', data => { const text = String(data); if (/access.*denied|os error 5|EPERM/i.test(text)) signals.add('access-denied'); if (/failed to|error/i.test(text)) signals.add('cli-error'); }); // Do not echo diagnostics.
   const pending = new Map(), completed = new Map(), finalMessages = new Map(); let next = 0;
   rejectPending = error => { for (const wait of pending.values()) wait.reject(error); pending.clear(); };
-  child.once('exit', () => rejectPending(new Error('Synthetic CLI exited.')));
+  child.once('exit', (code, signal) => { wrapperExit = Number.isInteger(code) ? `exit-${code}` : signal ? 'signalled' : 'unknown'; rejectPending(new Error('Synthetic CLI exited.')); });
   child.once('error', () => rejectPending(new Error('Synthetic CLI could not start.')));
   createInterface({ input: child.stdout }).on('line', line => {
     let message; try { message = JSON.parse(line); } catch { return; }
@@ -103,6 +103,15 @@ try {
     phase = 'initialize';
     await send('initialize', { clientInfo: { name: 'issue-tool-probe', version: '1.0.0' }, capabilities: { experimentalApi: true } });
     child.stdin.write(`${JSON.stringify({ method: 'initialized', params: {} })}\n`);
+    // Check before plugin installation, MCP discovery or any thread can start.
+    phase = 'managed-requirements';
+    const requirementsRead = await send('configRequirements/read', null);
+    requireCompatibleAnalysisRequirements(requirementsRead);
+    phase = 'synthetic-hook-preflight';
+    const initialConfig = await send('config/read', { cwd: workspace, includeLayers: false });
+    assert.ok(initialConfig?.config && typeof initialConfig.config === 'object' && !Array.isArray(initialConfig.config), 'Synthetic effective configuration is unavailable.');
+    const configuredHooks = initialConfig.config.hooks;
+    assert.ok(configuredHooks === undefined || configuredHooks === null || typeof configuredHooks === 'object' && !Array.isArray(configuredHooks) && Object.keys(configuredHooks).length === 0, 'Synthetic effective configuration contains hooks; probe will not start a thread.');
     phase = 'synthetic-plugin-install';
     let syntheticInstall = 'not-attempted';
     try { await send('plugin/install', { pluginName: 'synthetic-plugin', marketplacePath: path.join(workspace, '.agents', 'plugins', 'marketplace.json') }); syntheticInstall = 'completed'; } catch { syntheticInstall = 'unavailable'; }
@@ -127,8 +136,11 @@ try {
     assert.equal(inventory.syntheticInstall, 'completed', 'The synthetic plugin could not be installed.');
     assert.equal(inventory.syntheticPluginInstalled, true, 'The synthetic plugin was not installed.');
     assert.ok(servers.some(server => server.name === 'plugin_fixture' && server.pluginId === 'synthetic-plugin@synthetic-local'), 'The plugin MCP was not found in the inventory.');
-    const policy = buildUnverifiedAnalysisToolPolicy(configRead, pages, plugins);
+    const policy = buildUnverifiedAnalysisToolPolicy(configRead, pages, plugins, requirementsRead);
     assert.equal(policy.verified, false); assert.equal(policy.serverCount, 2); assert.ok(policy.disabledPluginIds.includes('synthetic-plugin@synthetic-local'));
+    // Keep the per-plugin-ID control independent of the global plugin switch.
+    const pluginIdOnlyConfig = { ...policy.config };
+    delete pluginIdOnlyConfig['features.plugins'];
     const knownToolsOff = { 'mcp_servers.synthetic_fixture.enabled': false, 'mcp_servers.synthetic_extra.enabled': false, 'features.multi_agent': false, 'features.goals': false, 'features.view_image': false, 'features.shell_tool': false, 'features.unified_exec': false, 'features.apps': false };
     const cases = [];
     for (const test of [
@@ -136,13 +148,13 @@ try {
       { name: 'empty-mcp-map', config: { mcp_servers: {} } },
       { name: 'specific-mcp-disabled', config: { 'mcp_servers.synthetic_fixture.enabled': false } },
       { name: 'known-tools-disabled', config: knownToolsOff },
-      { name: 'inventory-policy', config: policy.config, disabledPluginIds: policy.disabledPluginIds },
+      { name: 'inventory-policy', config: pluginIdOnlyConfig, disabledPluginIds: policy.disabledPluginIds },
       { name: 'strict-context', config: { ...policy.config, 'features.plugins': false, 'features.hooks': false, 'project_doc_max_bytes': 0 }, disabledPluginIds: policy.disabledPluginIds },
       { name: 'plugins-disabled', config: { ...policy.config, 'features.plugins': false, 'features.hooks': false } },
       { name: 'configured-mcp-forced', config: undefined },
       { name: 'disabled-mcp-forced', config: knownToolsOff },
       { name: 'plugin-enabled-forced', config: knownToolsOff },
-      { name: 'plugin-disabled-forced', config: policy.config, disabledPluginIds: policy.disabledPluginIds },
+      { name: 'plugin-disabled-forced', config: pluginIdOnlyConfig, disabledPluginIds: policy.disabledPluginIds },
       { name: 'plugin-feature-disabled-forced', config: { ...policy.config, 'features.plugins': false, 'features.hooks': false } },
       { name: 'request-user-forced', config: knownToolsOff },
     ]) {
@@ -216,9 +228,12 @@ try {
     const finalPluginCalls = (await readFile(path.join(scratch, 'synthetic-plugin-calls.txt'), 'utf8')).trim().split('\n').filter(Boolean).length;
     assert.equal(finalMcpCalls, 1); assert.equal(finalPluginCalls, 1);
     cases.push({ name: 'analysis-e2e', tools: observations.at(-1), context: contextObservations.at(-1), turnStatus: 'completed', providerRequests: caseRequests, toolOutputs: [], syntheticMcpCalls: finalMcpCalls, syntheticPluginCalls: finalPluginCalls });
-    return { cli: version, provider: 'loopback-synthetic', environment: 'empty', inventory, cases };
+    return { cli: version, provider: 'loopback-synthetic', environment: 'empty', managedRequirements: requirementsRead.requirements === null ? 'none-reported' : 'no-known-conflict', inventory, cases };
   };
   observations.result = await Promise.race([run(), deadline.promise]);
+} catch (error) {
+  failureKind = classifyProbeFailure(error, cancelled);
+  throw error;
 } finally {
   cancelled = true; deadline?.clear(); rejectPending(new Error('Synthetic probe ended.'));
   let childStopped = !child, terminationResult = child ? 'unconfirmed' : 'not-started';
@@ -240,7 +255,7 @@ try {
   assert.equal(path.dirname(await realpath(scratch)).toLowerCase(), (await realpath(parent)).toLowerCase());
   assert.ok(path.basename(scratch).startsWith('issue-tool-probe-'));
   if (childStopped) await rm(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
-  else throw new Error(`Synthetic CLI termination was not confirmed at ${phase} (${terminationResult}); signals: ${[...signals].join(',') || 'none'}. Its isolated scratch directory was preserved.`);
+  else throw new Error(`Synthetic CLI termination was not confirmed at ${phase} (${terminationResult}); probe: ${failureKind}; wrapper: ${wrapperExit}; signals: ${[...signals].join(',') || 'none'}. Its isolated scratch directory was preserved.`);
 }
 const { cases, ...summary } = observations.result;
 console.log(JSON.stringify({ ...summary, cases: cases.map(item => ({ name: item.name, ...(item.tools ? { tools: item.tools.map(tool => tool.name), context: item.context, turnStatus: item.turnStatus, providerRequests: item.providerRequests, toolOutputs: item.toolOutputs, syntheticMcpCalls: item.syntheticMcpCalls, syntheticPluginCalls: item.syntheticPluginCalls } : { error: item.error }) })) }));
