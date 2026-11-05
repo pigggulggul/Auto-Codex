@@ -7,7 +7,7 @@ export class IssueApiError extends Error {
   constructor(readonly code: string, message: string) { super(message); }
 }
 export type IssueBindingResult = { bound: boolean; cancelled?: boolean; issueCount?: number; alreadyImported?: boolean; cleanupWarning?: boolean; authorized?: boolean; authorizedForMs?: number; view?: IssueViewResult; sources?: AnalysisSourceList; chunk?: AnalysisSourceChunk; snapshot?: AnalysisSnapshotSummary; freshness?: AnalysisFreshness };
-type Pending = { id: string; action: Action; sourceId?: string; offset?: number; snapshotRequest?: Pick<AnalysisSnapshotRequest, "expectedRevision" | "expectedSources"> & { hasInstruction: boolean }; freshnessRequest?: FreshnessRequest; promise: Promise<IssueBindingResult>; resolve: (result: IssueBindingResult) => void; reject: (error: IssueApiError) => void; timer: ReturnType<typeof setTimeout> };
+type Pending = { id: string; action: Action; sourceId?: string; offset?: number; viewQuery?: IssueViewQuery; snapshotRequest?: Pick<AnalysisSnapshotRequest, "expectedRevision" | "expectedSources"> & { hasInstruction: boolean }; freshnessRequest?: FreshnessRequest; promise: Promise<IssueBindingResult>; resolve: (result: IssueBindingResult) => void; reject: (error: IssueApiError) => void; timer: ReturnType<typeof setTimeout> };
 const uncertainMessage = (action: Action) => action === "import" ? "등록 결과를 확인하지 못했습니다. 같은 문서를 다시 선택하면 중복 등록 없이 확인할 수 있습니다." : action === "export" ? "저장 결과를 확인하지 못했습니다. 다시 시도하기 전에 선택한 위치를 확인하세요." : action === "sourceAdd" || action === "sourceRemove" ? "자료 선택 상태를 확인하지 못했습니다. 목록을 다시 확인하세요." : "연결 결과를 확인하지 못했습니다. 다시 연결한 뒤 상태를 확인하세요.";
 const mutating = (action: Action) => action === "bind" || action === "import" || action === "export" || action === "sourceAdd" || action === "sourceRemove";
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -46,10 +46,10 @@ const localStatus = (value: unknown) => ["ready", "retryable", "failed", "needs_
 const dependency = (value: unknown) => record(value) && shortId(value.id) && label(value.title, 255) && localStatus(value.localStatus) && (localStatus(value.importedStatus) || value.importedStatus === "completed");
 const summary = (value: unknown) => dependency(value) && record(value) && label(value.version, 1024) && (value.category === null || label(value.category, 255)) && typeof value.missingCriteria === "boolean" && nonnegative(value.unverifiedDependencies);
 function validFinding(item: unknown): boolean {
-  if (!record(item) || typeof item.code !== "string" || !["requirement-unlinked", "requirement-uncategorized", "requirement-same-text", "issue-unlinked", "issue-uncategorized", "issue-missing-description", "issue-missing-criteria", "issue-unverified-completion", "issue-same-title"].includes(item.code) || !shortId(item.entityId) || !(item.title === null || label(item.title, 32768))) return false;
-  const duplicate = item.code === "requirement-same-text" || item.code === "issue-same-title";
+  if (!record(item) || typeof item.code !== "string" || !["requirement-unlinked", "requirement-uncategorized", "requirement-same-text", "requirement-ai-proposal", "issue-unlinked", "issue-uncategorized", "issue-missing-description", "issue-missing-criteria", "issue-unverified-completion", "issue-same-title", "issue-same-version-order"].includes(item.code) || !shortId(item.entityId) || !(item.title === null || label(item.title, 32768))) return false;
+  const duplicate = item.code === "requirement-same-text" || item.code === "issue-same-title" || item.code === "issue-same-version-order";
   if (duplicate ? !shortId(item.relatedEntityId) || item.relatedEntityId === item.entityId : item.relatedEntityId !== undefined) return false;
-  return item.code.startsWith("requirement-") ? record(item.provenance) && typeof item.provenance.origin === "string" && ["source", "user", "ai-proposal"].includes(item.provenance.origin) && (item.provenance.sourceName === null || label(item.provenance.sourceName, 255)) && (item.provenance.locator === null || label(item.provenance.locator, 1024)) : item.provenance === null;
+  return item.code.startsWith("requirement-") ? record(item.provenance) && typeof item.provenance.origin === "string" && ["source", "user", "ai-proposal"].includes(item.provenance.origin) && (item.code !== "requirement-ai-proposal" || item.provenance.origin === "ai-proposal") && (item.provenance.sourceName === null || label(item.provenance.sourceName, 255)) && (item.provenance.locator === null || label(item.provenance.locator, 1024)) : item.provenance === null;
 }
 function validView(value: unknown): value is IssueViewResult {
   if (!record(value) || !Number.isSafeInteger(value.revision) || Number(value.revision) < 1) return false;
@@ -74,6 +74,30 @@ function validView(value: unknown): value is IssueViewResult {
   if (value.kind === "dependencies") return value.page.items.every(dependency);
   if (value.kind === "requirements") return value.page.items.every(item => record(item) && shortId(item.id) && label(item.text, 32768) && ["source", "user", "ai-proposal"].includes(String(item.origin)) && (item.sourceName === null || label(item.sourceName, 255)) && (item.locator === null || label(item.locator, 1024)));
   return false;
+}
+
+/** A well-shaped response must also correspond to the particular view request. */
+function matchesViewRequest(view: IssueViewResult, query: IssueViewQuery | undefined): boolean {
+  if (!query || view.kind !== query.kind || query.expectedRevision !== undefined && view.revision !== query.expectedRevision) return false;
+  if (view.kind === "documents" && query.kind === "documents") {
+    let previous = query.afterId ?? "";
+    for (const item of view.documents) { if (item.id <= previous) return false; previous = item.id; }
+    return view.nextAfterId === null || view.documents.length > 0 && view.nextAfterId === previous;
+  }
+  if (view.kind === "detail" && query.kind === "detail") return view.issue.id === query.issueId;
+  if (view.kind === "projectIssues" && query.kind === "projectIssues") {
+    const after = query.cursor.afterId ?? "", next = view.page.nextCursor;
+    return (view.page.documentId === null || view.page.documentId > after) && (!next || (next.afterId ?? "") > after || (next.afterId ?? "") === after && next.issueOffset > query.cursor.issueOffset);
+  }
+  if (!("offset" in query)) return false;
+  const offset = query.offset;
+  const page = view.kind === "diagnostics" ? view.report.findings : "page" in view ? view.page : null;
+  if (!page || !("nextOffset" in page)) return false;
+  const end = offset + page.items.length;
+  if (!Number.isSafeInteger(end) || page.nextOffset !== null && (page.items.length === 0 || page.nextOffset !== end)) return false;
+  if (view.kind === "diagnostics") return end <= view.report.totalFindings && (page.nextOffset !== null ? end < view.report.totalFindings : end === view.report.totalFindings);
+  if (view.kind === "requirementDetail" && query.kind === "requirementDetail") return view.requirement.id === query.requirementId && end <= view.requirement.linkedIssueCount && (page.nextOffset !== null ? end < view.requirement.linkedIssueCount : end === view.requirement.linkedIssueCount);
+  return true;
 }
 
 export class IssueApi {
@@ -109,7 +133,8 @@ export class IssueApi {
     const sourceQuery = query && "sourceId" in query ? query : undefined;
     const snapshotQuery = action === "snapshotPrepare" ? query as AnalysisSnapshotRequest : undefined;
     const freshnessQuery = action === "snapshotCheck" ? query as FreshnessRequest : undefined;
-    this.pending = { id, action, ...(sourceQuery ? { sourceId: sourceQuery.sourceId, offset: sourceQuery.offset } : {}), ...(snapshotQuery ? { snapshotRequest: { expectedRevision: snapshotQuery.expectedRevision, expectedSources: snapshotQuery.expectedSources.map(item => ({ ...item })), hasInstruction: !!snapshotQuery.instruction.trim() } } : {}), ...(freshnessQuery ? { freshnessRequest: { ...freshnessQuery, expectedIds: [...freshnessQuery.expectedIds] } } : {}), promise, resolve, reject, timer };
+    const viewQuery = action === "view" && query && "kind" in query ? query as IssueViewQuery : undefined;
+    this.pending = { id, action, ...(sourceQuery ? { sourceId: sourceQuery.sourceId, offset: sourceQuery.offset } : {}), ...(viewQuery ? { viewQuery: viewQuery.kind === "projectIssues" ? { ...viewQuery, cursor: { ...viewQuery.cursor } } : { ...viewQuery } } : {}), ...(snapshotQuery ? { snapshotRequest: { expectedRevision: snapshotQuery.expectedRevision, expectedSources: snapshotQuery.expectedSources.map(item => ({ ...item })), hasInstruction: !!snapshotQuery.instruction.trim() } } : {}), ...(freshnessQuery ? { freshnessRequest: { ...freshnessQuery, expectedIds: [...freshnessQuery.expectedIds] } } : {}), promise, resolve, reject, timer };
     const type = action === "import" ? "issues.document.import" : action === "export" ? "issues.document.export" : action === "authorizeView" ? "issues.view.authorize" : action === "view" ? "issues.view.query" : action === "releaseView" ? "issues.view.release" : action === "sourceAdd" ? "issues.sources.add" : action === "sourceList" ? "issues.sources.list" : action === "sourceRead" ? "issues.sources.read" : action === "sourceRemove" ? "issues.sources.remove" : action === "snapshotPrepare" ? "issues.analysis.prepare" : action === "snapshotCheck" ? "issues.analysis.check" : `issues.project.${action}`;
     try { this.send(JSON.stringify({ type, v: 1, clientRequestId: id, ...(action === "view" ? { query } : {}), ...(action === "export" || action === "sourceRead" || action === "sourceRemove" || action === "snapshotPrepare" ? query : {}), ...(freshnessQuery ? { snapshotId: freshnessQuery.snapshotId, expectedRevision: freshnessQuery.expectedRevision } : {}) })); }
     catch { clearTimeout(timer); this.pending = null; reject(new IssueApiError("DISCONNECTED", "브리지에 요청을 전달하지 못했습니다.")); }
@@ -120,7 +145,7 @@ export class IssueApi {
     const message = input as Record<string, unknown>, pending = this.pending;
     if (!pending || message.v !== 1 || message.clientRequestId !== pending.id || message.action !== pending.action) return true;
     clearTimeout(pending.timer); this.pending = null;
-    if (message.ok === true && typeof message.bound === "boolean" && (message.cancelled === undefined || message.cancelled === true) && (pending.action !== "import" || message.bound && (message.cancelled === true || nonnegative(message.issueCount) && typeof message.alreadyImported === "boolean")) && (pending.action !== "export" || message.bound && (message.cancelled === true || typeof message.cleanupWarning === "boolean")) && (!["sourceAdd", "sourceList", "sourceRemove"].includes(pending.action) || message.bound && (pending.action === "sourceAdd" && message.cancelled === true || validSources(message.sources))) && (pending.action !== "sourceRead" || message.bound && validChunk(message.chunk, pending)) && (pending.action !== "snapshotPrepare" || message.bound && validSnapshot(message.snapshot, pending)) && (pending.action !== "snapshotCheck" || message.bound && validFreshness(message.freshness, pending)) && (pending.action !== "view" || validView(message.view)) && (pending.action !== "authorizeView" || typeof message.authorized === "boolean" && (!message.authorized || nonnegative(message.authorizedForMs) && Number(message.authorizedForMs) > 0 && Number(message.authorizedForMs) <= 15 * 60_000))) {
+    if (message.ok === true && typeof message.bound === "boolean" && (message.cancelled === undefined || message.cancelled === true) && (pending.action !== "import" || message.bound && (message.cancelled === true || nonnegative(message.issueCount) && typeof message.alreadyImported === "boolean")) && (pending.action !== "export" || message.bound && (message.cancelled === true || typeof message.cleanupWarning === "boolean")) && (!["sourceAdd", "sourceList", "sourceRemove"].includes(pending.action) || message.bound && (pending.action === "sourceAdd" && message.cancelled === true || validSources(message.sources))) && (pending.action !== "sourceRead" || message.bound && validChunk(message.chunk, pending)) && (pending.action !== "snapshotPrepare" || message.bound && validSnapshot(message.snapshot, pending)) && (pending.action !== "snapshotCheck" || message.bound && validFreshness(message.freshness, pending)) && (pending.action !== "view" || message.bound && validView(message.view) && matchesViewRequest(message.view, pending.viewQuery)) && (pending.action !== "authorizeView" || typeof message.authorized === "boolean" && (!message.authorized || nonnegative(message.authorizedForMs) && Number(message.authorizedForMs) > 0 && Number(message.authorizedForMs) <= 15 * 60_000))) {
       pending.resolve({ bound: message.bound, ...(message.cancelled === true ? { cancelled: true } : {}), ...(pending.action === "import" && message.cancelled !== true ? { issueCount: Number(message.issueCount), alreadyImported: message.alreadyImported as boolean } : {}), ...(pending.action === "export" && message.cancelled !== true ? { cleanupWarning: message.cleanupWarning as boolean } : {}), ...(["sourceAdd", "sourceList", "sourceRemove"].includes(pending.action) && message.cancelled !== true ? { sources: message.sources as AnalysisSourceList } : {}), ...(pending.action === "sourceRead" ? { chunk: message.chunk as AnalysisSourceChunk } : {}), ...(pending.action === "snapshotPrepare" ? { snapshot: message.snapshot as AnalysisSnapshotSummary } : {}), ...(pending.action === "snapshotCheck" ? { freshness: message.freshness as AnalysisFreshness } : {}), ...(pending.action === "view" ? { view: message.view as IssueViewResult } : {}), ...(pending.action === "authorizeView" ? { authorized: message.authorized as boolean, ...(message.authorized ? { authorizedForMs: Number(message.authorizedForMs) } : {}) } : {}) });
     } else if (message.ok === false && message.error && typeof message.error === "object") {
       const error = message.error as Record<string, unknown>;

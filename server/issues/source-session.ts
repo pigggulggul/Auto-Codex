@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList, AnalysisSourceMetadata } from "../../shared/issues/sources.js";
 import { MAX_ANALYSIS_SOURCE_BYTES } from "./analysis-source.js";
 
-const MAX_SOURCES = 16, MAX_SESSION_BYTES = 4 * 1024 * 1024, MAX_MEMORY = 32 * 1024 * 1024, CHUNK_UNITS = 8192;
+const MAX_SESSIONS = 128, MAX_SOURCES = 16, MAX_SESSION_BYTES = 4 * 1024 * 1024, MAX_MEMORY = 32 * 1024 * 1024, CHUNK_UNITS = 8192;
 type Source = AnalysisSourceMetadata & { text: string; memory: number };
 type Segment = { id: string; sourceId: string; start: number; end: number };
 type Snapshot = { summary: AnalysisSnapshotSummary; instruction: string; segments: Segment[] };
@@ -49,12 +49,18 @@ export class IssueSourceSessions {
     let session = this.current(signal, generation, projectPath);
     const old = session?.items.find(item => item.relativePath.toLowerCase() === source.relativePath.toLowerCase());
     if (old) {
-      if (old.sha256 !== source.sha256) return fail("STALE_INPUT", "이미 선택한 자료가 변경되었습니다. 기존 사본을 제거한 뒤 다시 선택하세요.");
+      if (old.sha256 !== source.sha256 || old.bytes !== source.bytes || old.text !== source.text) return fail("STALE_INPUT", "이미 선택한 자료가 변경되었습니다. 기존 사본을 제거한 뒤 다시 선택하세요.");
+      // Reselecting an unchanged file is an explicit fresh read at this revision.
+      // The old snapshot must never inherit the new revision or remain usable.
+      if (old.projectRevision !== projectRevision) { old.projectRevision = projectRevision; session!.snapshot = undefined; }
       return this.list(signal, generation, projectPath);
     }
     const memory = Math.max(source.bytes, source.text.length * 2), totalBytes = session?.items.reduce((total, item) => total + item.bytes, 0) ?? 0;
     if ((session?.items.length ?? 0) >= MAX_SOURCES || totalBytes + source.bytes > MAX_SESSION_BYTES || this.memory + memory > MAX_MEMORY) return fail("LIMIT_EXCEEDED", "선택 자료 한도에 도달했습니다. 일부를 제거한 뒤 다시 선택하세요.");
     if (!session) {
+      // Even an empty source retains metadata, a timer and a snapshot. Bound
+      // these allocations separately from the source-text byte accounting.
+      if (this.sessions.size >= MAX_SESSIONS) return fail("LIMIT_EXCEEDED", "자료 선택 세션 한도에 도달했습니다. 다른 창의 자료를 닫은 뒤 다시 시도하세요.");
       const onAbort = () => this.clear(signal);
       const timer = setTimeout(onAbort, Math.max(1, expires - this.now())); timer.unref();
       session = { generation, projectPath, expires, items: [], timer, onAbort };
@@ -69,6 +75,7 @@ export class IssueSourceSessions {
     const session = this.current(signal, generation, projectPath), index = session?.items.findIndex(item => item.id === sourceId) ?? -1;
     if (!session || index < 0) return fail("NOT_FOUND", "선택한 자료를 찾을 수 없습니다.");
     const [removed] = session.items.splice(index, 1); this.memory -= removed.memory; session.snapshot = undefined;
+    if (session.items.length === 0) this.clear(signal);
     return this.list(signal, generation, projectPath);
   }
   prepare(signal: AbortSignal, generation: number, projectPath: string, revision: number, request: AnalysisSnapshotRequest): AnalysisSnapshotSummary {

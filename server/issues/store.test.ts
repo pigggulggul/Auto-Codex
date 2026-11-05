@@ -31,6 +31,18 @@ function document(suffix: string, options: { status?: string; criteria?: string[
 }
 
 describe("issue storage", () => {
+  it("reads a compact document imported exactly at the exchange byte limit", async () => {
+    const t = await setup();
+    const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-boundary", revision: 1, sources: [], categories: [], requirements: [], issues: Array.from({ length: 128 }, (_, index) => ({ id: `issue-${index}`, categoryId: null, requirementIds: [], version: "1.0.0", order: index, title: "x", description: index < 127 ? "x".repeat(32_768) : "", acceptanceCriteria: ["x"], dependencyIds: [], status: "ready" })) };
+    const frame = () => new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(doc)}\n\`\`\``);
+    const padding = 4 * 1024 * 1024 - frame().byteLength;
+    expect(padding).toBeGreaterThanOrEqual(0); expect(padding).toBeLessThanOrEqual(32_768);
+    doc.issues[127].description = "x".repeat(padding);
+    const input = frame(); expect(input.byteLength).toBe(4 * 1024 * 1024);
+    await t.store.importDocument(t.project.id, 1, input);
+    expect((await t.store.readDocument(t.project.id, doc.documentId, 2)).document.issues).toHaveLength(128);
+    expect(await t.store.importDocument(t.project.id, 2, input)).toMatchObject({ alreadyImported: true });
+  });
   it("persists validated imports and separates imported completion from local review across restart", async () => {
     const t = await setup(), bytes = document("a", { status: "completed" });
     expect(await t.store.importDocument(t.project.id, 1, bytes)).toEqual({ documentId: "doc-a", revision: 2, alreadyImported: false, issueCount: 1 });
@@ -69,6 +81,27 @@ describe("issue storage", () => {
     const db = new DatabaseSync(path.join(t.root, ".local-data", "issues", "issues.sqlite"));
     try { db.prepare("UPDATE documents SET original_bytes=? WHERE id='doc-a'").run(new Uint8Array([1, 2, 3])); } finally { db.close(); }
     await expect(t.store.readDocument(t.project.id, "doc-a")).rejects.toMatchObject({ code: "STORAGE_FAILED" });
+    await expect(t.store.importDocument(t.project.id, 2, document("a"))).rejects.toMatchObject({ code: "STORAGE_FAILED" });
+  });
+  it("rejects idempotent re-import when stored issue state or entity index is inconsistent", async () => {
+    const t = await setup(); await t.store.importDocument(t.project.id, 1, document("a", { status: "completed" }));
+    const db = new DatabaseSync(path.join(t.root, ".local-data", "issues", "issues.sqlite"));
+    try {
+      db.prepare("UPDATE imported_issues SET local_status='ready' WHERE issue_id='issue-a'").run();
+      await expect(t.store.importDocument(t.project.id, 2, document("a", { status: "completed" }))).rejects.toMatchObject({ code: "STORAGE_FAILED" });
+      db.prepare("UPDATE imported_issues SET local_status='needs_review' WHERE issue_id='issue-a'").run();
+      db.prepare("DELETE FROM entity_ids WHERE entity_id='issue-a'").run();
+      await expect(t.store.importDocument(t.project.id, 2, document("a", { status: "completed" }))).rejects.toMatchObject({ code: "STORAGE_FAILED" });
+      await expect(t.store.readDocument(t.project.id, "doc-a")).rejects.toMatchObject({ code: "STORAGE_FAILED" });
+      expect((await t.store.readProject(t.project.id)).revision).toBe(2);
+    } finally { db.close(); }
+  });
+  it("rejects a stored document revision inconsistent with its content", async () => {
+    const t = await setup(); await t.store.importDocument(t.project.id, 1, document("a"));
+    const db = new DatabaseSync(path.join(t.root, ".local-data", "issues", "issues.sqlite"));
+    try { db.prepare("UPDATE documents SET document_revision=2 WHERE id='doc-a'").run(); } finally { db.close(); }
+    await expect(t.store.readDocument(t.project.id, "doc-a")).rejects.toMatchObject({ code: "STORAGE_FAILED" });
+    await expect(t.store.importDocument(t.project.id, 2, document("a"))).rejects.toMatchObject({ code: "STORAGE_FAILED" });
   });
   it("rolls back collisions, stale writes and invalid documents without changing the revision", async () => {
     const t = await setup(); await t.store.importDocument(t.project.id, 1, document("a"));

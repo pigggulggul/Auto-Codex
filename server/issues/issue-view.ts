@@ -6,6 +6,7 @@ const PAGE_SIZE = 32;
 const SEARCH_DOCUMENT_LIMIT = 8;
 const MAX_RESPONSE_BYTES = 240 * 1024;
 const invalidOffset = () => { throw new IssueStoreError("LIMIT_EXCEEDED", "이슈 목록 위치가 올바르지 않습니다."); };
+const searchKey = (value: string) => value.normalize("NFC").toLowerCase();
 function offsetValue(offset: number): number { if (!Number.isSafeInteger(offset) || offset < 0) invalidOffset(); return offset; }
 function boundedPage<T>(values: T[], offset: number, reservedBytes = 512): Page<T> {
   offsetValue(offset);
@@ -54,13 +55,14 @@ export class IssueView {
     const { document } = await this.load(projectId, documentId, revision);
     const linked = new Set(document.issues.flatMap(issue => issue.requirementIds));
     const sources = new Map(document.sources.map(source => [source.id, source.name]));
-    const requirementTexts = new Map<string, string>(), issueTitles = new Map<string, string>();
+    const requirementTexts = new Map<string, string>(), issueTitles = new Map<string, string>(), issueOrders = new Map<string, string>();
     const comparisonKey = (text: string) => text.normalize("NFC").trim().replace(/\s+/gu, " ").toLowerCase();
     const findings: IssueFinding[] = [];
     for (const requirement of [...document.requirements].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
       const provenance = { origin: requirement.origin, sourceName: requirement.sourceId ? sources.get(requirement.sourceId) ?? null : null, locator: requirement.locator ?? null };
       if (!linked.has(requirement.id)) findings.push({ code: "requirement-unlinked", entityId: requirement.id, title: requirement.text, provenance });
       if (!requirement.categoryId) findings.push({ code: "requirement-uncategorized", entityId: requirement.id, title: requirement.text, provenance });
+      if (requirement.origin === "ai-proposal") findings.push({ code: "requirement-ai-proposal", entityId: requirement.id, title: requirement.text, provenance });
       const key = comparisonKey(requirement.text), relatedEntityId = requirementTexts.get(key);
       if (key && relatedEntityId) findings.push({ code: "requirement-same-text", entityId: requirement.id, title: requirement.text, provenance, relatedEntityId });
       else if (key) requirementTexts.set(key, requirement.id);
@@ -75,6 +77,9 @@ export class IssueView {
       const key = comparisonKey(issue.title), relatedEntityId = issueTitles.get(key);
       if (key && relatedEntityId) findings.push({ code: "issue-same-title", entityId: issue.id, title: issue.title, provenance: null, relatedEntityId });
       else if (key) issueTitles.set(key, issue.id);
+      const orderKey = JSON.stringify([normalizeVersion(issue.version), issue.order]), firstWithOrder = issueOrders.get(orderKey);
+      if (firstWithOrder) findings.push({ code: "issue-same-version-order", entityId: issue.id, title: issue.title, provenance: null, relatedEntityId: firstWithOrder });
+      else issueOrders.set(orderKey, issue.id);
     }
     return { documentRevision: document.revision, issueCount: document.issues.length, requirementCount: document.requirements.length, linkedRequirementCount: document.requirements.filter(item => linked.has(item.id)).length, totalFindings: findings.length, findings: boundedPage(findings, offset) };
   }
@@ -106,13 +111,13 @@ export class IssueView {
       subtree = new Set([filters.categoryId]); const queue = [filters.categoryId];
       for (let index = 0; index < queue.length; index++) for (const child of children.get(queue[index]) ?? []) if (!subtree.has(child)) { subtree.add(child); queue.push(child); }
     }
-    const search = filters.search?.trim().toLocaleLowerCase(), version = filters.version ? normalizeVersion(filters.version) : undefined;
+    const search = filters.search === undefined ? undefined : searchKey(filters.search.trim()), version = filters.version ? normalizeVersion(filters.version) : undefined;
     const items = [...document.issues].sort(comparePlannedIssues).filter(issue => {
       const category = issue.categoryId ? categories.get(issue.categoryId) ?? "" : "";
       return (!filters.status || status.get(issue.id)?.localStatus === filters.status)
         && (filters.categoryId === undefined || filters.categoryId === null && issue.categoryId === null || typeof filters.categoryId === "string" && issue.categoryId !== null && subtree!.has(issue.categoryId))
         && (!version || normalizeVersion(issue.version) === version)
-        && (!search || [issue.id, issue.title, issue.description, category].some(text => text.toLocaleLowerCase().includes(search)));
+        && (!search || [issue.id, issue.title, issue.description, category].some(text => searchKey(text).includes(search)));
     }).map(issue => {
       const state = status.get(issue.id)!;
       // v2 has no locally verified completed state; imported completion is not evidence.

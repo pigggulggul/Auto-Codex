@@ -22,6 +22,30 @@ describe("analysis draft orchestration", () => {
     await draft.runNext(async () => { changed = true; return output(0); });
     expect(draft.inspect()).toMatchObject({ processedSegments: 0, segments: [{ status: "failed", error: "STALE_INPUT", requirements: [] }] });
   });
+  it.each([
+    ["snapshotId", "snapshot-replaced"], ["projectRevision", 4], ["sourceId", "source-replaced"],
+    ["sourcePath", "other.md"], ["sourceSha256", "b".repeat(64)], ["segmentId", "segment-replaced"],
+    ["offset", 1], ["text", "modified synthetic source 0"], ["instruction", "modified request"],
+  ])("rejects a changed %s even when the loader reuses one mutable object", async (key, value) => {
+    const shared = input(0);
+    const draft = new AnalysisDraft("snapshot-test", 3, 1, async () => shared);
+    await draft.runNext(async () => {
+      Object.assign(shared, { [key]: value });
+      return output(0);
+    });
+    expect(draft.inspect()).toMatchObject({ processedSegments: 0, segments: [{ status: "failed", error: "STALE_INPUT", requirements: [] }] });
+  });
+  it("passes a frozen copy of the documented segment fields to transport", async () => {
+    const shared = { ...input(0), unrelated: "private loader metadata" };
+    const draft = new AnalysisDraft("snapshot-test", 3, 1, async () => shared);
+    await draft.runNext(async item => {
+      expect(item).not.toBe(shared);
+      expect(Object.isFrozen(item)).toBe(true);
+      expect(item).not.toHaveProperty("unrelated");
+      return output(0);
+    });
+    expect(draft.inspect().processedSegments).toBe(1);
+  });
   it("discards a late result when the authorized selected copy is removed", async () => {
     const sessions = new IssueSourceSessions(() => 0), session = new AbortController();
     const sources = sessions.add(session.signal, 1, "C:/project", 1000, 3, { relativePath: "plan.md", text: "synthetic source 0", bytes: 18, sha256: "a".repeat(64) });
@@ -47,6 +71,16 @@ describe("analysis draft orchestration", () => {
     await draft.runNext(async () => { throw new Error("private synthetic failure"); });
     expect(draft.inspect()).toMatchObject({ processedSegments: 0, segments: [{ status: "failed", error: "MODEL_FAILED", requirements: [] }] });
     expect(JSON.stringify(draft.inspect())).not.toContain("private synthetic failure");
+  });
+  it("releases retained candidates and forbids reuse after disposal", async () => {
+    const draft = new AnalysisDraft("snapshot-test", 3, 2, async index => input(index));
+    await draft.runNext(async () => output(0));
+    expect(draft.inspect().segments[0].requirements).toHaveLength(1);
+    draft.dispose();
+    draft.dispose();
+    expect(draft.inspect().segments.every(segment => segment.requirements.length === 0)).toBe(true);
+    await expect(draft.runNext(async () => output(1))).rejects.toThrow(/unavailable/);
+    expect(() => draft.retry(0)).toThrow();
   });
   it("keeps earlier segments and marks an over-limit segment failed without truncating it", async () => {
     const draft = new AnalysisDraft("snapshot-test", 3, 17, async index => input(index));

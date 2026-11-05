@@ -25,6 +25,7 @@
 .issues-notice { margin: 0; padding: 12px 16px; border-radius: 9px; background: #fff2d9; color: #593c12; }
 .issues-browser { display: grid; gap: 16px; padding: 24px; border: 1px solid #e1ddd3; border-radius: 16px; background: #fff; }
 .issues-browser-heading, .issues-detail-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.issues-list-controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .issues-browser h2, .issues-browser h3 { margin: 4px 0 10px; }
 .issues-browser h4 { margin: 20px 0 8px; }
 .issues-browser button { padding: 9px 12px; border: 1px solid #b6ad9b; border-radius: 9px; background: #fff; color: #393429; cursor: pointer; }
@@ -87,4 +88,4 @@
 .workspace-modes button[aria-current="page"] { border-bottom-color: #8c7142; color: #29251d; }
 .workspace-modes button:focus-visible, .issues-project button:focus-visible, .issues-binding button:focus-visible, .issues-actions button:focus-visible { outline: 3px solid #785f36; outline-offset: 2px; }
 @media (max-width: 800px) { .issues-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .issues-intro, .issues-project { flex-direction: column; align-items: stretch; padding: 20px; } .issues-stage { align-self: flex-start; } .issues-overview, .issues-browser-columns { grid-template-columns: 1fr; } .issues-browser { padding: 18px; } .workspace-modes button { padding: 10px; } }
+@media (max-width: 520px) { .issues-intro, .issues-project { flex-direction: column; align-items: stretch; padding: 20px; } .issues-stage { align-self: flex-start; } .issues-overview, .issues-browser-columns { grid-template-columns: 1fr; } .issues-browser { padding: 18px; } .issues-browser-heading { flex-wrap: wrap; } .workspace-modes button { padding: 10px; } }

@@ -10,6 +10,9 @@ export class AnalysisSourceError extends Error {
 }
 const fail = (code: AnalysisSourceError["code"], message: string): never => { throw new AnalysisSourceError(code, message); };
 const excludedDirectory = /^(?:\.git|\.local-data|\.cache|\.codex|\.aws|\.ssh|node_modules|dist|build|coverage|\.next|\.turbo|\.vite|\.venv|venv|__pycache__|secrets|credentials)$/i;
+// Sensitive directories cannot become visible by selecting a project nested
+// inside them. Generated-directory exclusions remain relative to the project.
+const excludedProjectAncestor = /^(?:\.git|\.local-data|\.aws|\.ssh|secrets|credentials)$/i;
 const excludedName = /(?:^|[._-])(?:\.env[^/\\]*|secret(?:s)?|credentials?|passwords?|passwd|private[._-]?key|tokens?|api[._-]?key|id[._-]rsa)(?:[._-]|$)/i;
 
 /** Copies only an explicitly selected local project file; it neither executes nor transmits the text. */
@@ -19,7 +22,8 @@ export async function readAnalysisSource(projectPath: string, selectedPath: stri
   if (process.platform !== "win32" || !path.isAbsolute(projectPath) || !path.isAbsolute(selectedPath) || selectedPath.startsWith("\\\\")) return fail("PATH_INVALID", "로컬 Windows 프로젝트 안의 자료만 선택할 수 있습니다.");
   const project = path.resolve(projectPath), target = path.resolve(selectedPath), root = path.parse(project).root, relative = path.relative(project, target);
   const components = relative.split(path.sep).filter(Boolean);
-  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative) || relative.length > 1024 || target.slice(root.length).includes(":") || ![".md", ".txt"].includes(path.extname(target).toLowerCase()) || excludedDirectory.test(path.basename(project)) || /^\.env/i.test(path.basename(project)) || components.some((component, index) => excludedDirectory.test(component) || /^\.env/i.test(component) || /(?:^|\.)env(?:\.|$)/i.test(component) || (index === components.length - 1 && excludedName.test(component)))) return fail("PATH_INVALID", "프로젝트 안의 허용된 Markdown 또는 텍스트 자료를 선택하세요. 비밀·설정·생성 경로는 제외됩니다.");
+  const projectComponents = project.slice(root.length).split(path.sep).filter(Boolean);
+  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative) || relative.length > 1024 || target.slice(root.length).includes(":") || ![".md", ".txt"].includes(path.extname(target).toLowerCase()) || projectComponents.some(component => excludedProjectAncestor.test(component) || /^\.env/i.test(component)) || excludedDirectory.test(path.basename(project)) || components.some((component, index) => excludedDirectory.test(component) || /^\.env/i.test(component) || /(?:^|\.)env(?:\.|$)/i.test(component) || (index === components.length - 1 && excludedName.test(component)))) return fail("PATH_INVALID", "프로젝트 안의 허용된 Markdown 또는 텍스트 자료를 선택하세요. 비밀·설정·생성 경로는 제외됩니다.");
   let drives: Set<string>;
   try { drives = await localDrives(signal); } catch { abort(); return fail("PATH_INVALID", "로컬 드라이브를 확인할 수 없습니다."); }
   if (!isAllowedSelectedDrive(root, drives)) return fail("PATH_INVALID", "네트워크 또는 확인할 수 없는 드라이브의 자료는 선택할 수 없습니다.");

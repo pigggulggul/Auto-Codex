@@ -103,6 +103,34 @@ describe("bounded issue views", () => {
     expect((await t.store.readProject(t.project.id)).revision).toBe(3);
     await expect(t.view.diagnostics(t.project.id, "doc-duplicates", 2, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
   });
+  it("flags same-version order collisions with stable comparison IDs across pages", async () => {
+    const t = await setup();
+    const issues = Array.from({ length: 35 }, (_, i) => ({ id: `order-${String(i).padStart(2, "0")}`, categoryId: "cat-order", requirementIds: ["req-order"], version: i % 2 ? "01.00.0" : "1.0.0", order: 3, title: `항목 ${i}`, description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }));
+    issues.push({ ...issues[0], id: "other-version", version: "2.0.0", title: "다른 버전" });
+    issues.push({ ...issues[0], id: "other-order", order: 4, title: "다른 순서" });
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-order", revision: 1, sources: [], categories: [{ id: "cat-order", parentId: null, title: "분류", order: 0 }], requirements: [{ id: "req-order", categoryId: "cat-order", text: "요구사항", origin: "user" }], issues: issues.reverse() };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const first = await t.view.diagnostics(t.project.id, "doc-order", 3, 0);
+    const last = await t.view.diagnostics(t.project.id, "doc-order", 3, 32);
+    expect(first.totalFindings).toBe(34); expect(first.findings.items).toHaveLength(32); expect(first.findings.nextOffset).toBe(32);
+    expect(last.findings.items).toHaveLength(2); expect(last.findings.nextOffset).toBeNull();
+    expect([...first.findings.items, ...last.findings.items]).toEqual(Array.from({ length: 34 }, (_, i) => ({ code: "issue-same-version-order", entityId: `order-${String(i + 1).padStart(2, "0")}`, title: `항목 ${i + 1}`, provenance: null, relatedEntityId: "order-00" })));
+    expect((await t.store.readProject(t.project.id)).revision).toBe(3);
+    await expect(t.view.diagnostics(t.project.id, "doc-order", 2, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+  });
+  it("flags recorded AI-proposal origins even when linked, without treating other origins as proposals", async () => {
+    const t = await setup();
+    const requirements = Array.from({ length: 35 }, (_, i) => ({ id: `proposal-${String(i).padStart(2, "0")}`, categoryId: "cat-proposals", text: `제안 ${i}`, origin: "ai-proposal" }));
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-proposals", revision: 1, sources: [{ id: "src-proposals", name: "기획서", contentHash: `sha256:${"a".repeat(64)}` }], categories: [{ id: "cat-proposals", parentId: null, title: "분류", order: 0 }], requirements: [...requirements, { id: "source-req", categoryId: "cat-proposals", text: "원본", origin: "source", sourceId: "src-proposals" }, { id: "user-req", categoryId: "cat-proposals", text: "사용자", origin: "user" }], issues: [{ id: "proposal-issue", categoryId: "cat-proposals", requirementIds: [...requirements.map(item => item.id), "source-req", "user-req"], version: "1.0.0", order: 0, title: "연결", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const first = await t.view.diagnostics(t.project.id, "doc-proposals", 3, 0), last = await t.view.diagnostics(t.project.id, "doc-proposals", 3, 32);
+    expect(first).toMatchObject({ totalFindings: 35, linkedRequirementCount: 37, findings: { nextOffset: 32 } });
+    expect(last.findings).toMatchObject({ nextOffset: null });
+    expect([...first.findings.items, ...last.findings.items]).toEqual(requirements.map(item => ({ code: "requirement-ai-proposal", entityId: item.id, title: item.text, provenance: { origin: "ai-proposal", sourceName: null, locator: null } })));
+    expect((await t.view.requirementDetail(t.project.id, "doc-proposals", 3, "proposal-00", 0)).page.items.map(item => item.id)).toEqual(["proposal-issue"]);
+    await expect(t.view.diagnostics(t.project.id, "doc-proposals", 2, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    expect((await t.store.readProject(t.project.id)).revision).toBe(3);
+  });
   it("pages large requirement findings without truncating their text", async () => {
     const t = await setup(), longText = "\u0001".repeat(32768);
     const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-large-findings", revision: 1, sources: [], categories: [], requirements: [{ id: "req-big", categoryId: null, text: longText, origin: "user" }], issues: [] };
@@ -144,6 +172,30 @@ describe("bounded issue views", () => {
     while (offset !== null) { const report = await t.view.diagnostics(t.project.id, "doc-filter", 3, offset); total = report.totalFindings; seen.push(...report.findings.items.map(item => `${item.code}:${item.entityId}`)); offset = report.findings.nextOffset; }
     expect(seen.length).toBe(total); expect(new Set(seen).size).toBe(total); expect(total).toBeGreaterThan(32);
     await expect(t.view.diagnostics(t.project.id, "doc-filter", 3, total + 1)).rejects.toMatchObject({ code: "LIMIT_EXCEEDED" });
+  });
+  it("matches canonically equivalent Unicode in document and project searches", async () => {
+    const t = await setup();
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-unicode", revision: 1, sources: [], categories: [{ id: "unicode-cat", parentId: null, title: "화면".normalize("NFD"), order: 0 }], requirements: [], issues: [
+      { id: "unicode-title", categoryId: null, requirementIds: [], version: "1.0.0", order: 0, title: "한글".normalize("NFD"), description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" },
+      { id: "unicode-description", categoryId: null, requirementIds: [], version: "1.0.0", order: 1, title: "설명 항목", description: "카페", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" },
+      { id: "unicode-category", categoryId: "unicode-cat", requirementIds: [], version: "1.0.0", order: 2, title: "분류 항목", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }
+    ] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    expect((await t.view.list(t.project.id, "doc-unicode", 3, 0, { search: "한글" })).items.map(item => item.id)).toEqual(["unicode-title"]);
+    expect((await t.view.list(t.project.id, "doc-unicode", 3, 0, { search: "카페".normalize("NFD") })).items.map(item => item.id)).toEqual(["unicode-description"]);
+    expect((await t.view.list(t.project.id, "doc-unicode", 3, 0, { search: "화면" })).items.map(item => item.id)).toEqual(["unicode-category"]);
+    expect((await t.view.projectSearch(t.project.id, 3, { issueOffset: 0 }, { search: "한글" })).items.map(item => item.id)).toEqual(["unicode-title"]);
+    expect((await t.view.list(t.project.id, "doc-unicode", 3, 0, { search: "다른 단어" })).items).toEqual([]);
+  });
+  it("filters canonically equivalent text before paginating", async () => {
+    const t = await setup();
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-unicode-pages", revision: 1, sources: [], categories: [], requirements: [], issues: Array.from({ length: 35 }, (_, i) => ({ id: `unicode-page-${i}`, categoryId: null, requirementIds: [], version: "1.0.0", order: i, title: `${"한글".normalize("NFD")} ${i}`, description: "", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" })) };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const first = await t.view.list(t.project.id, "doc-unicode-pages", 3, 0, { search: "한글" });
+    const second = await t.view.list(t.project.id, "doc-unicode-pages", 3, 32, { search: "한글" });
+    expect(first.items).toHaveLength(32); expect(first.nextOffset).toBe(32);
+    expect(second.items).toHaveLength(3); expect(second.nextOffset).toBeNull();
+    expect(new Set([...first.items, ...second.items].map(item => item.id)).size).toBe(35);
   });
   it("pages all unresolved prerequisites, including those beyond the first page", async () => {
     const t = await setup();

@@ -22,6 +22,27 @@ describe("issue exchange document", () => {
     expect(parseIssueDocument(serializeIssueDocument(doc))).toEqual(doc);
     expect(() => serializeIssueDocument({ ...doc, issues: [{ ...doc.issues[0], dependencyIds: ["unknown"] }] })).toThrow();
   });
+  it("exports an imported document whose pretty-printed form exceeds the document byte limit", () => {
+    const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-large", revision: 1, sources: [], categories: [], requirements: [], issues: Array.from({ length: 16_000 }, (_, index) => ({ id: `issue-${index}`, categoryId: null, requirementIds: [], version: "1.0.0", order: index, title: "x", description: "", acceptanceCriteria: ["x"], dependencyIds: [], status: "ready" })) };
+    const input = wrap(JSON.stringify(doc));
+    expect(input.byteLength).toBeLessThanOrEqual(MAX_DOCUMENT_BYTES);
+    expect(Buffer.byteLength(JSON.stringify(doc, null, 2))).toBeGreaterThan(MAX_DOCUMENT_BYTES);
+    const imported = parseIssueDocument(input);
+    const exported = serializeIssueDocument(imported);
+    expect(exported.byteLength).toBeLessThanOrEqual(MAX_DOCUMENT_BYTES);
+    expect(parseIssueDocument(exported)).toEqual(imported);
+  });
+  it("round-trips a document exactly at the byte limit without adding mandatory framing", () => {
+    const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-boundary", revision: 1, sources: [], categories: [], requirements: [], issues: Array.from({ length: 128 }, (_, index) => ({ id: `issue-${index}`, categoryId: null, requirementIds: [], version: "1.0.0", order: index, title: "x", description: index < 127 ? "x".repeat(32_768) : "", acceptanceCriteria: ["x"], dependencyIds: [], status: "ready" })) };
+    const frame = () => new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(doc)}\n\`\`\``);
+    const padding = MAX_DOCUMENT_BYTES - frame().byteLength;
+    expect(padding).toBeGreaterThanOrEqual(0); expect(padding).toBeLessThanOrEqual(32_768);
+    doc.issues[127].description = "x".repeat(padding);
+    const input = frame(); expect(input.byteLength).toBe(MAX_DOCUMENT_BYTES);
+    const imported = parseIssueDocument(input), exported = serializeIssueDocument(imported);
+    expect(exported.byteLength).toBe(MAX_DOCUMENT_BYTES);
+    expect(parseIssueDocument(exported)).toEqual(imported);
+  });
   it("rejects missing, duplicate, unclosed and unsupported fenced blocks", () => {
     expect(() => parseIssueDocument(new TextEncoder().encode("일반 문서"))).toThrowError(expect.objectContaining({ code: "UNSUPPORTED_FORMAT" }));
     const block = wrap(JSON.stringify(example()));

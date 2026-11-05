@@ -63,11 +63,40 @@ describe("ephemeral selected source copies", () => {
   it("rejects changed duplicate paths and enforces source count", () => {
     const store = new IssueSourceSessions(() => 0), socket = new AbortController();
     const first = store.add(socket.signal, 1, "C:/project", 1000, 1, input("plan.md", "old"));
-    expect(store.add(socket.signal, 1, "C:/project", 1000, 2, input("PLAN.md", "old"))).toEqual(first);
+    expect(store.add(socket.signal, 1, "C:/project", 1000, 1, input("PLAN.md", "old"))).toEqual(first);
     expect(() => store.add(socket.signal, 1, "C:/project", 1000, 2, input("plan.md", "new", "b".repeat(64)))).toThrow(expect.objectContaining({ code: "STALE_INPUT" }));
     for (let i = 1; i < 16; i++) store.add(socket.signal, 1, "C:/project", 1000, 1, input(`item-${i}.txt`, ""));
     expect(() => store.add(socket.signal, 1, "C:/project", 1000, 1, input("overflow.txt", ""))).toThrow(expect.objectContaining({ code: "LIMIT_EXCEEDED" }));
     store.clearAll();
+  });
+  it("rebinds an explicitly reselected unchanged copy to a newer revision and invalidates the old snapshot", () => {
+    const store = new IssueSourceSessions(() => 0), socket = new AbortController();
+    try {
+      const original = store.add(socket.signal, 1, "C:/project", 1000, 1, input("plan.md", "synthetic")).items;
+      const old = store.prepare(socket.signal, 1, "C:/project", 1, { expectedRevision: 1, expectedSources: original, instruction: "old request" });
+      const current = store.add(socket.signal, 1, "C:/project", 1000, 2, input("PLAN.md", "synthetic")).items;
+      expect(current).toHaveLength(1); expect(current[0]).toMatchObject({ id: original[0].id, projectRevision: 2 });
+      expect(() => store.analysisSegment(socket.signal, 1, "C:/project", 1, old.id, 0)).toThrow(expect.objectContaining({ code: "STALE_INPUT" }));
+      const fresh = store.prepare(socket.signal, 1, "C:/project", 2, { expectedRevision: 2, expectedSources: current, instruction: "new request" });
+      expect(store.analysisSegment(socket.signal, 1, "C:/project", 2, fresh.id, 0).instruction).toBe("new request");
+      expect(() => store.add(socket.signal, 1, "C:/project", 1000, 3, input("plan.md", "different"))).toThrow(expect.objectContaining({ code: "STALE_INPUT" }));
+      expect(store.snapshotFiles(socket.signal, 1, "C:/project", 2, fresh.id)[0].projectRevision).toBe(2);
+    } finally { store.clearAll(); }
+  });
+  it("bounds sessions for empty sources and frees their slots on removal or disconnect", () => {
+    const store = new IssueSourceSessions(() => 0), sockets = Array.from({ length: 129 }, () => new AbortController());
+    try {
+      for (const socket of sockets.slice(0, 128)) store.add(socket.signal, 1, "C:/project", 60_000, 1, input("empty.txt", ""));
+      expect(() => store.add(sockets[128].signal, 1, "C:/project", 60_000, 1, input("empty.txt", ""))).toThrow(expect.objectContaining({ code: "LIMIT_EXCEEDED" }));
+      // Existing sessions may still add data while the session count is full.
+      const existing = store.add(sockets[0].signal, 1, "C:/project", 60_000, 1, input("other.txt", "x"));
+      store.remove(sockets[0].signal, 1, "C:/project", existing.items[0].id);
+      expect(() => store.add(sockets[128].signal, 1, "C:/project", 60_000, 1, input("empty.txt", ""))).toThrow(expect.objectContaining({ code: "LIMIT_EXCEEDED" }));
+      store.remove(sockets[0].signal, 1, "C:/project", existing.items[1].id);
+      expect(store.add(sockets[128].signal, 1, "C:/project", 60_000, 1, input("empty.txt", "")).items).toHaveLength(1);
+      sockets[1].abort();
+      expect(store.add(sockets[0].signal, 1, "C:/project", 60_000, 1, input("new.txt", "")).items).toHaveLength(1);
+    } finally { store.clearAll(); }
   });
   it("expires and clears the copy even without a later read", () => {
     vi.useFakeTimers();

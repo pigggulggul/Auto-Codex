@@ -18,10 +18,40 @@ const object = (value: unknown): value is Record<string, unknown> => Boolean(val
 const keys = (value: Record<string, unknown>, expected: string[]) => Object.keys(value).length === expected.length && expected.every(key => Object.hasOwn(value, key));
 const text = (value: unknown, max: number) => typeof value === "string" && value.length <= max && !value.includes("\0");
 
+/** JSON.parse silently discards duplicate keys. The JSON is already syntax-checked
+ * and size-bounded; decode each object key so escaped aliases cannot bypass this. */
+function rejectDuplicateKeys(raw: string): void {
+  const scopes: (Set<string> | null)[] = [];
+  for (let pos = 0; pos < raw.length; pos++) {
+    const char = raw[pos];
+    if (char === "{") scopes.push(new Set());
+    else if (char === "[") scopes.push(null);
+    else if (char === "}" || char === "]") scopes.pop();
+    else if (char === '"') {
+      const start = pos++;
+      while (pos < raw.length) {
+        if (raw[pos] === "\\") pos += 2;
+        else if (raw[pos] === '"') break;
+        else pos++;
+      }
+      let next = pos + 1;
+      while (next < raw.length && /[\x20\t\r\n]/.test(raw[next])) next++;
+      if (raw[next] === ":") {
+        const scope = scopes.at(-1);
+        if (!scope) return invalid();
+        const key: string = JSON.parse(raw.slice(start, pos + 1));
+        if (scope.has(key)) return invalid();
+        scope.add(key);
+      }
+    }
+  }
+}
+
 /** Parse model output as data; the caller supplies the trusted segment and its provenance. */
 export function parseSegmentRequirements(raw: string, segment: SegmentEvidence): SegmentRequirements {
   if (typeof raw !== "string" || Buffer.byteLength(raw, "utf8") > 64 * 1024) return invalid();
   let result: unknown; try { result = JSON.parse(raw); } catch { return invalid(); }
+  rejectDuplicateKeys(raw);
   if (!object(result) || !keys(result, ["requirements"]) || !Array.isArray(result.requirements) || result.requirements.length > 32) return invalid();
   const requirements: RequirementCandidate[] = result.requirements.map(item => {
     if (!object(item) || !keys(item, ["origin", "text", "quote", "uncertainty"]) || !(item.origin === "source" || item.origin === "ai-proposal") || !text(item.text, 600) || typeof item.text !== "string" || !item.text.trim() || !text(item.uncertainty, 500) || typeof item.uncertainty !== "string") return invalid();

@@ -28,4 +28,23 @@ describe.skipIf(process.platform !== "win32")("selected project analysis source"
     await expect(readAnalysisSource(project, path.join(project, "junction", "plan.md"))).rejects.toMatchObject({ code: "PATH_INVALID" });
     const abort = new AbortController(); abort.abort(); await expect(readAnalysisSource(project, target, abort.signal)).rejects.toMatchObject({ code: "INTERRUPTED" });
   });
+  it("rejects a project nested inside an excluded secret directory", async () => {
+    const { root } = await setup();
+    for (const directory of [".ssh", ".AWS", ".git", ".local-data", "secrets", "credentials", ".env.dev"]) {
+      const project = path.join(root, directory, "nested-project");
+      await mkdir(project, { recursive: true });
+      const file = path.join(project, "notes.md"); await writeFile(file, "synthetic only");
+      await expect(readAnalysisSource(project, file)).rejects.toMatchObject({ code: "PATH_INVALID" });
+    }
+  });
+  it("allows a project below .codex while still excluding .codex as the project or a project subdirectory", async () => {
+    const { root } = await setup(), codex = path.join(root, ".codex"), project = path.join(codex, "worktrees", "synthetic", "project");
+    await mkdir(project, { recursive: true });
+    const document = path.join(project, "notes.md"); await writeFile(document, "synthetic only");
+    expect((await readAnalysisSource(project, document)).text).toBe("synthetic only");
+    await expect(readAnalysisSource(codex, document)).rejects.toMatchObject({ code: "PATH_INVALID" });
+    const privateDir = path.join(project, ".codex"); await mkdir(privateDir);
+    const privateFile = path.join(privateDir, "private.md"); await writeFile(privateFile, "synthetic");
+    await expect(readAnalysisSource(project, privateFile)).rejects.toMatchObject({ code: "PATH_INVALID" });
+  });
 });

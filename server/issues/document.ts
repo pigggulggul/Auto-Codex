@@ -171,10 +171,14 @@ export function parseIssueDocument(bytes: Uint8Array): IssueDocument {
 
 /** Produce an exchange snapshot only; writing a file requires a separate authorized operation. */
 export function serializeIssueDocument(document: IssueDocument): Uint8Array {
-  const render = (value: IssueDocument) => new TextEncoder().encode(`# 이슈 계획\n\n이 문서의 이슈 데이터는 아래 JSON 블록에 있습니다.\n\n\`\`\`auto-codex-issues-v1\n${JSON.stringify(value, null, 2)}\n\`\`\`\n`);
+  const encoder = new TextEncoder();
+  const compact = (value: IssueDocument) => encoder.encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(value)}\n\`\`\``);
+  const readable = (value: IssueDocument) => encoder.encode(`# 이슈 계획\n\n이 문서의 이슈 데이터는 아래 JSON 블록에 있습니다.\n\n\`\`\`auto-codex-issues-v1\n${JSON.stringify(value, null, 2)}\n\`\`\`\n`);
   // Revalidate all data and references even if the caller supplied a TypeScript value.
-  const normalized = parseIssueDocument(render(document));
-  const result = render(normalized);
+  const normalized = parseIssueDocument(compact(document));
+  const pretty = readable(normalized);
+  if (pretty.byteLength <= MAX_DOCUMENT_BYTES) return pretty;
+  const result = compact(normalized);
   if (result.byteLength > MAX_DOCUMENT_BYTES) throw new IssueDocumentError("LIMIT_EXCEEDED", "문서 크기 제한을 초과했습니다.");
   return result;
 }

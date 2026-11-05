@@ -43,6 +43,41 @@ describe("issue project transport", () => {
     api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "documents", revision: 2, documents: "invalid", nextAfterId: null } });
     await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
   });
+  it("rejects view responses for the wrong query, revision or pagination position", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = [];
+    api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "issues" as const, documentId: "doc-1", expectedRevision: 2, offset: 32 };
+    const issue = { id: "issue-1", title: "합성", version: "1.0.0", category: null, localStatus: "ready", importedStatus: "ready", missingCriteria: false, unverifiedDependencies: 0 };
+    const respond = (view: unknown) => api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view });
+    for (const view of [
+      { kind: "documents", revision: 2, documents: [], nextAfterId: null },
+      { kind: "issues", revision: 3, page: { items: [issue], nextOffset: null } },
+      { kind: "issues", revision: 2, page: { items: [issue], nextOffset: 32 } },
+      { kind: "issues", revision: 2, page: { items: [], nextOffset: 33 } },
+      { kind: "issues", revision: 2, page: { items: [issue], nextOffset: 34 } },
+    ]) {
+      const pending = api.request("view", query); respond(view);
+      await expect(pending).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    }
+    const valid = api.request("view", query); respond({ kind: "issues", revision: 2, page: { items: [issue], nextOffset: 33 } });
+    expect((await valid).view?.kind).toBe("issues");
+    api.disconnect();
+  });
+  it("checks diagnostic totals, detail identity and document cursors against each request", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = [];
+    api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const respond = (view: unknown) => api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view });
+    const diagnostic = api.request("view", { kind: "diagnostics", documentId: "doc-1", expectedRevision: 2, offset: 0 });
+    respond({ kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [], nextOffset: null } } });
+    await expect(diagnostic).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const detail = api.request("view", { kind: "detail", documentId: "doc-1", expectedRevision: 2, issueId: "issue-1" });
+    respond({ kind: "detail", revision: 2, issue: { id: "issue-2", title: "합성", version: "1.0.0", category: null, localStatus: "ready", importedStatus: "ready", missingCriteria: false, unverifiedDependencies: 0, description: "", criteriaCount: 0, requirementCount: 0, dependencyCount: 0 } });
+    await expect(detail).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const documents = api.request("view", { kind: "documents", expectedRevision: 2, afterId: "doc-a" });
+    respond({ kind: "documents", revision: 2, documents: [{ id: "doc-a", documentRevision: 1, issueCount: 0 }], nextAfterId: null });
+    await expect(documents).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    api.disconnect();
+  });
   it("requires an explicit bounded lifetime for an issue view grant", async () => {
     const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
     const pending = api.request("authorizeView");
@@ -80,10 +115,21 @@ describe("issue project transport", () => {
     const reply = (finding: Record<string, unknown>) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 2, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [finding], nextOffset: null } } } });
     const finding = { code: "issue-same-title", entityId: "issue-2", title: "합성", provenance: null, relatedEntityId: "issue-1" };
     const pending = api.request("view", query); api.receive(reply(finding)); expect((await pending).view?.kind).toBe("diagnostics");
+    const orderFinding = { ...finding, code: "issue-same-version-order" };
+    const orderPending = api.request("view", query); api.receive(reply(orderFinding)); expect((await orderPending).view?.kind).toBe("diagnostics");
+    const orderInvalid = api.request("view", query); api.receive(reply({ ...orderFinding, relatedEntityId: undefined })); await expect(orderInvalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
     for (const relatedEntityId of [undefined, "issue-2", "../outside", "x".repeat(129)]) {
       const invalid = api.request("view", query); api.receive(reply({ ...finding, relatedEntityId }));
       await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
     }
+    api.disconnect();
+  });
+  it("accepts AI proposal findings only with matching provenance", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "diagnostics" as const, documentId: "doc-1", expectedRevision: 2, offset: 0 };
+    const reply = (origin: string) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 0, requirementCount: 1, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "requirement-ai-proposal", entityId: "req-ai", title: "제안", provenance: { origin, sourceName: null, locator: null } }], nextOffset: null } } } });
+    const valid = api.request("view", query); api.receive(reply("ai-proposal")); expect((await valid).view?.kind).toBe("diagnostics");
+    const invalid = api.request("view", query); api.receive(reply("source")); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
     api.disconnect();
   });
   it("validates bounded requirement details and linked issue pages", async () => {

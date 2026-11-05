@@ -27,6 +27,7 @@ export class AnalysisBatch {
   dispose(): void {
     this.disposed = true;
     this.interrupt();
+    this.draft.dispose();
   }
 
   retry(index: number): void {

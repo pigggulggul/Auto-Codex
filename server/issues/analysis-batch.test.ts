@@ -66,6 +66,19 @@ describe("analysis batch sequencing", () => {
     expect(() => analysis.retry(0)).toThrow(/unavailable/);
   });
 
+  it("clears earlier candidates immediately on disposal and never restores a late result", async () => {
+    const analysis = batch(2), started = deferred<void>(), finish = deferred<string>();
+    expect(await analysis.run(async () => output(0), 1)).toBe("limit");
+    expect(analysis.inspect().segments[0].requirements).toHaveLength(1);
+    const pending = analysis.run(async () => { started.resolve(); return finish.promise; }, 1);
+    await started.promise;
+    analysis.dispose();
+    expect(analysis.inspect()).toMatchObject({ disposed: true, segments: [{ requirements: [] }, { status: "interrupted", requirements: [] }] });
+    finish.resolve(output(1));
+    expect(await pending).toBe("interrupted");
+    expect(analysis.inspect().segments.every(segment => segment.requirements.length === 0)).toBe(true);
+  });
+
   it("rejects invalid limits without dispatching and completes an empty draft", async () => {
     const analysis = batch(1); let calls = 0;
     for (const limit of [0, -1, 2049, 1.5, NaN]) await expect(analysis.run(async () => { calls++; return output(0); }, limit)).rejects.toThrow(/limit/);

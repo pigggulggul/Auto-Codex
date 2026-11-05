@@ -190,6 +190,9 @@ export class IssueStore {
       const project = this.project(projectId);
       const existing = this.db.prepare("SELECT content_hash,json FROM documents WHERE project_id=? AND id=?").get(projectId, document.documentId);
       if (existing) {
+        // A retry is only a success if the registered record is still internally
+        // consistent; never hide damaged state behind an idempotent response.
+        this.readStoredDocument(projectId, document.documentId);
         if (existing.content_hash !== hash || existing.json !== serialized) fail("DOCUMENT_CONFLICT", "기존 문서와 내용이 달라 등록하지 않았습니다. 비교 기능은 준비 중입니다.");
         this.db.exec("COMMIT");
         return { documentId: document.documentId, revision: project.revision, alreadyImported: true, issueCount: document.issues.length };
@@ -217,20 +220,33 @@ export class IssueStore {
   async readDocument(projectId: string, documentId: string, expectedRevision?: number): Promise<{ document: IssueDocument; issues: ImportedIssue[] }> {
     const project = await this.checkedProject(projectId);
     if (expectedRevision !== undefined && (!Number.isSafeInteger(expectedRevision) || expectedRevision !== project.revision)) fail("VERSION_CONFLICT", "이슈 목록이 변경되었습니다. 다시 불러오세요.");
-    const row = this.db.prepare("SELECT json,content_hash,original_bytes,original_hash FROM documents WHERE project_id=? AND id=?").get(projectId, documentId);
+    const result = this.readStoredDocument(projectId, documentId);
+    if (expectedRevision !== undefined && this.project(projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 목록이 변경되었습니다. 다시 불러오세요.");
+    return result;
+  }
+
+  /** Caller checks project identity and holds the import transaction when writing. */
+  private readStoredDocument(projectId: string, documentId: string): { document: IssueDocument; issues: ImportedIssue[] } {
+    const row = this.db.prepare("SELECT json,content_hash,original_bytes,original_hash,document_revision FROM documents WHERE project_id=? AND id=?").get(projectId, documentId);
     if (!row || typeof row.json !== "string" || typeof row.content_hash !== "string") return fail("NOT_FOUND", "이 프로젝트의 이슈 문서가 없습니다.");
     if (createHash("sha256").update(row.json).digest("hex") !== row.content_hash) return fail("STORAGE_FAILED", "저장된 이슈 문서가 변경되었습니다.");
     if (row.original_bytes !== null || row.original_hash !== null) {
       if (!(row.original_bytes instanceof Uint8Array) || typeof row.original_hash !== "string" || createHash("sha256").update(row.original_bytes).digest("hex") !== row.original_hash) return fail("STORAGE_FAILED", "저장된 문서 사본이 변경되었습니다.");
     }
-    const document = parseIssueDocument(new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${row.json}\n\`\`\`\n`));
+    // Use the minimum valid envelope so a document at the input size limit
+    // remains readable after registration.
+    const document = parseIssueDocument(new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${row.json}\n\`\`\``));
+    if (document.documentId !== documentId || document.revision !== row.document_revision) fail("STORAGE_FAILED", "저장된 이슈 문서의 식별자 또는 revision이 다릅니다.");
+    const entityIds = [document.documentId, ...document.sources.map(item => item.id), ...document.categories.map(item => item.id), ...document.requirements.map(item => item.id), ...document.issues.map(item => item.id)];
+    const indexedIds = this.db.prepare("SELECT entity_id FROM entity_ids WHERE project_id=? AND document_id=?").all(projectId, documentId);
+    const expectedIds = new Set(entityIds);
+    if (indexedIds.length !== expectedIds.size || indexedIds.some(item => typeof item.entity_id !== "string" || !expectedIds.has(item.entity_id))) fail("STORAGE_FAILED", "저장된 문서의 식별자 연결이 다릅니다.");
     const rows = this.db.prepare("SELECT issue_id,imported_status,local_status FROM imported_issues WHERE project_id=? AND document_id=? ORDER BY issue_id").all(projectId, documentId);
     const originals = new Map(document.issues.map(issue => [issue.id, issue]));
     if (rows.length !== originals.size || rows.some(row => {
       const original = originals.get(String(row.issue_id));
       return !original || row.imported_status !== original.status || !["ready", "retryable", "failed", "needs_review"].includes(String(row.local_status)) || (original.status === "completed" || original.acceptanceCriteria.length === 0) && row.local_status !== "needs_review";
     })) fail("STORAGE_FAILED", "저장된 이슈 상태와 문서의 연결이 다릅니다.");
-    if (expectedRevision !== undefined && this.project(projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 목록이 변경되었습니다. 다시 불러오세요.");
     return { document, issues: rows.map(row => ({ issueId: String(row.issue_id), importedStatus: row.imported_status as ImportedIssue["importedStatus"], localStatus: row.local_status as ImportedIssue["localStatus"] })) };
   }
 }

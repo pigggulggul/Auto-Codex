@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { Children, isValidElement, type ReactNode } from "react";
 import { expect, it } from "vitest";
-import { IssueCategoryNavigation, IssueDiagnostics, IssueRow, ProjectIssueSearch, RequirementDetailPanel } from "./IssueBrowser";
+import { IssueCategoryNavigation, IssueDependencyList, IssueDetailBack, IssueDiagnostics, IssueRow, ProjectIssueSearch, RequirementDetailPanel } from "./IssueBrowser";
 import { AnalysisSources } from "./AnalysisSources";
 import { IssueApi } from "./api";
 
@@ -11,6 +11,34 @@ it("renders untrusted issue text as escaped text with a readable status", () => 
   expect(html).not.toContain("<script>");
   expect(html).toContain("검토 필요");
   expect(html).toContain("완료 조건 없음"); expect(html).toContain("선행 이슈 2개 미확인");
+});
+it("opens a dependency without treating imported completion as verified", () => {
+  const opened: { id: string; button: HTMLButtonElement }[] = [];
+  const dependencies = [{ id: "dep-1", title: "<script>선행</script>", localStatus: "needs_review" as const, importedStatus: "completed" as const }];
+  const html = renderToStaticMarkup(<IssueDependencyList dependencies={dependencies} loading={false} onOpen={() => {}} />);
+  expect(html).toContain("&lt;script&gt;선행&lt;/script&gt;");
+  expect(html).toContain("로컬에서 확인되지 않았습니다");
+  expect(html).toContain('aria-label="dep-1 선행 이슈 상세 보기"');
+  const node = IssueDependencyList({ dependencies, loading: false, onOpen: (id, button) => opened.push({ id, button }) });
+  const item = Children.toArray(node.props.children)[0];
+  if (!isValidElement<{ children: ReactNode }>(item)) throw new Error("missing dependency item");
+  const button = Children.toArray(item.props.children).find(child => isValidElement(child) && child.type === "button");
+  if (!isValidElement<{ onClick: (event: { currentTarget: HTMLButtonElement }) => void }>(button)) throw new Error("missing dependency button");
+  const target = {} as HTMLButtonElement; button.props.onClick({ currentTarget: target });
+  expect(opened).toEqual([{ id: "dep-1", button: target }]);
+});
+it("preserves the issue button as the return target and offers a correctly labelled back action", () => {
+  const issue = { id: "issue-1", title: "이슈", version: "1.0.0", category: null, localStatus: "ready" as const, importedStatus: "ready" as const, missingCriteria: false, unverifiedDependencies: 0 };
+  let target: HTMLButtonElement | undefined, returned = false;
+  const row = IssueRow({ issue, disabled: false, onOpen: button => { target = button; } });
+  const button = row.props.children;
+  const clicked = {} as HTMLButtonElement;
+  button.props.onClick({ currentTarget: clicked });
+  expect(target).toBe(clicked);
+  const back = IssueDetailBack({ kind: "list", loading: false, onBack: () => { returned = true; } });
+  expect(renderToStaticMarkup(back)).toContain("이슈 목록으로 돌아가기");
+  back.props.onClick({ currentTarget: clicked }); expect(returned).toBe(true);
+  expect(renderToStaticMarkup(IssueDetailBack({ kind: "project", loading: true, onBack: () => {} }))).toContain('disabled="">전체 검색 결과로 돌아가기');
 });
 it("escapes category labels and exposes paging and unclassified selection", () => {
   const html = renderToStaticMarkup(<IssueCategoryNavigation page={{ items: [{ id: "cat-1", title: "<script>unsafe</script>", hasChildren: true }], nextOffset: 32 }} path={[]} selected={null} history={[]} loading={false} onAll={() => {}} onUncategorized={() => {}} onParent={() => {}} onSelect={() => {}} onPrevious={() => {}} onNext={() => {}} />);
@@ -36,6 +64,20 @@ it("shows matching text as a review candidate with its comparison ID", () => {
   expect(html).toContain("비교 대상 ID: "); expect(html).toContain("issue-1");
   expect(html).toContain("실제 중복인지는 확인이 필요합니다");
   expect(html).toContain('aria-label="issue-2 이슈 상세 보기"'); expect(html).toContain('aria-label="issue-1 비교 이슈 상세 보기"');
+});
+
+it("shows an order collision with links to both issues and explains the tie break", () => {
+  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 2, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "issue-same-version-order", entityId: "issue-2", title: "이슈", provenance: null, relatedEntityId: "issue-1" }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenIssue={() => {}} />);
+  expect(html).toContain("같은 버전과 순서를 가진 이슈 · 순서 확인");
+  expect(html).toContain("같은 버전과 순서의 이슈는 ID 순으로 표시됩니다.");
+  expect(html).toContain('aria-label="issue-2 이슈 상세 보기"'); expect(html).toContain('aria-label="issue-1 비교 이슈 상세 보기"');
+});
+
+it("shows a recorded AI proposal as needing review with a requirement detail action", () => {
+  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 1, requirementCount: 1, linkedRequirementCount: 1, totalFindings: 1, findings: { items: [{ code: "requirement-ai-proposal", entityId: "req-ai", title: "제안", provenance: { origin: "ai-proposal", sourceName: null, locator: null } }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenRequirement={() => {}} />);
+  expect(html).toContain("AI 제안 요구사항 · 내용과 근거 확인");
+  expect(html).toContain("AI 제안은 문서에 기록된 출처이며 내용과 근거를 확인해야 합니다.");
+  expect(html).toContain('aria-label="req-ai 요구사항 상세 보기"');
 });
 
 it("disables issue navigation while loading and never treats requirement IDs as issues", () => {
