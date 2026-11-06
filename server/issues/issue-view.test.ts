@@ -22,6 +22,36 @@ async function setup() {
   return { root, store, project, view: new IssueView(store) };
 }
 describe("bounded issue views", () => {
+  it("flags cross-branch issue and requirement categories without flagging parent-child links", async () => {
+    const t = await setup();
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-categories", revision: 1, sources: [], categories: [{ id: "root-a", parentId: null, title: "A", order: 0 }, { id: "child-a", parentId: "root-a", title: "A1", order: 0 }, { id: "root-b", parentId: null, title: "B", order: 1 }], requirements: [{ id: "req-a", categoryId: "root-a", text: "같은 가지", origin: "user" }, { id: "req-b", categoryId: "root-b", text: "다른 가지", origin: "user" }], issues: [{ id: "issue-a", categoryId: "child-a", requirementIds: ["req-a", "req-b"], version: "1.0.0", order: 0, title: "이슈", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const report = await t.view.diagnostics(t.project.id, "doc-categories", 3, 0);
+    expect(report.findings.items.filter(item => item.code === "issue-requirement-category-mismatch")).toEqual([{ code: "issue-requirement-category-mismatch", entityId: "issue-a", title: "이슈", provenance: null, relatedEntityId: "req-b" }]);
+    await expect(t.view.diagnostics(t.project.id, "doc-categories", 2, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+  });
+  it("traces recorded sources to requirements at the selected revision without reading source files", async () => {
+    const t = await setup();
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-source-trace", revision: 1, sources: [{ id: "source-a", name: "원본", contentHash: `sha256:${"a".repeat(64)}` }, { id: "source-b", name: "미연결", contentHash: `sha256:${"b".repeat(64)}` }], categories: [], requirements: Array.from({ length: 40 }, (_, i) => ({ id: `req-${String(i).padStart(2, "0")}`, categoryId: null, text: `요구 ${i}`, origin: "source", sourceId: "source-a" })), issues: [] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const first = await t.view.sourceTrace(t.project.id, "doc-source-trace", 3, 0);
+    expect(first.items).toHaveLength(32); expect(first.nextOffset).toBe(32);
+    const last = await t.view.sourceTrace(t.project.id, "doc-source-trace", 3, 32);
+    expect(last.items).toHaveLength(9); expect(last.items.at(-1)).toEqual({ sourceId: "source-b", sourceName: "미연결", requirement: null }); expect(last.nextOffset).toBeNull();
+    expect(first.items[0]).toMatchObject({ sourceId: "source-a", requirement: { id: "req-00", origin: "source" } });
+    await expect(t.view.sourceTrace(t.project.id, "doc-source-trace", 2, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    await expect(t.view.sourceTrace(t.project.id, "doc-source-trace", 3, 42)).rejects.toMatchObject({ code: "LIMIT_EXCEEDED" });
+    await expect(t.view.sourceTrace("project_00000000-0000-4000-8000-000000000000", "doc-source-trace", 3, 0)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+  it("reports sources without any recorded requirement reference, without reading originals", async () => {
+    const t = await setup();
+    const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-sources", revision: 1, sources: [{ id: "source-unused", name: "미연결 자료", contentHash: `sha256:${"a".repeat(64)}` }, { id: "source-used", name: "연결 자료", contentHash: `sha256:${"b".repeat(64)}` }], categories: [], requirements: [{ id: "req-used", categoryId: null, text: "요구사항", origin: "source", sourceId: "source-used" }], issues: [] };
+    await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
+    const report = await t.view.diagnostics(t.project.id, "doc-sources", 3, 0);
+    expect(report.findings.items.filter(item => item.code === "source-unlinked")).toEqual([{ code: "source-unlinked", entityId: "source-unused", title: "미연결 자료", provenance: null }]);
+    expect((await t.store.readProject(t.project.id)).revision).toBe(3);
+    await expect(t.view.diagnostics(t.project.id, "doc-sources", 2, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+  });
   it("shows numeric version order and separates imported completion from local status", async () => {
     const t = await setup(), page = await t.view.list(t.project.id, "doc-1", 2, 0);
     expect(page.items.map(item => item.id)).toEqual(["issue-first", "issue-later"]);

@@ -1,5 +1,5 @@
 import { comparePlannedIssues, normalizeVersion } from "../../shared/issues/planning.js";
-import type { IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueFinding, IssueFilters, IssueRequirementView, IssueSummary, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage, RequirementDetail } from "../../shared/issues/view.js";
+import type { IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueFinding, IssueFilters, IssueRequirementView, IssueSummary, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage, RequirementDetail, SourceTrace } from "../../shared/issues/view.js";
 import { IssueStore, IssueStoreError } from "./store.js";
 
 const PAGE_SIZE = 32;
@@ -58,6 +58,24 @@ export class IssueView {
     const requirementTexts = new Map<string, string>(), issueTitles = new Map<string, string>(), issueOrders = new Map<string, string>();
     const comparisonKey = (text: string) => text.normalize("NFC").trim().replace(/\s+/gu, " ").toLowerCase();
     const findings: IssueFinding[] = [];
+    const requirements = new Map(document.requirements.map(item => [item.id, item]));
+    const children = new Map<string | null, string[]>();
+    for (const category of document.categories) { const siblings = children.get(category.parentId) ?? []; siblings.push(category.id); children.set(category.parentId, siblings); }
+    const intervals = new Map<string, { enter: number; exit: number }>(); let index = 0;
+    const stack: { id: string; exit: boolean }[] = (children.get(null) ?? []).map(id => ({ id, exit: false }));
+    while (stack.length) {
+      const current = stack.pop()!;
+      if (current.exit) intervals.get(current.id)!.exit = index++;
+      else { intervals.set(current.id, { enter: index++, exit: 0 }); stack.push({ id: current.id, exit: true }); for (const child of children.get(current.id) ?? []) stack.push({ id: child, exit: false }); }
+    }
+    const isAncestor = (ancestor: string, category: string): boolean => {
+      const a = intervals.get(ancestor), b = intervals.get(category);
+      return Boolean(a && b && a.enter <= b.enter && b.exit <= a.exit);
+    };
+    const referencedSources = new Set(document.requirements.flatMap(requirement => requirement.sourceId ? [requirement.sourceId] : []));
+    for (const source of [...document.sources].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
+      if (!referencedSources.has(source.id)) findings.push({ code: "source-unlinked", entityId: source.id, title: source.name, provenance: null });
+    }
     for (const requirement of [...document.requirements].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
       const provenance = { origin: requirement.origin, sourceName: requirement.sourceId ? sources.get(requirement.sourceId) ?? null : null, locator: requirement.locator ?? null };
       if (!linked.has(requirement.id)) findings.push({ code: "requirement-unlinked", entityId: requirement.id, title: requirement.text, provenance });
@@ -74,6 +92,10 @@ export class IssueView {
       if (!issue.description.trim()) add("issue-missing-description");
       if (!issue.acceptanceCriteria.length) add("issue-missing-criteria");
       if (issue.status === "completed") add("issue-unverified-completion");
+      if (issue.categoryId) for (const id of issue.requirementIds) {
+        const requirement = requirements.get(id);
+        if (requirement?.categoryId && !isAncestor(issue.categoryId, requirement.categoryId) && !isAncestor(requirement.categoryId, issue.categoryId)) findings.push({ code: "issue-requirement-category-mismatch", entityId: issue.id, title: issue.title, provenance: null, relatedEntityId: id });
+      }
       const key = comparisonKey(issue.title), relatedEntityId = issueTitles.get(key);
       if (key && relatedEntityId) findings.push({ code: "issue-same-title", entityId: issue.id, title: issue.title, provenance: null, relatedEntityId });
       else if (key) issueTitles.set(key, issue.id);
@@ -84,6 +106,21 @@ export class IssueView {
     return { documentRevision: document.revision, issueCount: document.issues.length, requirementCount: document.requirements.length, linkedRequirementCount: document.requirements.filter(item => linked.has(item.id)).length, totalFindings: findings.length, findings: boundedPage(findings, offset) };
   }
   /** Requirement and linked issues are limited to the authorized document and fixed revision. */
+  async sourceTrace(projectId: string, documentId: string, revision: number, offset: number): Promise<Page<SourceTrace>> {
+    const { document } = await this.load(projectId, documentId, revision);
+    const bySource = new Map<string, typeof document.requirements>();
+    for (const item of document.requirements) if (item.sourceId) {
+      const entries = bySource.get(item.sourceId) ?? []; entries.push(item); bySource.set(item.sourceId, entries);
+    }
+    const rows: SourceTrace[] = [];
+    const byId = (a: { id: string }, b: { id: string }) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    for (const source of [...document.sources].sort(byId)) {
+      const entries = (bySource.get(source.id) ?? []).sort(byId);
+      if (!entries.length) rows.push({ sourceId: source.id, sourceName: source.name, requirement: null });
+      else for (const item of entries) rows.push({ sourceId: source.id, sourceName: source.name, requirement: { id: item.id, text: item.text, origin: item.origin, sourceName: source.name, locator: item.locator ?? null } });
+    }
+    return boundedPage(rows, offset);
+  }
   async requirementDetail(projectId: string, documentId: string, revision: number, requirementId: string, offset: number): Promise<{ requirement: RequirementDetail; page: Page<IssueSummary> }> {
     const { document, issues } = await this.load(projectId, documentId, revision);
     const item = document.requirements.find(entry => entry.id === requirementId);

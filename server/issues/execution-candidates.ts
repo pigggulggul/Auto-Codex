@@ -24,13 +24,14 @@ export function selectExecutionCandidates(
   issues: readonly ExecutionCandidateIssue[],
   options: { selectedIds: readonly string[]; states?: readonly EligibleState[] },
 ): CandidateResult {
+  if (issues.some(issue => typeof issue.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(issue.id))) throw new Error("INVALID_ISSUE_ID");
   const findings = validateIssuePlan(issues);
   if (findings.length) return { kind: "invalid-plan", findings };
   const byId = new Map(issues.map(issue => [issue.id, issue]));
   const selected = new Set(options.selectedIds);
   if (selected.size !== options.selectedIds.length || [...selected].some(id => !byId.has(id))) throw new Error("INVALID_SELECTION");
   const states = new Set(options.states ?? ["ready"]);
-  if ([...states].some(state => !["ready", "retryable", "failed"].includes(state))) throw new Error("INVALID_STATES");
+  if (options.states && states.size !== options.states.length || [...states].some(state => !["ready", "retryable", "failed"].includes(state))) throw new Error("INVALID_STATES");
   const eligibleIds: string[] = [], excluded: { id: string; reasons: Exclusion[] }[] = [];
   for (const issue of issues.filter(item => selected.has(item.id)).sort(comparePlannedIssues)) {
     const reasons: Exclusion[] = [];

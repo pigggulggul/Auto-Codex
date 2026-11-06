@@ -2,6 +2,59 @@ import { describe, expect, it } from "vitest";
 import { IssueApi } from "./api";
 
 describe("issue project transport", () => {
+  it("allows a separately correlated interrupt while a result page is pending", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const page = api.request("analysisSegment", { index: 0, offset: 0 });
+    const interrupt = api.request("analysisInterrupt");
+    expect(sent.map(item => item.type)).toEqual(["issues.analysis.segment", "issues.analysis.interrupt"]);
+    await expect(api.request("analysisInterrupt")).rejects.toMatchObject({ code: "BUSY" });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "analysisInterrupt", ok: true, bound: true, analysisStatus: { state: "running", progress: { isRunning: true, disposed: false, pending: 0, running: 1, processed: 0, failed: 0, interrupted: 0 } } });
+    expect((await interrupt).analysisStatus).toMatchObject({ state: "running" });
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "analysisSegment", ok: true, bound: true, analysisSegment: { index: 0, status: "processed", error: null, items: [], nextOffset: null } });
+    expect((await page).analysisSegment?.index).toBe(0); api.disconnect();
+  });
+  it("validates correlated analysis segment pages and rejects invalid evidence", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { index: 1, offset: 0 };
+    const reply = (page: unknown) => api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "analysisSegment", ok: true, bound: true, analysisSegment: page });
+    const candidate = { id: "requirement-1", origin: "source", text: "합성 요구", uncertainty: "", evidence: { sourceId: "source_12345678-1234-4123-8123-123456789abc", sourcePath: "docs/test.md", sourceSha256: "a".repeat(64), segmentId: "segment-1", quote: "근거", start: 1, end: 3 } };
+    const valid = api.request("analysisSegment", query); reply({ index: 1, status: "processed", error: null, items: [candidate], nextOffset: null }); expect((await valid).analysisSegment?.items).toHaveLength(1);
+    const invalid = api.request("analysisSegment", query); reply({ index: 1, status: "processed", error: null, items: [{ ...candidate, evidence: { ...candidate.evidence, sourcePath: "../secret" } }], nextOffset: null }); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const wrong = api.request("analysisSegment", query); reply({ index: 2, status: "processed", error: null, items: [], nextOffset: null }); await expect(wrong).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("sends a bounded analysis start request and accepts correlated progress", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { snapshotId: "snapshot_00000000-0000-4000-8000-000000000000", expectedRevision: 2 };
+    const pending = api.request("analysisStart", query); expect(sent[0]).toMatchObject({ type: "issues.analysis.start", ...query }); expect(Object.keys(sent[0]).sort()).toEqual(["clientRequestId", "expectedRevision", "snapshotId", "type", "v"]);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "analysisStart", ok: true, bound: true, analysisStatus: { state: "preparing", progress: null } });
+    expect((await pending).analysisStatus).toEqual({ state: "preparing", progress: null });
+    const status = api.request("analysisStatus"); api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "analysisStatus", ok: true, bound: true, analysisStatus: { state: "running", progress: { isRunning: true, disposed: false, pending: 0, running: 1, processed: 0, failed: 0, interrupted: 0 } } });
+    expect((await status).analysisStatus).toMatchObject({ state: "running" }); api.disconnect();
+  });
+  it("correlates analysis availability and rejects an unsupported ready state", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const reply = (status: string) => api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "analysisStatus", ok: true, bound: true, analysisStatus: status });
+    const pending = api.request("analysisStatus"); expect(sent[0].type).toBe("issues.analysis.status"); reply("unavailable"); expect(await pending).toEqual({ bound: true, analysisStatus: "unavailable" });
+    const invalid = api.request("analysisStatus"); reply("ready"); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("requires a linked requirement ID for a cross-category finding", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "diagnostics" as const, documentId: "doc-1", expectedRevision: 2, offset: 0 };
+    const respond = (relatedEntityId: unknown) => api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 1, requirementCount: 1, linkedRequirementCount: 1, totalFindings: 1, findings: { items: [{ code: "issue-requirement-category-mismatch", entityId: "issue-a", title: "이슈", provenance: null, relatedEntityId }], nextOffset: null } } } });
+    const valid = api.request("view", query); respond("req-b"); expect((await valid).view?.kind).toBe("diagnostics");
+    const invalid = api.request("view", query); respond("../outside"); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("validates source trace response shape and pagination", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "sourceTrace" as const, documentId: "doc-1", expectedRevision: 2, offset: 0 };
+    const reply = (page: unknown) => api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "sourceTrace", revision: 2, page } });
+    const pending = api.request("view", query); reply({ items: [{ sourceId: "source-1", sourceName: "자료", requirement: { id: "req-1", text: "합성", origin: "source", sourceName: "자료", locator: null } }], nextOffset: null });
+    expect((await pending).view?.kind).toBe("sourceTrace");
+    const invalid = api.request("view", query); reply({ items: [{ sourceId: "source-1", sourceName: "자료", requirement: { id: "req-1", text: "합성", origin: "source", sourceName: "다른 자료", locator: null } }], nextOffset: null });
+    await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const wrongOffset = api.request("view", query); reply({ items: [{ sourceId: "source-1", sourceName: "자료", requirement: null }], nextOffset: 2 });
+    await expect(wrongOffset).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
   it("correlates responses and never sends a project path or permissions", async () => {
     const api = new IssueApi(), sent: Record<string, unknown>[] = [];
     api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
@@ -108,6 +161,13 @@ describe("issue project transport", () => {
     const invalid = api.request("view", { kind: "diagnostics", documentId: "doc-1", expectedRevision: 2, offset: 0 });
     api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 1, requirementCount: 0, linkedRequirementCount: 1, totalFindings: 0, findings: { items: [], nextOffset: null } } } });
     await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
+  });
+  it("accepts a source finding only as a source finding without provenance", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
+    const query = { kind: "diagnostics" as const, documentId: "doc-1", expectedRevision: 2, offset: 0 };
+    const reply = (provenance: unknown) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "source-unlinked", entityId: "source-1", title: "자료", provenance }], nextOffset: null } } } });
+    const valid = api.request("view", query); api.receive(reply(null)); expect((await valid).view?.kind).toBe("diagnostics");
+    const invalid = api.request("view", query); api.receive(reply({ origin: "source" })); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" }); api.disconnect();
   });
   it("accepts matching-text findings only with a distinct bounded comparison ID", async () => {
     const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));

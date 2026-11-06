@@ -12,11 +12,15 @@ export class AnalysisBatch {
   private stopRequested = false;
   private disposed = false;
 
-  constructor(private readonly draft: AnalysisDraft) {}
+  constructor(private readonly draft: AnalysisDraft, private readonly onDisposed?: () => void) {}
 
   inspect() {
     return { running: this.running, disposed: this.disposed, ...this.draft.inspect() };
   }
+
+  /** Progress excludes source text and candidate contents. */
+  progress() { return { isRunning: this.running, disposed: this.disposed, ...this.draft.progress() }; }
+  segmentPage(index: number, offset: number) { return this.draft.segmentPage(index, offset); }
 
   interrupt(): void {
     if (!this.running) return;
@@ -25,9 +29,11 @@ export class AnalysisBatch {
   }
 
   dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
     this.interrupt();
     this.draft.dispose();
+    if (!this.running) this.onDisposed?.();
   }
 
   retry(index: number): void {
@@ -53,6 +59,7 @@ export class AnalysisBatch {
       }
     } finally {
       this.running = false;
+      if (this.disposed) this.onDisposed?.();
     }
   }
 }

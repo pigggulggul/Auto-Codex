@@ -60,6 +60,8 @@ import { readSelectedIssueDocument } from "./issues/selected-document.js";
 import { readAnalysisSource } from "./issues/analysis-source.js";
 import { createIssueExport } from "./issues/export-file.js";
 import { IssueWriteAdmission } from "./issue-write-admission.js";
+import { AnalysisRouter } from "./issues/analysis-router.js";
+import { createAnalysisRuntimeFactory, type VerifiedAnalysisPolicy } from "./issues/analysis-runtime-factory.js";
 import {AtelierProposalRuntime} from "./atelier/proposal-runtime.js";
 import {AtelierExecutionRuntime} from "./atelier/execution-runtime.js";
 import {check as atelierCheck} from "./atelier/errors.js";
@@ -123,6 +125,7 @@ type ModelListResponse = {
 };
 
 const appServer = new CodexAppServer();
+const analysisRouter = new AnalysisRouter();
 const sockets = new Set<WebSocket>();
 const pendingApprovals = new Map<string, PendingApproval>();
 const runtimeRegistry = new RuntimeRegistry();
@@ -1203,6 +1206,7 @@ function approvalFromRequest(request: ProtocolServerRequest): PendingApproval | 
 }
 
 function handleServerRequest(request: ProtocolServerRequest): void {
+  if (analysisRouter.serverRequest(request)) return;
   if(proposalRuntime.serverRequest(request))return;
   if(executionRuntime.busy&&!executionRuntime.accepts(request.params?.threadId,request.params?.turnId)){appServer.respondError(request.id,-32003,'Request does not belong to active generation.');return;}
   const pending = approvalFromRequest(request);
@@ -1400,6 +1404,7 @@ appServer.on("diagnostic", (message: string) => {
 appServer.on("request", (request: ProtocolServerRequest) => handleServerRequest(request));
 
 function handleRuntimeNotification(notification: ProtocolNotification): void {
+  if (analysisRouter.notification(notification)) return;
   if(proposalRuntime.notification(notification))return;
   if(executionRuntime.bufferNotification(notification))return;
   if (notification.method === "item/reasoning/textDelta") return;
@@ -1583,13 +1588,14 @@ let queuedTurnStarts = 0;
 let queuedClientOperations = 0;
 let interruptQueuedStarts = false;
 const issueWriteAdmission = new IssueWriteAdmission();
+const issueAnalysisAdmission = new IssueWriteAdmission();
 const proposalRuntime=new AtelierProposalRuntime(appServer,atelier,{
   cwd:()=>validateProject(ROOT),ensure:ensureAppServer,models:()=>models,
-  busy:()=>issueWriteAdmission.busy||queuedTurnStarts>0||executionRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
+  busy:()=>issueWriteAdmission.busy||issueAnalysisAdmission.busy||queuedTurnStarts>0||executionRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
   emit:event=>{for(const socket of sockets)if(socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(event));}
 });
 const executionRuntime=new AtelierExecutionRuntime(atelier,{
-  busy:()=>issueWriteAdmission.busy||queuedClientOperations>0||proposalRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
+  busy:()=>issueWriteAdmission.busy||issueAnalysisAdmission.busy||queuedClientOperations>0||proposalRuntime.busy||!!turnId||runIsActive()||pendingApprovals.size>0,
   context:async b=>{
     atelierCheck(workspaceMode==='project'&&projectPath,'제작에는 선택한 실제 프로젝트 폴더가 필요합니다.','WORKSPACE_INVALID');
     const workspacePath=await validateProject(projectPath);
@@ -1612,6 +1618,16 @@ const executionRuntime=new AtelierExecutionRuntime(atelier,{
 let issueWorker: IssueWorkerClient | null = null;
 let issueProjectContext: IssueProjectContext | null = null;
 const issueSelection = () => ({ workspaceMode, projectPath, generation: issueSelectionGeneration });
+// No complete tool/hook verifier exists yet. Never derive this value from the UI
+// or promote an unverified inventory into an authorization.
+const verifiedIssueAnalysisPolicy = (): VerifiedAnalysisPolicy | null => null;
+const createIssueAnalysisExecution = createAnalysisRuntimeFactory({
+  server: appServer, router: analysisRouter, policy: verifiedIssueAnalysisPolicy,
+  policyCurrent: policy => verifiedIssueAnalysisPolicy() === policy,
+  selection: issueSelection, ready: () => appServerReady,
+  model: () => defaultModel(models)?.model ?? null, validateProject,
+  acquire: () => issueAnalysisAdmission.tryAcquire(() => issueWriteAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
+});
 const issueApi = new IssueBridgeApi({
   selection: issueSelection,
   context: () => {
@@ -1629,9 +1645,10 @@ const issueApi = new IssueBridgeApi({
   readSource: readAnalysisSource,
   readDocument: readSelectedIssueDocument,
   writeExport: createIssueExport,
-  tryAcquireWrite: () => issueWriteAdmission.tryAcquire(() => queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
+  tryAcquireWrite: () => issueWriteAdmission.tryAcquire(() => issueAnalysisAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
   canonical: validateProject,
-  busy: () => queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0,
+  busy: () => issueAnalysisAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0,
+  createAnalysisExecution: createIssueAnalysisExecution,
 });
 clearIssueSources = () => issueApi.clearSources();
 httpServer.on("upgrade", (request, socket, head) => {
@@ -1677,10 +1694,22 @@ wsServer.on("connection", (socket, request) => {
     let type = "";
     try { const input: unknown = JSON.parse(raw); if (input && typeof input === "object" && "type" in input && typeof input.type === "string") type = input.type; } catch { /* Existing parser reports malformed legacy input. */ }
     if (type.startsWith("issues.")) {
+      if (type === "issues.analysis.interrupt") {
+        priorityTokens = Math.min(10, priorityTokens + (Date.now() - priorityAt) / 100); priorityAt = Date.now();
+        if (priorityTokens < 1) {
+          let clientRequestId = ""; try { const input = JSON.parse(raw) as { clientRequestId?: unknown }; if (typeof input.clientRequestId === "string") clientRequestId = input.clientRequestId.slice(0, 64); } catch { /* Invalid message. */ }
+          socket.send(JSON.stringify({ type: "issues.project.result", v: 1, clientRequestId, action: "analysisInterrupt", ok: false, error: { code: "BUSY", message: "중단 요청 속도 한도입니다. 잠시 후 다시 시도하세요." } })); return;
+        }
+        priorityTokens--;
+        void issueApi.handle(raw, issueUiOrigin, () => socket.readyState === WebSocket.OPEN, issueAbort.signal)
+          .then(reply => { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(reply)); })
+          .catch(() => { /* A disconnected socket cannot receive a response. */ });
+        return;
+      }
       issueTokens = Math.min(16, issueTokens + (Date.now() - issueAt) / 250); issueAt = Date.now();
       if (issueBusy || issueTokens < 1) {
         let clientRequestId = ""; try { const input = JSON.parse(raw) as {clientRequestId?:unknown}; if (typeof input.clientRequestId === "string") clientRequestId = input.clientRequestId.slice(0,64); } catch { /* Invalid message. */ }
-        const action = type === "issues.project.bind" ? "bind" : type === "issues.document.import" ? "import" : type === "issues.document.export" ? "export" : type === "issues.view.authorize" ? "authorizeView" : type === "issues.view.query" ? "view" : type === "issues.view.release" ? "releaseView" : type === "issues.sources.add" ? "sourceAdd" : type === "issues.sources.list" ? "sourceList" : type === "issues.sources.read" ? "sourceRead" : type === "issues.sources.remove" ? "sourceRemove" : type === "issues.analysis.prepare" ? "snapshotPrepare" : type === "issues.analysis.check" ? "snapshotCheck" : "status";
+        const action = type === "issues.project.bind" ? "bind" : type === "issues.document.import" ? "import" : type === "issues.document.export" ? "export" : type === "issues.view.authorize" ? "authorizeView" : type === "issues.view.query" ? "view" : type === "issues.view.release" ? "releaseView" : type === "issues.sources.add" ? "sourceAdd" : type === "issues.sources.list" ? "sourceList" : type === "issues.sources.read" ? "sourceRead" : type === "issues.sources.remove" ? "sourceRemove" : type === "issues.analysis.prepare" ? "snapshotPrepare" : type === "issues.analysis.check" ? "snapshotCheck" : type === "issues.analysis.status" ? "analysisStatus" : type === "issues.analysis.start" ? "analysisStart" : type === "issues.analysis.interrupt" ? "analysisInterrupt" : type === "issues.analysis.clear" ? "analysisClear" : type === "issues.analysis.segment" ? "analysisSegment" : type === "issues.analysis.retry" ? "analysisRetry" : "status";
         socket.send(JSON.stringify({type:"issues.project.result",v:1,clientRequestId,action,ok:false,error:{code:"BUSY",message:"이전 이슈 요청을 기다린 뒤 다시 시도하세요."}})); return;
       }
       issueTokens--; issueBusy = true;
@@ -1723,8 +1752,8 @@ wsServer.on("connection", (socket, request) => {
       void handleClientMessage(socket, raw).catch((error) => send(socket, {type:"error",message:errorMessage(error),recoverable:true}));
       return;
     }
-    if (issueWriteAdmission.busy) {
-      const message = "이슈 문서를 저장하는 동안에는 이 작업을 시작할 수 없습니다. 저장이 끝난 뒤 다시 시도하세요.";
+    if (issueWriteAdmission.busy || issueAnalysisAdmission.busy) {
+      const message = issueAnalysisAdmission.busy ? "이슈 분석이 끝난 뒤 이 작업을 시작하세요." : "이슈 문서를 저장하는 동안에는 이 작업을 시작할 수 없습니다. 저장이 끝난 뒤 다시 시도하세요.";
       if (type === "conversation.rename" || type === "conversation.delete") {
         let clientRequestId = ""; try { const input = JSON.parse(raw) as { clientRequestId?: unknown }; if (typeof input.clientRequestId === "string") clientRequestId = input.clientRequestId.slice(0, 64); } catch { /* Existing parser handles invalid input. */ }
         socket.send(JSON.stringify({ type: `${type}.result`, clientRequestId, ok: false, error: message }));

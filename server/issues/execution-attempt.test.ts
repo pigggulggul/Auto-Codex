@@ -18,7 +18,7 @@ describe("issue attempt projection", () => {
     expect(active.phase).toBe("running");
     const verifying = projectAttempt(active, { type: "turn-finished", ...turn, result: "completed" });
     expect(verifying).toMatchObject({ phase: "verifying", outcome: null });
-    expect(projectAttempt(verifying, { type: "verification-finished", result: "finished" })).toMatchObject({ phase: "settled", outcome: "verification_finished" });
+    expect(projectAttempt(verifying, { type: "verification-finished", ...turn, result: "finished" })).toMatchObject({ phase: "settled", outcome: "verification_finished" });
   });
   it("tracks multiple actual pending requests and ignores unrelated or duplicate events", () => {
     const active = running();
@@ -48,7 +48,7 @@ describe("issue attempt projection", () => {
     const verifying = projectAttempt(running(), { type: "turn-finished", ...turn, result: "completed" });
     const stopping = projectAttempt(verifying, { type: "stop-requested" });
     expect(stopping).toMatchObject({ phase: "verifying", stopRequested: true, outcome: null });
-    expect(projectAttempt(stopping, { type: "verification-finished", result: "interrupted" })).toMatchObject({ phase: "settled", stopRequested: true, outcome: "verification_interrupted" });
+    expect(projectAttempt(stopping, { type: "verification-finished", ...turn, result: "interrupted" })).toMatchObject({ phase: "settled", stopRequested: true, outcome: "verification_interrupted" });
   });
   it("retains a stop requested while dispatch is in flight when the turn arrives later", () => {
     const dispatching = projectAttempt(newAttempt(), { type: "dispatch" });
@@ -60,8 +60,8 @@ describe("issue attempt projection", () => {
   });
   it("keeps verification failures and uncertain termination separate from successful completion", () => {
     const verifying = projectAttempt(running(), { type: "turn-finished", ...turn, result: "completed" });
-    expect(projectAttempt(verifying, { type: "verification-finished", result: "failed" })).toMatchObject({ phase: "settled", outcome: "verification_failed" });
-    expect(projectAttempt(verifying, { type: "verification-finished", result: "unknown" })).toMatchObject({ phase: "settled", outcome: "outcome_unknown" });
+    expect(projectAttempt(verifying, { type: "verification-finished", ...turn, result: "failed" })).toMatchObject({ phase: "settled", outcome: "verification_failed" });
+    expect(projectAttempt(verifying, { type: "verification-finished", ...turn, result: "unknown" })).toMatchObject({ phase: "settled", outcome: "outcome_unknown" });
     const malformed = { type: "verification-finished" } as unknown as Parameters<typeof projectAttempt>[1];
     expect(projectAttempt(verifying, malformed)).toBe(verifying);
   });
@@ -70,5 +70,15 @@ describe("issue attempt projection", () => {
     const malformed = { type: "turn-finished", ...turn, result: "unknown" } as unknown as Parameters<typeof projectAttempt>[1];
     expect(projectAttempt(active, malformed)).toBe(active);
     expect(projectAttempt(active, { type: "turn-finished", ...turn, result: "failed" })).toMatchObject({ phase: "settled", outcome: "failed" });
+  });
+  it("ignores verification from another turn and rejects control characters in IDs", () => {
+    const verifying = projectAttempt(running(), { type: "turn-finished", ...turn, result: "completed" });
+    expect(projectAttempt(verifying, { type: "verification-finished", ...turn, turnId: "other", result: "finished" })).toBe(verifying);
+    const dispatching = projectAttempt(newAttempt(), { type: "dispatch" });
+    expect(projectAttempt(dispatching, { type: "turn-bound", threadId: "thread\nforged", turnId: "turn" })).toBe(dispatching);
+  });
+  it("does not infer termination or verification from a turn with unresolved approvals", () => {
+    const waiting = projectAttempt(running(), { type: "approval-requested", ...turn, requestId: "request" });
+    expect(projectAttempt(waiting, { type: "turn-finished", ...turn, result: "completed" })).toMatchObject({ phase: "settled", outcome: "outcome_unknown" });
   });
 });

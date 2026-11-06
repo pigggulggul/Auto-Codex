@@ -25,6 +25,8 @@ describe("server-only execution candidate preview", () => {
     expect(selectExecutionCandidates(items, { selectedIds: ids, states: ["ready", "retryable", "failed"] })).toEqual({ kind: "candidates", eligibleIds: ["failed", "retry"], excluded: [{ id: "done", reasons: ["state"] }, { id: "empty", reasons: ["missing-criteria"] }, { id: "review", reasons: ["state", "review"] }] });
   });
   it("rejects invalid graph and invalid selections rather than returning a partial plan", () => {
+    expect(() => selectExecutionCandidates([issue("../outside")], { selectedIds: ["../outside"] })).toThrow("INVALID_ISSUE_ID");
+    expect(() => selectExecutionCandidates([issue("a")], { selectedIds: ["a"], states: ["ready", "ready"] })).toThrow("INVALID_STATES");
     expect(selectExecutionCandidates([issue("a", { dependencyIds: ["missing"] })], { selectedIds: ["a"] })).toMatchObject({ kind: "invalid-plan" });
     expect(selectExecutionCandidates([issue("a", { dependencyIds: ["b"] }), issue("b", { dependencyIds: ["a"] })], { selectedIds: ["a"] })).toMatchObject({ kind: "invalid-plan" });
     expect(() => selectExecutionCandidates([issue("a")], { selectedIds: ["missing"] })).toThrow("INVALID_SELECTION");

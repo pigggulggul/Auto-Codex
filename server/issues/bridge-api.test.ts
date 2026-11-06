@@ -4,6 +4,8 @@ import { IssueWorkerClientError } from "./worker-client.js";
 import { SelectedDocumentError } from "./selected-document.js";
 import { AnalysisSourceError } from "./analysis-source.js";
 import { IssueWriteAdmission } from "../issue-write-admission.js";
+import { AnalysisExecution } from "./analysis-execution.js";
+import type { AnalysisTransport } from "./analysis-transport.js";
 import type { IssueProjectSelection } from "./project-context.js";
 
 const id = "12345678-1234-4123-8123-123456789abc";
@@ -32,6 +34,76 @@ function setup() {
 }
 
 describe("issue binding bridge boundary", () => {
+  it("routes an authorized synthetic analysis through start, status, interrupt and clear", async () => {
+    const t = setup(), socket = new AbortController(), started = deferred<void>(), finish = deferred<string>(); let released = 0;
+    const transport = { busy: false, run: async (_input: unknown, _signal: AbortSignal) => { started.resolve(); return finish.promise; } } as unknown as AnalysisTransport;
+    Object.assign(t.options, { createAnalysisExecution: (createBatch: ConstructorParameters<typeof AnalysisExecution>[0]["createBatch"]) => new AnalysisExecution({ createBatch, permitted: () => true, acquire: () => () => { released++; }, transport }) });
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    expect(await ask("issues.analysis.start", { snapshotId: prepared.snapshot.id, expectedRevision: 1, config: { network: true } })).toMatchObject({ ok: false });
+    expect(await ask("issues.analysis.start", { snapshotId: prepared.snapshot.id, expectedRevision: 1 })).toMatchObject({ ok: true, analysisStatus: { state: "preparing" } });
+    await started.promise;
+    expect(await ask("issues.analysis.status")).toMatchObject({ ok: true, analysisStatus: { state: "running" } });
+    expect(await ask("issues.analysis.segment", { index: 0, offset: 0 })).toMatchObject({ ok: true, analysisSegment: { index: 0, status: "running", items: [], nextOffset: null } });
+    const other = new AbortController(); expect(await t.api.handle(wire("issues.analysis.interrupt"), true, t.connected, other.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    expect(await ask("issues.analysis.interrupt")).toMatchObject({ ok: true }); expect(released).toBe(0); finish.resolve('{"requirements":[]}');
+    await vi.waitFor(async () => expect(await ask("issues.analysis.status")).toMatchObject({ ok: true, analysisStatus: { state: "interrupted" } }));
+    expect(await ask("issues.analysis.segment", { index: 0, offset: 0 })).toMatchObject({ ok: true, analysisSegment: { status: "interrupted", items: [] } });
+    expect(released).toBe(1); expect(await ask("issues.analysis.clear")).toMatchObject({ ok: true, analysisStatus: "unavailable" }); socket.abort(); other.abort();
+  });
+  it("rejects production analysis start when no verified runtime is configured", async () => {
+    const t = setup(), socket = new AbortController(); const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    expect(await ask("issues.analysis.start", { snapshotId: "snapshot_00000000-0000-4000-8000-000000000000", expectedRevision: 1 })).toMatchObject({ ok: false, error: { code: "ANALYSIS_UNAVAILABLE" } }); socket.abort();
+  });
+  it("rejects a valid prepared snapshot when the server-side runtime verifier returns no policy", async () => {
+    const t = setup(), socket = new AbortController(); Object.assign(t.options, { createAnalysisExecution: () => null });
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    expect(await ask("issues.analysis.start", { snapshotId: prepared.snapshot.id, expectedRevision: 1 })).toMatchObject({ ok: false, error: { code: "ANALYSIS_UNAVAILABLE" } });
+    expect(await ask("issues.sources.list")).toMatchObject({ ok: true, sources: { items: [{ id: selected.sources.items[0].id }] } }); socket.abort();
+  });
+  it("does not return candidate pages after the project revision changes", async () => {
+    const t = setup(), socket = new AbortController();
+    const transport = { busy: false, run: async () => '{"requirements":[]}' } as unknown as AnalysisTransport;
+    Object.assign(t.options, { createAnalysisExecution: (createBatch: ConstructorParameters<typeof AnalysisExecution>[0]["createBatch"]) => new AnalysisExecution({ createBatch, permitted: () => true, acquire: () => () => {}, transport }) });
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    await ask("issues.analysis.start", { snapshotId: prepared.snapshot.id, expectedRevision: 1 });
+    await vi.waitFor(async () => expect(await ask("issues.analysis.status")).toMatchObject({ ok: true, analysisStatus: { state: "complete" } }));
+    const base = t.options.context; t.options.context = () => ({ ...base(), status: async () => ({ project: { id: "opaque", revision: 2 } }) });
+    expect(await ask("issues.analysis.segment", { index: 0, offset: 0 })).toMatchObject({ ok: false, error: { code: "STALE_INPUT" } }); socket.abort();
+  });
+  it("rejects a candidate page if a selected original changes after analysis", async () => {
+    const t = setup(), socket = new AbortController(); let hash = "a".repeat(64);
+    t.options.readSource = async () => ({ relativePath: "plan.md", bytes: 9, sha256: hash, text: "synthetic" });
+    const transport = { busy: false, run: async () => '{"requirements":[]}' } as unknown as AnalysisTransport;
+    Object.assign(t.options, { createAnalysisExecution: (createBatch: ConstructorParameters<typeof AnalysisExecution>[0]["createBatch"]) => new AnalysisExecution({ createBatch, permitted: () => true, acquire: () => () => {}, transport }) });
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    await ask("issues.analysis.start", { snapshotId: prepared.snapshot.id, expectedRevision: 1 });
+    await vi.waitFor(async () => expect(await ask("issues.analysis.status")).toMatchObject({ ok: true, analysisStatus: { state: "complete" } }));
+    hash = "b".repeat(64);
+    expect(await ask("issues.analysis.segment", { index: 0, offset: 0 })).toMatchObject({ ok: false, error: { code: "STALE_INPUT" } }); socket.abort();
+  });
+  it("reports analysis unavailable only to the currently authorized connection", async () => {
+    const t = setup(), first = new AbortController(), other = new AbortController();
+    await t.api.handle(wire("issues.project.bind"), true, t.connected, first.signal);
+    expect(await t.api.handle(wire("issues.analysis.status"), true, t.connected, first.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    await t.api.handle(wire("issues.view.authorize"), true, t.connected, first.signal);
+    expect(await t.api.handle(wire("issues.analysis.status"), true, t.connected, first.signal)).toMatchObject({ ok: true, action: "analysisStatus", analysisStatus: "unavailable" });
+    expect(await t.api.handle(wire("issues.analysis.status"), true, t.connected, other.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    expect(await t.api.handle(wire("issues.analysis.status", { projectId: "foreign" }), true, t.connected, first.signal)).toMatchObject({ ok: false });
+    first.abort(); other.abort();
+  });
   it("guards analysis batches with the authorized snapshot and rechecks originals before and after transport", async () => {
     const t = setup(), socket = new AbortController(); let admitted = true, originalHash = "a".repeat(64), calls = 0;
     t.options.readSource = async () => ({ relativePath: "plan.md", bytes: 9, sha256: originalHash, text: "synthetic" });
@@ -74,10 +146,131 @@ describe("issue binding bridge boundary", () => {
       const pending = batch.run(async () => '{"requirements":[]}', 1); await started.promise;
       if (revoke === "view") await ask("issues.view.release"); else admitted = false;
       finish.resolve({ relativePath: "plan.md", bytes: 9, sha256: "a".repeat(64), text: "synthetic" });
-      expect(await pending).toBe("blocked");
-      expect(batch.inspect()).toMatchObject({ processedSegments: 0, segments: [{ status: "failed", error: "STALE_INPUT" }] });
+      expect(await pending).toBe(revoke === "view" ? "interrupted" : "blocked");
+      expect(batch.inspect()).toMatchObject(revoke === "view" ? { disposed: true, processedSegments: 0, segments: [{ status: "interrupted", requirements: [] }] } : { processedSegments: 0, segments: [{ status: "failed", error: "STALE_INPUT" }] });
       socket.abort();
     }
+  });
+  it("owns one analysis batch per connection and prevents changing its source snapshot", async () => {
+    const t = setup(), socket = new AbortController();
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const request = { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" };
+    const prepared = await ask("issues.analysis.prepare", request); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    const batch = await t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1);
+    await expect(t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1)).rejects.toMatchObject({ code: "BUSY" });
+    expect(await ask("issues.sources.remove", { sourceId: selected.sources.items[0].id })).toMatchObject({ ok: false, error: { code: "BUSY" } });
+    expect(await ask("issues.analysis.prepare", request)).toMatchObject({ ok: false, error: { code: "BUSY" } });
+    batch.dispose();
+    expect((await ask("issues.analysis.prepare", request)).ok).toBe(true);
+    socket.abort();
+  });
+  it("revokes a batch on view release but retains its lease until an ignoring transport settles", async () => {
+    const t = setup(), socket = new AbortController();
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    const batch = await t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1);
+    const started = deferred<void>(), finish = deferred<string>();
+    const pending = batch.run(async () => { started.resolve(); return finish.promise; }, 1); await started.promise;
+    await ask("issues.view.release");
+    expect(batch.inspect()).toMatchObject({ running: true, disposed: true });
+    await ask("issues.view.authorize");
+    expect(await ask("issues.sources.add")).toMatchObject({ ok: false, error: { code: "BUSY" } });
+    finish.resolve('{"requirements":[]}'); expect(await pending).toBe("interrupted");
+    expect((await ask("issues.sources.add")).ok).toBe(true);
+    socket.abort();
+  });
+  it("reserves batch creation across asynchronous project checks and releases a revoked reservation", async () => {
+    const t = setup(), socket = new AbortController();
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    const started = deferred<void>(), finish = deferred<{ project: { id: string; revision: number } | null }>(), base = t.options.context;
+    t.options.context = () => ({ ...base(), status: async () => { started.resolve(); return finish.promise; } });
+    const pending = t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1); await started.promise;
+    await expect(t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1)).rejects.toMatchObject({ code: "BUSY" });
+    await ask("issues.view.release"); finish.resolve({ project: { id: "opaque", revision: 1 } });
+    await expect(pending).rejects.toMatchObject({ code: "STALE_INPUT" });
+    t.options.context = base; await ask("issues.view.authorize");
+    expect((await ask("issues.sources.add")).ok).toBe(true);
+    socket.abort();
+  });
+  it("does not alter a snapshot when analysis begins during a pending source selection", async () => {
+    const t = setup(), socket = new AbortController();
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    const started = deferred<void>(), finish = deferred<{ relativePath: string; bytes: number; sha256: string; text: string }>();
+    t.options.readSource = async () => { started.resolve(); return finish.promise; };
+    const adding = ask("issues.sources.add"); await started.promise;
+    const batch = await t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1);
+    finish.resolve({ relativePath: "other.md", bytes: 5, sha256: "b".repeat(64), text: "other" });
+    expect(await adding).toMatchObject({ ok: false, error: { code: "BUSY" } });
+    expect(await ask("issues.sources.list")).toMatchObject({ ok: true, sources: { items: [{ id: selected.sources.items[0].id }] } });
+    batch.dispose(); socket.abort();
+  });
+  it("rechecks source removal after an asynchronous project lookup", async () => {
+    const t = setup(), socket = new AbortController();
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    const started = deferred<void>(), finish = deferred<{ project: { id: string; revision: number } | null }>(), base = t.options.context; let calls = 0;
+    t.options.context = () => ({ ...base(), status: async () => { if (++calls === 1) { started.resolve(); return finish.promise; } return { project: { id: "opaque", revision: 1 } }; } });
+    const removing = ask("issues.sources.remove", { sourceId: selected.sources.items[0].id }); await started.promise;
+    const batch = await t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1);
+    finish.resolve({ project: { id: "opaque", revision: 1 } });
+    expect(await removing).toMatchObject({ ok: false, error: { code: "BUSY" } });
+    expect(await ask("issues.sources.list")).toMatchObject({ ok: true, sources: { items: [{ id: selected.sources.items[0].id }] } });
+    batch.dispose(); socket.abort();
+  });
+  it("clears retained analysis candidates when the connection expires or disconnects", async () => {
+    vi.useFakeTimers();
+    try {
+      for (const mode of ["expiry", "disconnect", "project-clear"] as const) {
+        const t = setup(), socket = new AbortController();
+        const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+        await ask("issues.project.bind"); await ask("issues.view.authorize");
+        const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+        const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+        const batch = await t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1);
+        expect(await batch.run(async () => JSON.stringify({ requirements: [{ origin: "source", text: "candidate", quote: "synthetic", uncertainty: "" }] }), 1)).toBe("complete");
+        expect(batch.inspect().segments[0].requirements).toHaveLength(1);
+        if (mode === "expiry") vi.advanceTimersByTime(15 * 60_000); else if (mode === "disconnect") socket.abort(); else t.api.clearSources();
+        expect(batch.inspect()).toMatchObject({ disposed: true, segments: [{ requirements: [] }] });
+        socket.abort();
+      }
+    } finally { vi.useRealTimers(); }
+  });
+  it("revokes retained candidates when the project cannot be checked", async () => {
+    const t = setup(), socket = new AbortController();
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    const batch = await t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1);
+    expect(await batch.run(async () => JSON.stringify({ requirements: [{ origin: "source", text: "candidate", quote: "synthetic", uncertainty: "" }] }), 1)).toBe("complete");
+    const base = t.options.context;
+    t.options.context = () => ({ ...base(), status: async () => { throw new Error("synthetic failure"); } });
+    expect(await ask("issues.sources.list")).toMatchObject({ ok: false, error: { code: "STORAGE_FAILED" } });
+    expect(batch.inspect()).toMatchObject({ disposed: true, segments: [{ requirements: [] }] });
+    socket.abort();
+  });
+  it("checks an expired view before returning a batch-busy response", async () => {
+    const t = setup(), socket = new AbortController(); let now = 1000; t.options.now = () => now;
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, socket.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add"); if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const prepared = await ask("issues.analysis.prepare", { expectedRevision: 1, expectedSources: selected.sources.items.map(({ id, sha256 }) => ({ id, sha256 })), instruction: "" }); if (!prepared.ok || !prepared.snapshot) throw new Error("missing snapshot");
+    const batch = await t.api.createAnalysisBatch(socket.signal, t.connected, () => true, prepared.snapshot.id, 1);
+    now += 15 * 60_000;
+    expect(await ask("issues.sources.remove", { sourceId: selected.sources.items[0].id })).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    expect(batch.inspect().disposed).toBe(true); socket.abort();
   });
   it("requires UI origin and rejects renderer-supplied paths or permissions", async () => {
     const t = setup();
@@ -190,6 +383,8 @@ describe("issue binding bridge boundary", () => {
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "projectIssues", expectedRevision: 1, cursor: { issueOffset: 0 } } }), true, t.connected, second.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "categories", documentId: "doc-1", expectedRevision: 1, parentId: null, offset: 0 } }), true, t.connected, second.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "diagnostics", documentId: "doc-1", expectedRevision: 1, offset: 0 } }), true, t.connected, second.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    expect(await t.api.handle(wire("issues.view.query", { query: { kind: "sourceTrace", documentId: "doc-1", expectedRevision: 1, offset: 0 } }), true, t.connected, second.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    expect(await t.api.handle(wire("issues.view.query", { query: { kind: "sourceTrace", documentId: "doc-1", expectedRevision: 1, offset: 0, projectId: "foreign" } }), true, t.connected, first.signal)).toMatchObject({ ok: false });
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "requirementDetail", documentId: "doc-1", expectedRevision: 1, requirementId: "req-1", offset: 0 } }), true, t.connected, second.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "requirementDetail", documentId: "doc-1", expectedRevision: 1, requirementId: "req-1", offset: 0, projectId: "foreign" } }), true, t.connected, first.signal)).toMatchObject({ ok: false });
     expect(await t.api.handle(wire("issues.view.query", { query: { kind: "requirementDetail", documentId: "doc-1", expectedRevision: 1, requirementId: "../outside", offset: 0 } }), true, t.connected, first.signal)).toMatchObject({ ok: false });

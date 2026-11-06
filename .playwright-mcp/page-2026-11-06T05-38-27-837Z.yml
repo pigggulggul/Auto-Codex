@@ -1,0 +1,104 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - button "Auto Codex 나의 작업실" [ref=f1e5] [cursor=pointer]: auto codex.
+    - region "대화와 프로젝트" [ref=f1e6]:
+      - button "✎ 새 채팅 조사 모드" [ref=f1e7] [cursor=pointer]:
+        - text: ✎ 새 채팅
+        - generic [ref=f1e8]: 조사 모드
+      - generic [ref=f1e9]:
+        - strong [ref=f1e10]: 프로젝트
+        - button "프로젝트 폴더 추가" [ref=f1e11] [cursor=pointer]: + 폴더
+      - generic [ref=f1e12]:
+        - generic [ref=f1e13]: 대화와 프로젝트 검색
+        - textbox "대화와 프로젝트 검색" [ref=f1e14]:
+          - /placeholder: 프로젝트 또는 대화 검색
+      - paragraph [ref=f1e16]: 저장된 대화가 없습니다.
+    - paragraph [ref=f1e17]: PERSONAL WORKSPACE
+    - navigation "작업실 탐색" [ref=f1e18]:
+      - button "대화와 픽셀 화면" [ref=f1e19] [cursor=pointer]
+      - button "Codex 활동 센터" [ref=f1e21] [cursor=pointer]
+      - paragraph [ref=f1e23]: YOUR DESIGN PROCESS
+      - button "디자인 작업실" [ref=f1e24] [cursor=pointer]
+    - generic [ref=f1e26]:
+      - group [ref=f1e27]:
+        - generic "프로젝트 · 스킬 설정" [ref=f1e28] [cursor=pointer]
+      - paragraph [ref=f1e29]: LOCAL WORKSPACE저장과 실행 연결은 로컬 브리지가 관리합니다.
+      - link "Free icons from Streamline ↗" [ref=f1e30] [cursor=pointer]:
+        - /url: https://streamlinehq.com
+  - main [ref=f1e31]:
+    - link "작업 내용으로 건너뛰기" [ref=f1e32] [cursor=pointer]:
+      - /url: "#workspace-heading"
+    - generic [ref=f1e33]:
+      - link "Auto Codex 홈" [ref=f1e34] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f1e35]:
+          - strong [ref=f1e36]: 나의 작업실
+          - generic [ref=f1e37]: 이슈 처리
+      - generic [ref=f1e38]:
+        - generic [ref=f1e39]: gpt-6.1-sol
+        - generic "로컬에서 집계한 토큰 사용량" [ref=f1e40]:
+          - generic [ref=f1e41]:
+            - generic [ref=f1e42]: 오늘 토큰
+            - strong [ref=f1e43]: "0"
+          - generic [ref=f1e44]:
+            - generic [ref=f1e45]: 7일 토큰
+            - strong [ref=f1e46]: "0"
+        - generic [ref=f1e47]: app-server ready
+    - generic [ref=f1e49]:
+      - generic [ref=f1e50]:
+        - paragraph [ref=f1e51]: AUTO CODEX / LOCAL WORKSPACE
+        - heading "이슈 처리" [active] [level=1] [ref=f1e94]
+        - paragraph [ref=f1e53]: 프로젝트의 요구사항과 이슈를 살펴보고 순서에 따라 처리합니다.
+      - status [ref=f1e54]: 진행 작업 없음
+    - navigation "작업 모드" [ref=f1e55]:
+      - button "Codex 대화" [ref=f1e56] [cursor=pointer]
+      - button "아뜰리에 디자인" [ref=f1e57] [cursor=pointer]
+      - button "이슈 처리" [ref=f1e58] [cursor=pointer]
+    - region "이슈 처리 작업실" [ref=f1e95]:
+      - generic [ref=f1e96]:
+        - generic [ref=f1e97]:
+          - paragraph [ref=f1e98]: ISSUE WORKSPACE
+          - heading "요구사항에서 검증까지" [level=2] [ref=f1e99]
+          - paragraph [ref=f1e100]: 선택한 프로젝트를 기준으로 이슈를 계획하고, 작업과 확인 과정을 살펴볼 수 있는 공간입니다.
+        - generic [ref=f1e101]: 준비 중
+      - status [ref=f1e102]:
+        - generic [ref=f1e103]:
+          - strong [ref=f1e104]: 현재 프로젝트
+          - paragraph [ref=f1e105]: C:\Synthetic\Project
+        - button "프로젝트 변경" [ref=f1e106] [cursor=pointer]
+      - status [ref=f1e107]:
+        - generic [ref=f1e108]:
+          - strong [ref=f1e109]: 이슈 저장소
+          - paragraph [ref=f1e110]: 현재 프로젝트에 연결되었습니다.
+      - generic "이슈 작업" [ref=f1e111]:
+        - button "이슈 후보 만들기 준비 중" [disabled] [ref=f1e112]
+        - button "이슈 문서 불러오기" [ref=f1e113] [cursor=pointer]
+        - button "완료 상태 갱신 준비 중" [disabled] [ref=f1e114]
+      - region [ref=f1e115]:
+        - generic [ref=f1e117]:
+          - paragraph [ref=f1e118]: REGISTERED ISSUES
+          - heading "등록된 이슈" [level=2] [ref=f1e119]
+        - generic [ref=f1e120]:
+          - paragraph [ref=f1e121]: 저장된 이슈에는 선택한 문서의 내용이 포함됩니다. 현재 프로젝트 폴더를 확인한 뒤 이 창에서 볼 수 있습니다.
+          - button "이슈 목록 열기" [ref=f1e122] [cursor=pointer]
+      - generic [ref=f1e123]:
+        - generic [ref=f1e124]:
+          - text: "01"
+          - heading "계획과 대화" [level=3] [ref=f1e125]
+          - paragraph [ref=f1e126]: 선택한 자료와 추가 요청을 바탕으로 요구사항과 이슈 후보를 정리합니다.
+        - generic [ref=f1e127]:
+          - text: "02"
+          - heading "요구사항 검증" [level=3] [ref=f1e128]
+          - paragraph [ref=f1e129]: 자료와 요구사항, 이슈의 연결 및 미확인 항목을 살펴봅니다.
+        - generic [ref=f1e130]:
+          - text: "03"
+          - heading "이슈 목록" [level=3] [ref=f1e131]
+          - paragraph [ref=f1e132]: 이슈의 상태와 버전, 선행 관계를 확인합니다.
+        - generic [ref=f1e133]:
+          - text: "04"
+          - heading "실행 기록" [level=3] [ref=f1e134]
+          - paragraph [ref=f1e135]: 실제 작업과 테스트, 승인 및 확인 결과를 기록합니다.
+      - paragraph [ref=f1e136]: 규격 Markdown 문서는 선택 후 로컬 저장소에 보관됩니다. 일반 문서 분석과 이슈 실행은 준비 중입니다. 화면 전환으로 작업이 시작되지는 않습니다.
+    - generic [ref=f1e91]:
+      - generic [ref=f1e92]: Auto Codex · local-first
+      - generic [ref=f1e93]: 애니메이션은 시스템 설정과 애니메이션 토글을 따르며, 상태·이동은 실제 App Server 이벤트를 반영합니다.

@@ -7,6 +7,14 @@ const output = (index: number) => JSON.stringify({ requirements: [{ origin: "sou
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => { resolve = yes; }); return { promise, resolve }; }
 
 describe("analysis draft orchestration", () => {
+  it("returns a bounded isolated segment page and rejects invalid positions", async () => {
+    const draft = new AnalysisDraft("snapshot-test", 3, 1, async index => input(index));
+    await draft.runNext(async () => output(0));
+    const page = draft.segmentPage(0, 0); expect(page).toMatchObject({ index: 0, status: "processed", error: null, nextOffset: null, items: [{ text: "candidate 0" }] });
+    page.items[0].text = "changed"; expect(draft.segmentPage(0, 0).items[0].text).toBe("candidate 0");
+    expect(() => draft.segmentPage(-1, 0)).toThrow(); expect(() => draft.segmentPage(0, 2)).toThrow();
+    draft.dispose(); expect(() => draft.segmentPage(0, 0)).toThrow();
+  });
   it("keeps successful segments when another fails and retries only on request", async () => {
     const draft = new AnalysisDraft("snapshot-test", 3, 3, async index => input(index));
     await draft.runNext(async () => output(0));

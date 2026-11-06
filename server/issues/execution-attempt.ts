@@ -23,13 +23,13 @@ export type AttemptEvent =
   | ({ type: "approval-resolved"; requestId: string } & TurnEvent)
   | ({ type: "turn-finished"; result: "completed" | "failed" | "interrupted" } & TurnEvent)
   | { type: "stop-requested" }
-  | { type: "verification-finished"; result: "finished" | "failed" | "interrupted" | "unknown" };
+  | ({ type: "verification-finished"; result: "finished" | "failed" | "interrupted" | "unknown" } & TurnEvent);
 
 export function newAttempt(): AttemptState {
   return { phase: "queued", threadId: null, turnId: null, pendingApprovalIds: [], stopRequested: false, outcome: null };
 }
 
-const validId = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 1024;
+const validId = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 1024 && !/[\x00-\x1f\x7f]/.test(value);
 
 /** Invalid, duplicate, unrelated and late events leave the projection unchanged. */
 export function projectAttempt(state: AttemptState, event: AttemptEvent): AttemptState {
@@ -52,7 +52,7 @@ export function projectAttempt(state: AttemptState, event: AttemptEvent): Attemp
     return { ...state, phase: "running" };
   }
   if (event.type === "verification-finished") {
-    if (state.phase !== "verifying") return state;
+    if (state.phase !== "verifying" || event.threadId !== state.threadId || event.turnId !== state.turnId) return state;
     const outcome = event.result === "finished" ? "verification_finished" : event.result === "failed" ? "verification_failed" : event.result === "interrupted" ? "verification_interrupted" : event.result === "unknown" ? "outcome_unknown" : null;
     return outcome ? { ...state, phase: "settled", outcome } : state;
   }
@@ -67,6 +67,7 @@ export function projectAttempt(state: AttemptState, event: AttemptEvent): Attemp
     return { ...state, phase: pendingApprovalIds.length ? "waiting_approval" : "running", pendingApprovalIds };
   }
   if (event.type === "turn-finished" && ["running", "waiting_approval"].includes(state.phase)) {
+    if (state.pendingApprovalIds.length) return { ...state, phase: "settled", pendingApprovalIds: [], outcome: "outcome_unknown" };
     if (event.result === "completed") return state.stopRequested
       ? { ...state, phase: "settled", pendingApprovalIds: [], outcome: "verification_not_started" }
       : { ...state, phase: "verifying", pendingApprovalIds: [] };

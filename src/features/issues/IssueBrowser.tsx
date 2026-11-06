@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueDocumentSummary, IssueFindingCode, IssueFilters, IssueRequirementView, IssueSummary, IssueViewQuery, IssueViewResult, IssueViewStatus, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage, RequirementDetail } from "../../../shared/issues/view";
+import type { IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueDocumentSummary, IssueFindingCode, IssueFilters, IssueRequirementView, IssueSummary, IssueViewQuery, IssueViewResult, IssueViewStatus, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage, RequirementDetail, SourceTrace } from "../../../shared/issues/view";
 import { IssueApiError, type IssueApi } from "./api";
 import { AnalysisSources } from "./AnalysisSources";
+import { validDetailPage } from "./detail-page";
 
 const STATUS: Record<IssueSummary["localStatus"], string> = { ready: "□ 대기", retryable: "△ 재시도 필요", failed: "✕ 실패", needs_review: "? 검토 필요" };
 const ORIGIN: Record<IssueRequirementView["origin"], string> = { source: "원본 자료", user: "사용자 입력", "ai-proposal": "AI 제안" };
-const FINDING: Record<IssueFindingCode, string> = { "requirement-unlinked": "이슈에 연결되지 않은 요구사항", "requirement-uncategorized": "분류가 없는 요구사항", "requirement-same-text": "내용이 같은 요구사항 · 중복 여부 확인", "requirement-ai-proposal": "AI 제안 요구사항 · 내용과 근거 확인", "issue-unlinked": "요구사항에 연결되지 않은 이슈", "issue-uncategorized": "분류가 없는 이슈", "issue-missing-description": "설명이 없는 이슈", "issue-missing-criteria": "완료 조건이 없는 이슈", "issue-unverified-completion": "문서의 완료 표시를 로컬에서 확인하지 않은 이슈", "issue-same-title": "제목이 같은 이슈 · 중복 여부 확인", "issue-same-version-order": "같은 버전과 순서를 가진 이슈 · 순서 확인" };
+const FINDING: Record<IssueFindingCode, string> = { "source-unlinked": "요구사항에 연결되지 않은 자료", "requirement-unlinked": "이슈에 연결되지 않은 요구사항", "requirement-uncategorized": "분류가 없는 요구사항", "requirement-same-text": "내용이 같은 요구사항 · 중복 여부 확인", "requirement-ai-proposal": "AI 제안 요구사항 · 내용과 근거 확인", "issue-unlinked": "요구사항에 연결되지 않은 이슈", "issue-uncategorized": "분류가 없는 이슈", "issue-missing-description": "설명이 없는 이슈", "issue-missing-criteria": "완료 조건이 없는 이슈", "issue-unverified-completion": "문서의 완료 표시를 로컬에서 확인하지 않은 이슈", "issue-same-title": "제목이 같은 이슈 · 중복 여부 확인", "issue-same-version-order": "같은 버전과 순서를 가진 이슈 · 순서 확인", "issue-requirement-category-mismatch": "연결된 요구사항과 이슈가 서로 다른 분류에 있음 · 확인 필요" };
 type Props = { api: IssueApi; active: boolean; importRevision: number };
 type CategoryCrumb = IssueCategoryView & { parentOffset: number; parentHistory: number[] };
 
@@ -41,13 +42,14 @@ export function IssueDiagnostics({ report, revision, offset, history, loading, o
     <p>요구사항 {report.requirementCount}개 중 이슈에 연결된 항목 {report.linkedRequirementCount}개 · 이슈 {report.issueCount}개</p>
     <p>확인할 항목 {report.totalFindings}개{report.totalFindings > 0 ? ` · ${offset + 1}–${offset + report.findings.items.length} 표시` : ""}</p>
     <p className="issues-view-note">문서에 기록된 연결, 빈 항목, AI 제안 출처, 같은 문구와 같은 버전의 순서 중복을 점검했습니다. AI 제안은 문서에 기록된 출처이며 내용과 근거를 확인해야 합니다. 같은 문구가 실제 중복인지는 확인이 필요합니다. 같은 버전과 순서의 이슈는 ID 순으로 표시됩니다. 원문 누락, 의미적 완전성, 실제 코드 동작은 확인하지 않았습니다. 결과는 저장되지 않습니다.</p>
-    {report.findings.items.length ? <ul>{report.findings.items.map(item => <li key={`${item.code}:${item.entityId}`}>
+    {report.findings.items.length ? <ul>{report.findings.items.map(item => <li key={`${item.code}:${item.entityId}:${item.relatedEntityId ?? ""}`}>
       <strong>{FINDING[item.code]}</strong><br /><span>{item.title ? `${item.title} · ` : ""}{item.entityId}</span>
-      {item.relatedEntityId && <small className="issues-finding-origin">비교 대상 ID: {item.relatedEntityId}</small>}
+      {item.relatedEntityId && <small className="issues-finding-origin">{item.code === "issue-requirement-category-mismatch" ? "연결 요구사항 ID" : "비교 대상 ID"}: {item.relatedEntityId}</small>}
       {item.provenance && <small className="issues-finding-origin">{ORIGIN[item.provenance.origin]}{item.provenance.sourceName ? ` · ${item.provenance.sourceName}` : ""}{item.provenance.locator ? ` · ${item.provenance.locator}` : ""}</small>}
       {onOpenIssue && item.code.startsWith("issue-") && <div className="issues-finding-actions">
         <button type="button" disabled={loading} aria-label={`${item.entityId} 이슈 상세 보기`} onClick={event => onOpenIssue(item.entityId, event.currentTarget)}>이슈 상세 보기</button>
-        {item.relatedEntityId && <button type="button" disabled={loading} aria-label={`${item.relatedEntityId} 비교 이슈 상세 보기`} onClick={event => onOpenIssue(item.relatedEntityId!, event.currentTarget)}>비교 이슈 상세 보기</button>}
+        {item.relatedEntityId && item.code !== "issue-requirement-category-mismatch" && <button type="button" disabled={loading} aria-label={`${item.relatedEntityId} 비교 이슈 상세 보기`} onClick={event => onOpenIssue(item.relatedEntityId!, event.currentTarget)}>비교 이슈 상세 보기</button>}
+        {item.relatedEntityId && item.code === "issue-requirement-category-mismatch" && onOpenRequirement && <button type="button" disabled={loading} aria-label={`${item.relatedEntityId} 연결 요구사항 상세 보기`} onClick={event => onOpenRequirement(item.relatedEntityId!, event.currentTarget)}>연결 요구사항 상세 보기</button>}
       </div>}
       {onOpenRequirement && item.code.startsWith("requirement-") && <div className="issues-finding-actions">
         <button type="button" disabled={loading} aria-label={`${item.entityId} 요구사항 상세 보기`} onClick={event => onOpenRequirement(item.entityId, event.currentTarget)}>요구사항 상세 보기</button>
@@ -87,6 +89,7 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
   const [exportNotice, setExportNotice] = useState("");
   const [categoryPage, setCategoryPage] = useState<Page<IssueCategoryView> | null>(null), [categoryPath, setCategoryPath] = useState<CategoryCrumb[]>([]), [categoryOffset, setCategoryOffset] = useState(0), [categoryHistory, setCategoryHistory] = useState<number[]>([]);
   const [diagnostics, setDiagnostics] = useState<IssueDiagnosticReport | null>(null), [diagnosticOffset, setDiagnosticOffset] = useState(0), [diagnosticHistory, setDiagnosticHistory] = useState<number[]>([]);
+  const [sourceTrace, setSourceTrace] = useState<{ documentId: string; revision: number; page: Page<SourceTrace>; offset: number; history: number[] } | null>(null);
   const [projectPage, setProjectPage] = useState<ProjectIssuePage | null>(null), [projectCursor, setProjectCursor] = useState<ProjectIssueCursor>({ issueOffset: 0 }), [projectHistory, setProjectHistory] = useState<ProjectIssueCursor[]>([]), [projectFilters, setProjectFilters] = useState<ProjectIssueFilters>({});
   const alive = useRef(true), sequence = useRef(0), detailHeading = useRef<HTMLHeadingElement>(null), diagnosticHeading = useRef<HTMLHeadingElement>(null), categoryHeading = useRef<HTMLHeadingElement>(null), projectHeading = useRef<HTMLHeadingElement>(null);
   const loadedImportRevision = useRef<number | null>(null);
@@ -94,6 +97,7 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
   const dependencyReturn = useRef<HTMLButtonElement | null>(null);
   const expiry = useRef<{ timer: ReturnType<typeof setTimeout>; wall: number; monotonic: number } | null>(null);
   const forgetView = (message: string) => {
+    setSourceTrace(null);
     sequence.current++; loadedImportRevision.current = null; if (expiry.current) clearTimeout(expiry.current.timer); expiry.current = null; diagnosticReturn.current = null; requirementReturn.current = null; dependencyReturn.current = null; detailFallback.current = null; setDetailReturnKind(null); setDetailTrail([]); setRequirementDetail(null); setRequirementPage(null); setRequirementOffset(0); setRequirementHistory([]);
     setAuthorized(false); setDocuments([]); setRevision(null); setDocNext(null); setDocAfter(""); setDocHistory([]); setDocumentId(null); setIssues([]); setIssueNext(null); setIssueOffset(0); setIssueHistory([]); setDetail(null); setDetailDocumentId(null); setCriteria([]); setCriteriaNext(null); setRequirements([]); setRequirementsNext(null); setDependencies([]); setDependenciesNext(null); setSearch(""); setStatus(""); setVersion(""); setAppliedFilters({}); setExportNotice(""); setDiagnostics(null); setDiagnosticOffset(0); setDiagnosticHistory([]); setCategoryPage(null); setCategoryPath([]); setCategoryOffset(0); setCategoryHistory([]); setProjectPage(null); setProjectCursor({ issueOffset: 0 }); setProjectHistory([]); setProjectFilters({}); setLoading(false); setError(message);
   };
@@ -118,6 +122,7 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
     const text = caught instanceof Error ? caught.message : "이슈를 불러오지 못했습니다.";
     if (caught instanceof IssueApiError && caught.code === "VIEW_AUTH_REQUIRED") { forgetView(text); return; }
     if (caught instanceof IssueApiError && caught.code === "VERSION_CONFLICT") {
+      setSourceTrace(null);
       loadedImportRevision.current = null;
       setDocuments([]); setRevision(null); setDocNext(null); setDocAfter(""); setDocHistory([]); setDocumentId(null); setIssues([]); setIssueNext(null); setIssueOffset(0); setIssueHistory([]); setDiagnostics(null); setDiagnosticOffset(0); setDiagnosticHistory([]); setCategoryPage(null); setCategoryPath([]); setCategoryOffset(0); setCategoryHistory([]); setProjectPage(null); setProjectHistory([]); clearDetails();
     }
@@ -125,6 +130,7 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
   };
   const clearDetails = (keepRequirement = false) => { diagnosticReturn.current = null; dependencyReturn.current = null; detailFallback.current = null; setDetailReturnKind(null); setDetailTrail([]); setDetail(null); setDetailDocumentId(null); setCriteria([]); setCriteriaNext(null); setRequirements([]); setRequirementsNext(null); setDependencies([]); setDependenciesNext(null); if (!keepRequirement) { requirementReturn.current = null; setRequirementDetail(null); setRequirementPage(null); setRequirementOffset(0); setRequirementHistory([]); } };
   const loadDocuments = async (afterId?: string, expectedRevision?: number, history: string[] = []) => {
+    setSourceTrace(null);
     const turn = ++sequence.current; setLoading(true); setError("");
     try {
       const result = await request({ kind: "documents", ...(afterId ? { afterId } : {}), ...(expectedRevision ? { expectedRevision } : {}) });
@@ -163,6 +169,7 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
         if (categories.kind !== "categories" || categories.revision !== revision) throw new Error("분류 목록 응답이 올바르지 않습니다.");
         setCategoryPage(categories.page); setCategoryPath([]); setCategoryOffset(0); setCategoryHistory([]); setDiagnostics(null); setDiagnosticOffset(0); setDiagnosticHistory([]);
       }
+      if (doc !== documentId) setSourceTrace(null);
       setDocumentId(doc); setIssues(result.page.items); setIssueNext(result.page.nextOffset); setIssueOffset(offset); setIssueHistory(history); setAppliedFilters(nextFilters); setExportNotice(""); clearDetails();
     } catch (caught) { if (alive.current && turn === sequence.current) failure(caught); }
     finally { if (alive.current && turn === sequence.current) setLoading(false); }
@@ -223,6 +230,17 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
     } catch (caught) { if (alive.current && turn === sequence.current) failure(caught); }
     finally { if (alive.current && turn === sequence.current) setLoading(false); }
   };
+  const loadSourceTrace = async (offset = 0, history: number[] = []) => {
+    if (!documentId || !revision) return;
+    const turn = ++sequence.current; setLoading(true); setError("");
+    try {
+      const result = await request({ kind: "sourceTrace", documentId, expectedRevision: revision, offset });
+      if (!alive.current || turn !== sequence.current) return;
+      if (result.kind !== "sourceTrace" || result.revision !== revision) throw new IssueApiError("INVALID_RESPONSE", "자료 연결을 확인할 수 없습니다.");
+      setSourceTrace({ documentId, revision, page: result.page, offset, history });
+    } catch (caught) { if (alive.current && turn === sequence.current) failure(caught); }
+    finally { if (alive.current && turn === sequence.current) setLoading(false); }
+  };
   const exportDocument = async () => {
     if (!documentId || !revision) return;
     const turn = ++sequence.current; setLoading(true); setError(""); setExportNotice("");
@@ -256,12 +274,12 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
       if (result.kind !== "detail" || result.revision !== revision || result.issue.id !== issue.id) throw new Error("이슈 상세 응답이 올바르지 않습니다.");
       const firstCriteria = await request({ kind: "criteria", documentId: targetDocumentId, expectedRevision: revision, issueId: issue.id, offset: 0 });
       if (!alive.current || turn !== sequence.current) return;
-      if (firstCriteria.kind !== "criteria" || firstCriteria.revision !== revision) throw new Error("완료 조건 응답이 올바르지 않습니다.");
+      if (firstCriteria.kind !== "criteria" || firstCriteria.revision !== revision || !validDetailPage(firstCriteria.page, 0, result.issue.criteriaCount)) throw new Error("완료 조건 응답이 올바르지 않습니다.");
       const firstRequirements = await request({ kind: "requirements", documentId: targetDocumentId, expectedRevision: revision, issueId: issue.id, offset: 0 });
-      if (firstRequirements.kind !== "requirements" || firstRequirements.revision !== revision) throw new Error("요구사항 응답이 올바르지 않습니다.");
+      if (firstRequirements.kind !== "requirements" || firstRequirements.revision !== revision || !validDetailPage(firstRequirements.page, 0, result.issue.requirementCount, [], item => item.id)) throw new Error("요구사항 응답이 올바르지 않습니다.");
       if (!alive.current || turn !== sequence.current) return;
       const firstDependencies = await request({ kind: "dependencies", documentId: targetDocumentId, expectedRevision: revision, issueId: issue.id, offset: 0 });
-      if (firstDependencies.kind !== "dependencies" || firstDependencies.revision !== revision) throw new Error("선행 이슈 응답이 올바르지 않습니다.");
+      if (firstDependencies.kind !== "dependencies" || firstDependencies.revision !== revision || !validDetailPage(firstDependencies.page, 0, result.issue.dependencyCount, [], item => item.id)) throw new Error("선행 이슈 응답이 올바르지 않습니다.");
       if (!alive.current || turn !== sequence.current) return;
       if (dependencyDirection === "forward" && detail && detailDocumentId) setDetailTrail(current => [...current, { id: detail.id, documentId: detailDocumentId }]);
       else if (dependencyDirection === "back") setDetailTrail(current => current.slice(0, -1));
@@ -276,9 +294,9 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
       const result = await request({ kind, documentId: detailDocumentId, expectedRevision: revision, issueId: detail.id, offset });
       if (!alive.current || turn !== sequence.current) return;
       if (result.revision !== revision) throw new Error("이슈 상세 응답이 올바르지 않습니다.");
-      if (kind === "criteria" && result.kind === "criteria") { setCriteria(current => [...current, ...result.page.items]); setCriteriaNext(result.page.nextOffset); }
-      else if (kind === "requirements" && result.kind === "requirements") { setRequirements(current => [...current, ...result.page.items]); setRequirementsNext(result.page.nextOffset); }
-      else if (kind === "dependencies" && result.kind === "dependencies") { setDependencies(current => [...current, ...result.page.items]); setDependenciesNext(result.page.nextOffset); }
+      if (kind === "criteria" && result.kind === "criteria" && validDetailPage(result.page, offset, detail.criteriaCount, criteria)) { setCriteria(current => [...current, ...result.page.items]); setCriteriaNext(result.page.nextOffset); }
+      else if (kind === "requirements" && result.kind === "requirements" && validDetailPage(result.page, offset, detail.requirementCount, requirements, item => item.id)) { setRequirements(current => [...current, ...result.page.items]); setRequirementsNext(result.page.nextOffset); }
+      else if (kind === "dependencies" && result.kind === "dependencies" && validDetailPage(result.page, offset, detail.dependencyCount, dependencies, item => item.id)) { setDependencies(current => [...current, ...result.page.items]); setDependenciesNext(result.page.nextOffset); }
       else throw new Error("이슈 상세 응답이 올바르지 않습니다.");
     } catch (caught) { if (alive.current && turn === sequence.current) failure(caught); }
     finally { if (alive.current && turn === sequence.current) setLoading(false); }
@@ -299,6 +317,8 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
       {documents.length > 0 && <div className="issues-browser-columns"><div><h3>문서</h3><ul className="issues-document-list">{documents.map(doc => <li key={doc.id}><button type="button" onClick={() => void loadIssues(doc.id, 0)} disabled={loading} aria-current={documentId === doc.id ? "true" : undefined}><strong>{doc.id}</strong><small>이슈 {doc.issueCount}개 · 문서 r{doc.documentRevision}</small></button></li>)}</ul><div className="issues-pagination">{docHistory.length > 0 && <button type="button" disabled={loading} onClick={() => void loadDocuments(docHistory.at(-1) || undefined, revision || undefined, docHistory.slice(0, -1))}>이전 문서</button>}{docNext && <button type="button" disabled={loading} onClick={() => void loadDocuments(docNext, revision || undefined, [...docHistory, docAfter])}>다음 문서</button>}</div>{documentId && categoryPage && <IssueCategoryNavigation page={categoryPage} path={categoryPath} selected={appliedFilters.categoryId} history={categoryHistory} loading={loading} headingRef={categoryHeading} onAll={() => void changeCategory([], undefined)} onUncategorized={() => void changeCategory([], null)} onParent={() => { const previous = categoryPath.at(-1); if (previous) { const path = categoryPath.slice(0, -1); void changeCategory(path, path.at(-1)?.id, previous.parentOffset, previous.parentHistory); } }} onSelect={item => void changeCategory([...categoryPath, { ...item, parentOffset: categoryOffset, parentHistory: categoryHistory }], item.id)} onPrevious={() => void loadCategoryPage(categoryHistory.at(-1)!, categoryHistory.slice(0, -1))} onNext={() => { if (categoryPage.nextOffset !== null) void loadCategoryPage(categoryPage.nextOffset, [...categoryHistory, categoryOffset]); }} />}</div>
       <div><h3 tabIndex={-1} ref={issueListHeading}>이슈</h3>{!documentId ? <p>문서를 선택하세요.</p> : <><div className="issues-export"><button type="button" onClick={() => void exportDocument()} disabled={loading}>선택 문서 새 파일로 내보내기</button><p className="issues-view-note">프로젝트 안에 새 Markdown 파일을 만듭니다. 기존 파일은 덮어쓰지 않습니다. 문서의 완료 표시는 로컬 검증 결과가 아닙니다.</p>{exportNotice && <p role="status">{exportNotice}</p>}</div><form className="issues-filters" onSubmit={applyFilters}><label>검색 <input type="search" value={search} onChange={event => setSearch(event.target.value)} maxLength={120} placeholder="제목, 설명, 분류, ID" /></label><label>상태 <select value={status} onChange={event => setStatus(event.target.value as IssueViewStatus | "")}><option value="">전체</option><option value="ready">대기</option><option value="retryable">재시도 필요</option><option value="failed">실패</option><option value="needs_review">검토 필요</option></select></label><label>개발 버전 <input value={version} onChange={event => setVersion(event.target.value)} maxLength={1024} pattern="[0-9]+\.[0-9]+\.[0-9]+" title="예: 1.2.0" placeholder="예: 1.2.0" /></label><button type="submit" disabled={loading}>적용</button></form><p className="issues-view-note">선택한 문서에서 검색합니다. 상태는 로컬 상태 기준입니다.</p>{issues.length === 0 ? <p>조건에 맞는 이슈가 없습니다.</p> : <ul className="issues-list">{issues.map(issue => <IssueRow key={issue.id} issue={issue} disabled={loading} onOpen={button => void openDetail(issue, undefined, button, false, "list")} />)}</ul>}<div className="issues-pagination">{issueHistory.length > 0 && <button type="button" disabled={loading} onClick={() => void loadIssues(documentId, issueHistory.at(-1)!, issueHistory.slice(0, -1))}>이전 이슈</button>}{issueNext !== null && <button type="button" disabled={loading} onClick={() => void loadIssues(documentId, issueNext, [...issueHistory, issueOffset])}>다음 이슈</button>}</div></>}</div></div>}
       {documentId && <div className="issues-diagnostics-action"><button type="button" disabled={loading} onClick={() => void loadDiagnostics()}>선택 문서 연결 점검</button><p className="issues-view-note">저장된 연결, 빈 항목, AI 제안 출처, 같은 문구와 같은 버전의 순서 중복을 읽기 전용으로 확인합니다.</p></div>}
+      {documentId && <div><button type="button" disabled={loading} onClick={() => void loadSourceTrace()}>자료와 요구사항 연결 보기</button><p className="issues-view-note">문서에 기록된 연결만 표시하며 원문 내용이나 연결의 정확성은 확인하지 않습니다.</p></div>}
+      {sourceTrace && sourceTrace.documentId === documentId && sourceTrace.revision === revision && <section aria-label="자료와 요구사항 연결"><h3>자료와 요구사항 연결</h3>{sourceTrace.page.items.length ? <ul>{sourceTrace.page.items.map((row, index) => <li key={`${row.sourceId}:${row.requirement?.id ?? index}`}><strong>{row.sourceName}</strong> · {row.sourceId}{row.requirement ? <><p className="issues-prewrap">{row.requirement.text}</p><small>{ORIGIN[row.requirement.origin]}{row.requirement.locator ? ` · ${row.requirement.locator}` : ""}</small><div><button type="button" disabled={loading} onClick={event => void openRequirement(row.requirement!.id, 0, [], event.currentTarget)}>요구사항 및 연결 이슈 보기</button></div></> : <p>연결된 요구사항이 없습니다.</p>}</li>)}</ul> : <p>문서에 등록된 자료가 없습니다.</p>}<div className="issues-pagination">{sourceTrace.history.length > 0 && <button type="button" disabled={loading} onClick={() => void loadSourceTrace(sourceTrace.history.at(-1)!, sourceTrace.history.slice(0, -1))}>이전 연결</button>}{sourceTrace.page.nextOffset !== null && <button type="button" disabled={loading} onClick={() => void loadSourceTrace(sourceTrace.page.nextOffset!, [...sourceTrace.history, sourceTrace.offset])}>다음 연결</button>}</div></section>}
       {diagnostics && revision && <IssueDiagnostics report={diagnostics} revision={revision} documentId={documentId ?? undefined} offset={diagnosticOffset} history={diagnosticHistory} loading={loading} headingRef={diagnosticHeading} onOpenIssue={(id, button) => void openDetail({ id }, undefined, button)} onOpenRequirement={(id, button) => void openRequirement(id, 0, [], button)} onPrevious={() => void loadDiagnostics(diagnosticHistory.at(-1)!, diagnosticHistory.slice(0, -1))} onNext={() => { if (diagnostics.findings.nextOffset !== null) void loadDiagnostics(diagnostics.findings.nextOffset, [...diagnosticHistory, diagnosticOffset]); }} />}
       {requirementDetail && requirementPage && <RequirementDetailPanel requirement={requirementDetail} page={requirementPage} offset={requirementOffset} history={requirementHistory} loading={loading} headingRef={requirementHeading} onBack={() => { const target = requirementReturn.current; clearDetails(); if (target?.isConnected) target.focus(); else diagnosticHeading.current?.focus(); }} onOpenIssue={(issue, button) => void openDetail(issue, undefined, button, true)} onPrevious={() => void openRequirement(requirementDetail.id, requirementHistory.at(-1)!, requirementHistory.slice(0, -1))} onNext={() => { if (requirementPage.nextOffset !== null) void openRequirement(requirementDetail.id, requirementPage.nextOffset, [...requirementHistory, requirementOffset]); }} />}
       {detail && detailDocumentId && <p className="issues-view-note">이슈 상세 기준 문서: {detailDocumentId} · 이슈 ID: {detail.id}</p>}

@@ -1,19 +1,38 @@
 import { validProjectIssueCursor, type IssueViewQuery, type IssueViewResult } from "../../../shared/issues/view";
-import type { AnalysisFreshness, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../../shared/issues/sources";
+import type { AnalysisFreshness, AnalysisRunStatus, AnalysisSegmentPage, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../../shared/issues/sources";
 
-type Action = "status" | "bind" | "import" | "export" | "authorizeView" | "view" | "releaseView" | "sourceAdd" | "sourceList" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck";
+type Action = "status" | "bind" | "import" | "export" | "authorizeView" | "view" | "releaseView" | "sourceAdd" | "sourceList" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck" | "analysisStatus" | "analysisStart" | "analysisInterrupt" | "analysisClear" | "analysisSegment" | "analysisRetry";
 type FreshnessRequest = { snapshotId: string; expectedRevision: number; expectedIds: string[] };
 export class IssueApiError extends Error {
   constructor(readonly code: string, message: string) { super(message); }
 }
-export type IssueBindingResult = { bound: boolean; cancelled?: boolean; issueCount?: number; alreadyImported?: boolean; cleanupWarning?: boolean; authorized?: boolean; authorizedForMs?: number; view?: IssueViewResult; sources?: AnalysisSourceList; chunk?: AnalysisSourceChunk; snapshot?: AnalysisSnapshotSummary; freshness?: AnalysisFreshness };
-type Pending = { id: string; action: Action; sourceId?: string; offset?: number; viewQuery?: IssueViewQuery; snapshotRequest?: Pick<AnalysisSnapshotRequest, "expectedRevision" | "expectedSources"> & { hasInstruction: boolean }; freshnessRequest?: FreshnessRequest; promise: Promise<IssueBindingResult>; resolve: (result: IssueBindingResult) => void; reject: (error: IssueApiError) => void; timer: ReturnType<typeof setTimeout> };
-const uncertainMessage = (action: Action) => action === "import" ? "등록 결과를 확인하지 못했습니다. 같은 문서를 다시 선택하면 중복 등록 없이 확인할 수 있습니다." : action === "export" ? "저장 결과를 확인하지 못했습니다. 다시 시도하기 전에 선택한 위치를 확인하세요." : action === "sourceAdd" || action === "sourceRemove" ? "자료 선택 상태를 확인하지 못했습니다. 목록을 다시 확인하세요." : "연결 결과를 확인하지 못했습니다. 다시 연결한 뒤 상태를 확인하세요.";
-const mutating = (action: Action) => action === "bind" || action === "import" || action === "export" || action === "sourceAdd" || action === "sourceRemove";
+export type IssueBindingResult = { bound: boolean; cancelled?: boolean; issueCount?: number; alreadyImported?: boolean; cleanupWarning?: boolean; authorized?: boolean; authorizedForMs?: number; view?: IssueViewResult; sources?: AnalysisSourceList; chunk?: AnalysisSourceChunk; snapshot?: AnalysisSnapshotSummary; freshness?: AnalysisFreshness; analysisStatus?: AnalysisRunStatus; analysisSegment?: AnalysisSegmentPage };
+type Pending = { id: string; action: Action; sourceId?: string; offset?: number; segmentIndex?: number; viewQuery?: IssueViewQuery; snapshotRequest?: Pick<AnalysisSnapshotRequest, "expectedRevision" | "expectedSources"> & { hasInstruction: boolean }; freshnessRequest?: FreshnessRequest; promise: Promise<IssueBindingResult>; resolve: (result: IssueBindingResult) => void; reject: (error: IssueApiError) => void; timer: ReturnType<typeof setTimeout> };
+const uncertainMessage = (action: Action) => action === "analysisStart" || action === "analysisInterrupt" || action === "analysisClear" || action === "analysisRetry" ? "분석 요청 결과를 확인하지 못했습니다. 다시 시도하기 전에 분석 상태를 확인하세요." : action === "import" ? "등록 결과를 확인하지 못했습니다. 같은 문서를 다시 선택하면 중복 등록 없이 확인할 수 있습니다." : action === "export" ? "저장 결과를 확인하지 못했습니다. 다시 시도하기 전에 선택한 위치를 확인하세요." : action === "sourceAdd" || action === "sourceRemove" ? "자료 선택 상태를 확인하지 못했습니다. 목록을 다시 확인하세요." : "연결 결과를 확인하지 못했습니다. 다시 연결한 뒤 상태를 확인하세요.";
+const mutating = (action: Action) => action === "bind" || action === "import" || action === "export" || action === "sourceAdd" || action === "sourceRemove" || action === "analysisStart" || action === "analysisInterrupt" || action === "analysisClear" || action === "analysisRetry";
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
 const nonnegative = (value: unknown) => Number.isSafeInteger(value) && Number(value) >= 0;
 const shortId = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
 const label = (value: unknown, max: number) => typeof value === "string" && value.length <= max;
+function validAnalysisStatus(value: unknown): value is AnalysisRunStatus {
+  if (value === "unavailable") return true;
+  if (!record(value) || !["idle", "preparing", "running", "complete", "blocked", "limit", "interrupted", "failed", "termination-unconfirmed"].includes(String(value.state))) return false;
+  if (value.progress === null) return ["idle", "preparing", "failed", "interrupted", "termination-unconfirmed"].includes(String(value.state));
+  const p = value.progress; if (!record(p) || typeof p.isRunning !== "boolean" || typeof p.disposed !== "boolean") return false;
+  const counts = [p.pending, p.running, p.processed, p.failed, p.interrupted];
+  return counts.every(nonnegative) && counts.reduce<number>((sum, item) => sum + Number(item), 0) <= 2048;
+}
+function validAnalysisSegment(value: unknown, pending: Pending): value is AnalysisSegmentPage {
+  if (!record(value) || value.index !== pending.segmentIndex || !["pending", "running", "processed", "failed", "interrupted"].includes(String(value.status)) || !(value.error === null || value.status === "failed" && ["STALE_INPUT", "INVALID_OUTPUT", "MODEL_FAILED", "LIMIT_EXCEEDED"].includes(String(value.error))) || value.status === "failed" && value.error === null || !Array.isArray(value.items) || value.items.length > 32 || value.status !== "processed" && value.items.length !== 0 || !nonnegative(pending.offset)) return false;
+  const end = Number(pending.offset) + value.items.length;
+  if (!(value.nextOffset === null || value.items.length > 0 && value.nextOffset === end && end <= 512)) return false;
+  return value.items.every(item => {
+    if (!record(item) || !shortId(item.id) || !label(item.text, 600) || typeof item.text !== "string" || !item.text.trim() || !label(item.uncertainty, 500)) return false;
+    if (item.origin === "ai-proposal") return item.evidence === null && typeof item.uncertainty === "string" && !!item.uncertainty.trim();
+    const e = item.evidence;
+    return item.origin === "source" && record(e) && sourceId(e.sourceId) && label(e.sourcePath, 1024) && typeof e.sourcePath === "string" && !!e.sourcePath && !e.sourcePath.includes("\\") && !e.sourcePath.split("/").some(part => !part || part === "." || part === ".." || part.includes(":")) && typeof e.sourceSha256 === "string" && /^[a-f0-9]{64}$/.test(e.sourceSha256) && shortId(e.segmentId) && label(e.quote, 300) && typeof e.quote === "string" && !!e.quote.trim() && nonnegative(e.start) && nonnegative(e.end) && Number(e.end) - Number(e.start) === e.quote.length;
+  });
+}
 const sourceId = (value: unknown) => typeof value === "string" && /^source_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value);
 function validSources(value: unknown): value is AnalysisSourceList {
   if (!record(value) || !Array.isArray(value.items) || value.items.length > 16 || !nonnegative(value.totalBytes) || Number(value.totalBytes) > 4 * 1024 * 1024) return false;
@@ -46,8 +65,8 @@ const localStatus = (value: unknown) => ["ready", "retryable", "failed", "needs_
 const dependency = (value: unknown) => record(value) && shortId(value.id) && label(value.title, 255) && localStatus(value.localStatus) && (localStatus(value.importedStatus) || value.importedStatus === "completed");
 const summary = (value: unknown) => dependency(value) && record(value) && label(value.version, 1024) && (value.category === null || label(value.category, 255)) && typeof value.missingCriteria === "boolean" && nonnegative(value.unverifiedDependencies);
 function validFinding(item: unknown): boolean {
-  if (!record(item) || typeof item.code !== "string" || !["requirement-unlinked", "requirement-uncategorized", "requirement-same-text", "requirement-ai-proposal", "issue-unlinked", "issue-uncategorized", "issue-missing-description", "issue-missing-criteria", "issue-unverified-completion", "issue-same-title", "issue-same-version-order"].includes(item.code) || !shortId(item.entityId) || !(item.title === null || label(item.title, 32768))) return false;
-  const duplicate = item.code === "requirement-same-text" || item.code === "issue-same-title" || item.code === "issue-same-version-order";
+  if (!record(item) || typeof item.code !== "string" || !["source-unlinked", "requirement-unlinked", "requirement-uncategorized", "requirement-same-text", "requirement-ai-proposal", "issue-unlinked", "issue-uncategorized", "issue-missing-description", "issue-missing-criteria", "issue-unverified-completion", "issue-same-title", "issue-same-version-order", "issue-requirement-category-mismatch"].includes(item.code) || !shortId(item.entityId) || !(item.title === null || label(item.title, 32768))) return false;
+  const duplicate = item.code === "requirement-same-text" || item.code === "issue-same-title" || item.code === "issue-same-version-order" || item.code === "issue-requirement-category-mismatch";
   if (duplicate ? !shortId(item.relatedEntityId) || item.relatedEntityId === item.entityId : item.relatedEntityId !== undefined) return false;
   return item.code.startsWith("requirement-") ? record(item.provenance) && typeof item.provenance.origin === "string" && ["source", "user", "ai-proposal"].includes(item.provenance.origin) && (item.code !== "requirement-ai-proposal" || item.provenance.origin === "ai-proposal") && (item.provenance.sourceName === null || label(item.provenance.sourceName, 255)) && (item.provenance.locator === null || label(item.provenance.locator, 1024)) : item.provenance === null;
 }
@@ -73,6 +92,7 @@ function validView(value: unknown): value is IssueViewResult {
   if (value.kind === "criteria") return value.page.items.every(item => label(item, 32768));
   if (value.kind === "dependencies") return value.page.items.every(dependency);
   if (value.kind === "requirements") return value.page.items.every(item => record(item) && shortId(item.id) && label(item.text, 32768) && ["source", "user", "ai-proposal"].includes(String(item.origin)) && (item.sourceName === null || label(item.sourceName, 255)) && (item.locator === null || label(item.locator, 1024)));
+  if (value.kind === "sourceTrace") return value.page.items.every(item => record(item) && shortId(item.sourceId) && label(item.sourceName, 255) && (item.requirement === null || record(item.requirement) && shortId(item.requirement.id) && label(item.requirement.text, 32768) && ["source", "user", "ai-proposal"].includes(String(item.requirement.origin)) && item.requirement.sourceName === item.sourceName && (item.requirement.locator === null || label(item.requirement.locator, 1024))));
   return false;
 }
 
@@ -103,22 +123,27 @@ function matchesViewRequest(view: IssueViewResult, query: IssueViewQuery | undef
 export class IssueApi {
   private send: ((raw: string) => void) | null = null;
   private pending: Pending | null = null;
+  private interruptPending: Pending | null = null;
   connect(send: (raw: string) => void): void { this.send = send; }
   disconnect(): void {
     this.send = null;
-    const pending = this.pending; if (!pending) return;
-    clearTimeout(pending.timer); this.pending = null;
-    pending.reject(new IssueApiError(mutating(pending.action) ? "OUTCOME_UNKNOWN" : "DISCONNECTED", mutating(pending.action) ? uncertainMessage(pending.action) : "브리지 연결이 끊겼습니다."));
+    const pending = [this.pending, this.interruptPending]; this.pending = null; this.interruptPending = null;
+    for (const entry of pending) if (entry) { clearTimeout(entry.timer); entry.reject(new IssueApiError(mutating(entry.action) ? "OUTCOME_UNKNOWN" : "DISCONNECTED", mutating(entry.action) ? uncertainMessage(entry.action) : "브리지 연결이 끊겼습니다.")); }
   }
   request(action: "export", query: { documentId: string; expectedRevision: number }): Promise<IssueBindingResult>;
   request(action: "sourceRead", query: { sourceId: string; offset: number }): Promise<IssueBindingResult>;
   request(action: "sourceRemove", query: { sourceId: string }): Promise<IssueBindingResult>;
   request(action: "snapshotPrepare", query: AnalysisSnapshotRequest): Promise<IssueBindingResult>;
   request(action: "snapshotCheck", query: FreshnessRequest): Promise<IssueBindingResult>;
-  request(action: Exclude<Action, "export" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck">, query?: IssueViewQuery): Promise<IssueBindingResult>;
-  request(action: Action, query?: IssueViewQuery | { documentId: string; expectedRevision: number } | { sourceId: string; offset?: number } | AnalysisSnapshotRequest | FreshnessRequest): Promise<IssueBindingResult> {
+  request(action: "analysisStart", query: { snapshotId: string; expectedRevision: number }): Promise<IssueBindingResult>;
+  request(action: "analysisSegment", query: { index: number; offset: number }): Promise<IssueBindingResult>;
+  request(action: "analysisRetry", query: { index: number }): Promise<IssueBindingResult>;
+  request(action: Exclude<Action, "export" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck" | "analysisStart" | "analysisSegment" | "analysisRetry">, query?: IssueViewQuery): Promise<IssueBindingResult>;
+  request(action: Action, query?: IssueViewQuery | { documentId: string; expectedRevision: number } | { sourceId: string; offset?: number } | AnalysisSnapshotRequest | FreshnessRequest | { snapshotId: string; expectedRevision: number } | { index: number; offset?: number }): Promise<IssueBindingResult> {
     if (!this.send) return Promise.reject(new IssueApiError("DISCONNECTED", "브리지 연결이 끊겼습니다."));
-    if (this.pending) {
+    const priority = action === "analysisInterrupt";
+    if (priority && this.interruptPending) return Promise.reject(new IssueApiError("BUSY", "이전 중단 요청을 기다려 주세요."));
+    if (!priority && this.pending) {
       if (action === "status" && this.pending.action === "status") return this.pending.promise;
       return Promise.reject(new IssueApiError("BUSY", "이전 이슈 요청이 끝날 때까지 기다려 주세요."));
     }
@@ -126,27 +151,29 @@ export class IssueApi {
     let resolve!: Pending["resolve"], reject!: Pending["reject"];
     const promise = new Promise<IssueBindingResult>((yes, no) => { resolve = yes; reject = no; });
     const timer = setTimeout(() => {
-      if (this.pending?.id !== id) return;
-      this.pending = null;
+      if ((priority ? this.interruptPending : this.pending)?.id !== id) return;
+      if (priority) this.interruptPending = null; else this.pending = null;
       reject(new IssueApiError(mutating(action) ? "OUTCOME_UNKNOWN" : "TIMEOUT", mutating(action) ? uncertainMessage(action) : "이슈 요청 시간이 초과되었습니다."));
     }, action === "bind" || action === "import" || action === "export" || action === "sourceAdd" || action === "authorizeView" || action === "snapshotCheck" ? 360_000 : 45_000);
     const sourceQuery = query && "sourceId" in query ? query : undefined;
     const snapshotQuery = action === "snapshotPrepare" ? query as AnalysisSnapshotRequest : undefined;
     const freshnessQuery = action === "snapshotCheck" ? query as FreshnessRequest : undefined;
     const viewQuery = action === "view" && query && "kind" in query ? query as IssueViewQuery : undefined;
-    this.pending = { id, action, ...(sourceQuery ? { sourceId: sourceQuery.sourceId, offset: sourceQuery.offset } : {}), ...(viewQuery ? { viewQuery: viewQuery.kind === "projectIssues" ? { ...viewQuery, cursor: { ...viewQuery.cursor } } : { ...viewQuery } } : {}), ...(snapshotQuery ? { snapshotRequest: { expectedRevision: snapshotQuery.expectedRevision, expectedSources: snapshotQuery.expectedSources.map(item => ({ ...item })), hasInstruction: !!snapshotQuery.instruction.trim() } } : {}), ...(freshnessQuery ? { freshnessRequest: { ...freshnessQuery, expectedIds: [...freshnessQuery.expectedIds] } } : {}), promise, resolve, reject, timer };
-    const type = action === "import" ? "issues.document.import" : action === "export" ? "issues.document.export" : action === "authorizeView" ? "issues.view.authorize" : action === "view" ? "issues.view.query" : action === "releaseView" ? "issues.view.release" : action === "sourceAdd" ? "issues.sources.add" : action === "sourceList" ? "issues.sources.list" : action === "sourceRead" ? "issues.sources.read" : action === "sourceRemove" ? "issues.sources.remove" : action === "snapshotPrepare" ? "issues.analysis.prepare" : action === "snapshotCheck" ? "issues.analysis.check" : `issues.project.${action}`;
-    try { this.send(JSON.stringify({ type, v: 1, clientRequestId: id, ...(action === "view" ? { query } : {}), ...(action === "export" || action === "sourceRead" || action === "sourceRemove" || action === "snapshotPrepare" ? query : {}), ...(freshnessQuery ? { snapshotId: freshnessQuery.snapshotId, expectedRevision: freshnessQuery.expectedRevision } : {}) })); }
-    catch { clearTimeout(timer); this.pending = null; reject(new IssueApiError("DISCONNECTED", "브리지에 요청을 전달하지 못했습니다.")); }
+    const segmentQuery = action === "analysisSegment" && query && "index" in query ? query : undefined;
+    const entry: Pending = { id, action, ...(sourceQuery ? { sourceId: sourceQuery.sourceId, offset: sourceQuery.offset } : {}), ...(segmentQuery ? { segmentIndex: segmentQuery.index, offset: segmentQuery.offset } : {}), ...(viewQuery ? { viewQuery: viewQuery.kind === "projectIssues" ? { ...viewQuery, cursor: { ...viewQuery.cursor } } : { ...viewQuery } } : {}), ...(snapshotQuery ? { snapshotRequest: { expectedRevision: snapshotQuery.expectedRevision, expectedSources: snapshotQuery.expectedSources.map(item => ({ ...item })), hasInstruction: !!snapshotQuery.instruction.trim() } } : {}), ...(freshnessQuery ? { freshnessRequest: { ...freshnessQuery, expectedIds: [...freshnessQuery.expectedIds] } } : {}), promise, resolve, reject, timer };
+    if (priority) this.interruptPending = entry; else this.pending = entry;
+    const type = action === "import" ? "issues.document.import" : action === "export" ? "issues.document.export" : action === "authorizeView" ? "issues.view.authorize" : action === "view" ? "issues.view.query" : action === "releaseView" ? "issues.view.release" : action === "sourceAdd" ? "issues.sources.add" : action === "sourceList" ? "issues.sources.list" : action === "sourceRead" ? "issues.sources.read" : action === "sourceRemove" ? "issues.sources.remove" : action === "snapshotPrepare" ? "issues.analysis.prepare" : action === "snapshotCheck" ? "issues.analysis.check" : action === "analysisStatus" ? "issues.analysis.status" : action === "analysisStart" ? "issues.analysis.start" : action === "analysisInterrupt" ? "issues.analysis.interrupt" : action === "analysisClear" ? "issues.analysis.clear" : action === "analysisSegment" ? "issues.analysis.segment" : action === "analysisRetry" ? "issues.analysis.retry" : `issues.project.${action}`;
+    try { this.send(JSON.stringify({ type, v: 1, clientRequestId: id, ...(action === "view" ? { query } : {}), ...(action === "export" || action === "sourceRead" || action === "sourceRemove" || action === "snapshotPrepare" || action === "analysisStart" || action === "analysisSegment" || action === "analysisRetry" ? query : {}), ...(freshnessQuery ? { snapshotId: freshnessQuery.snapshotId, expectedRevision: freshnessQuery.expectedRevision } : {}) })); }
+    catch { clearTimeout(timer); if (priority) this.interruptPending = null; else this.pending = null; reject(new IssueApiError("DISCONNECTED", "브리지에 요청을 전달하지 못했습니다.")); }
     return promise;
   }
   receive(input: unknown): boolean {
     if (!input || typeof input !== "object" || Array.isArray(input) || !("type" in input) || input.type !== "issues.project.result") return false;
-    const message = input as Record<string, unknown>, pending = this.pending;
+    const message = input as Record<string, unknown>, pending = this.interruptPending?.id === message.clientRequestId ? this.interruptPending : this.pending;
     if (!pending || message.v !== 1 || message.clientRequestId !== pending.id || message.action !== pending.action) return true;
-    clearTimeout(pending.timer); this.pending = null;
-    if (message.ok === true && typeof message.bound === "boolean" && (message.cancelled === undefined || message.cancelled === true) && (pending.action !== "import" || message.bound && (message.cancelled === true || nonnegative(message.issueCount) && typeof message.alreadyImported === "boolean")) && (pending.action !== "export" || message.bound && (message.cancelled === true || typeof message.cleanupWarning === "boolean")) && (!["sourceAdd", "sourceList", "sourceRemove"].includes(pending.action) || message.bound && (pending.action === "sourceAdd" && message.cancelled === true || validSources(message.sources))) && (pending.action !== "sourceRead" || message.bound && validChunk(message.chunk, pending)) && (pending.action !== "snapshotPrepare" || message.bound && validSnapshot(message.snapshot, pending)) && (pending.action !== "snapshotCheck" || message.bound && validFreshness(message.freshness, pending)) && (pending.action !== "view" || message.bound && validView(message.view) && matchesViewRequest(message.view, pending.viewQuery)) && (pending.action !== "authorizeView" || typeof message.authorized === "boolean" && (!message.authorized || nonnegative(message.authorizedForMs) && Number(message.authorizedForMs) > 0 && Number(message.authorizedForMs) <= 15 * 60_000))) {
-      pending.resolve({ bound: message.bound, ...(message.cancelled === true ? { cancelled: true } : {}), ...(pending.action === "import" && message.cancelled !== true ? { issueCount: Number(message.issueCount), alreadyImported: message.alreadyImported as boolean } : {}), ...(pending.action === "export" && message.cancelled !== true ? { cleanupWarning: message.cleanupWarning as boolean } : {}), ...(["sourceAdd", "sourceList", "sourceRemove"].includes(pending.action) && message.cancelled !== true ? { sources: message.sources as AnalysisSourceList } : {}), ...(pending.action === "sourceRead" ? { chunk: message.chunk as AnalysisSourceChunk } : {}), ...(pending.action === "snapshotPrepare" ? { snapshot: message.snapshot as AnalysisSnapshotSummary } : {}), ...(pending.action === "snapshotCheck" ? { freshness: message.freshness as AnalysisFreshness } : {}), ...(pending.action === "view" ? { view: message.view as IssueViewResult } : {}), ...(pending.action === "authorizeView" ? { authorized: message.authorized as boolean, ...(message.authorized ? { authorizedForMs: Number(message.authorizedForMs) } : {}) } : {}) });
+    clearTimeout(pending.timer); if (pending === this.interruptPending) this.interruptPending = null; else this.pending = null;
+    if (message.ok === true && typeof message.bound === "boolean" && (message.cancelled === undefined || message.cancelled === true) && (!["analysisStatus", "analysisStart", "analysisInterrupt", "analysisClear", "analysisRetry"].includes(pending.action) || message.bound && validAnalysisStatus(message.analysisStatus) && message.cancelled === undefined) && (pending.action !== "analysisSegment" || message.bound && validAnalysisSegment(message.analysisSegment, pending) && message.cancelled === undefined) && (pending.action !== "import" || message.bound && (message.cancelled === true || nonnegative(message.issueCount) && typeof message.alreadyImported === "boolean")) && (pending.action !== "export" || message.bound && (message.cancelled === true || typeof message.cleanupWarning === "boolean")) && (!["sourceAdd", "sourceList", "sourceRemove"].includes(pending.action) || message.bound && (pending.action === "sourceAdd" && message.cancelled === true || validSources(message.sources))) && (pending.action !== "sourceRead" || message.bound && validChunk(message.chunk, pending)) && (pending.action !== "snapshotPrepare" || message.bound && validSnapshot(message.snapshot, pending)) && (pending.action !== "snapshotCheck" || message.bound && validFreshness(message.freshness, pending)) && (pending.action !== "view" || message.bound && validView(message.view) && matchesViewRequest(message.view, pending.viewQuery)) && (pending.action !== "authorizeView" || typeof message.authorized === "boolean" && (!message.authorized || nonnegative(message.authorizedForMs) && Number(message.authorizedForMs) > 0 && Number(message.authorizedForMs) <= 15 * 60_000))) {
+      pending.resolve({ bound: message.bound, ...(message.cancelled === true ? { cancelled: true } : {}), ...(["analysisStatus", "analysisStart", "analysisInterrupt", "analysisClear", "analysisRetry"].includes(pending.action) ? { analysisStatus: message.analysisStatus as AnalysisRunStatus } : {}), ...(pending.action === "import" && message.cancelled !== true ? { issueCount: Number(message.issueCount), alreadyImported: message.alreadyImported as boolean } : {}), ...(pending.action === "export" && message.cancelled !== true ? { cleanupWarning: message.cleanupWarning as boolean } : {}), ...(["sourceAdd", "sourceList", "sourceRemove"].includes(pending.action) && message.cancelled !== true ? { sources: message.sources as AnalysisSourceList } : {}), ...(pending.action === "analysisSegment" ? { analysisSegment: message.analysisSegment as AnalysisSegmentPage } : {}), ...(pending.action === "sourceRead" ? { chunk: message.chunk as AnalysisSourceChunk } : {}), ...(pending.action === "snapshotPrepare" ? { snapshot: message.snapshot as AnalysisSnapshotSummary } : {}), ...(pending.action === "snapshotCheck" ? { freshness: message.freshness as AnalysisFreshness } : {}), ...(pending.action === "view" ? { view: message.view as IssueViewResult } : {}), ...(pending.action === "authorizeView" ? { authorized: message.authorized as boolean, ...(message.authorized ? { authorizedForMs: Number(message.authorizedForMs) } : {}) } : {}) });
     } else if (message.ok === false && message.error && typeof message.error === "object") {
       const error = message.error as Record<string, unknown>;
       pending.reject(new IssueApiError(typeof error.code === "string" ? error.code.slice(0, 64) : "INVALID_RESPONSE", error.code === "OUTCOME_UNKNOWN" ? uncertainMessage(pending.action) : typeof error.message === "string" ? error.message.slice(0, 200) : "이슈 응답을 확인할 수 없습니다."));

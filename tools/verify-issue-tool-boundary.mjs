@@ -9,7 +9,8 @@ import { randomUUID } from 'node:crypto';
 import { buildUnverifiedAnalysisToolPolicy } from '../build-server/server/issues/analysis-tool-policy.js';
 import { buildSegmentAnalysisRequest } from '../build-server/server/issues/analysis-request.js';
 import { AnalysisDraft } from '../build-server/server/issues/analysis-draft.js';
-import { createProbeDeadline, waitForProbeTurn } from './issue-probe-control.mjs';
+import { AnalysisTransport } from '../build-server/server/issues/analysis-transport.js';
+import { classifyProbeFailure, createProbeDeadline, describeProbeFailure, waitForProbeTurn } from './issue-probe-control.mjs';
 
 // This probe invokes the installed CLI with a new temporary CODEX_HOME and a fake
 // loopback Responses provider. It never uses the user's project, account or model.
@@ -58,8 +59,8 @@ const fake = createServer((request, response) => {
     response.end();
   });
 });
-let child, cancelled = false, deadline, rejectPending = () => {};
-let phase = 'starting'; const signals = new Set();
+let child, cancelled = false, deadline, rejectPending = () => {}, helperTerminationUnconfirmed = false, confirmedStopped = false;
+let phase = 'starting', primaryFailure = null, cleanupFailure = null, terminationResult = 'not-started'; const signals = new Set();
 try {
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Synthetic loopback listener timed out.')), 5000);
@@ -83,18 +84,37 @@ try {
   const env = { SystemRoot: process.env.SystemRoot, WINDIR: process.env.SystemRoot, ComSpec: process.env.ComSpec, PATH: process.env.PATH, USERPROFILE: scratch, APPDATA: scratch, LOCALAPPDATA: scratch, TEMP: temp, TMP: temp, CODEX_HOME: codexHome, SYNTHETIC_ISSUE_KEY: 'synthetic-only' };
   const versionResult = spawnSync(executable, ['/d', '/s', '/c', 'codex --version'], { cwd: workspace, env, encoding: 'utf8', windowsHide: true, timeout: 10_000 });
   const version = /^codex-cli [0-9A-Za-z.+-]+$/.test(versionResult.stdout?.trim() || '') ? versionResult.stdout.trim() : 'unreported';
+  // Inspect only the synthetic startup-report shape; never print configuration values.
+  const startupResult = spawnSync(executable, ['/d', '/s', '/c', 'codex app-server --print-startup-config'], { cwd: workspace, env, encoding: 'utf8', windowsHide: true, timeout: 10_000, maxBuffer: 2 * 1024 * 1024 });
+  if (startupResult.status === null) helperTerminationUnconfirmed = true;
+  let startupReport = { status: 'unavailable', keys: [], requirementsType: 'unknown', requirementsKeys: [] };
+  if (startupResult.status === 0) {
+    try { const parsed = JSON.parse(startupResult.stdout); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) { const requirements = parsed.configRequirements; startupReport = { status: 'parsed', keys: Object.keys(parsed).sort(), requirementsType: requirements === null ? 'null' : Array.isArray(requirements) ? 'array' : typeof requirements, requirementsKeys: requirements && typeof requirements === 'object' && !Array.isArray(requirements) ? Object.keys(requirements).sort() : [] }; } } catch { /* Treat malformed or unsupported reports as unavailable. */ }
+  }
+  // Check whether a synthetic Windows system-policy location is reflected; failure is
+  // inconclusive, not proof that requirements cannot be active through other layers.
+  const fakeProgramData = path.join(scratch, 'program-data');
+  await mkdir(path.join(fakeProgramData, 'OpenAI', 'Codex'), { recursive: true });
+  await writeFile(path.join(fakeProgramData, 'OpenAI', 'Codex', 'requirements.toml'), '[features]\nhooks = true\n');
+  const policyResult = spawnSync(executable, ['/d', '/s', '/c', 'codex app-server --print-startup-config'], { cwd: workspace, env: { ...env, ProgramData: fakeProgramData }, encoding: 'utf8', windowsHide: true, timeout: 10_000, maxBuffer: 2 * 1024 * 1024 });
+  if (policyResult.status === null) helperTerminationUnconfirmed = true;
+  let syntheticPolicy = 'unavailable';
+  if (policyResult.status === 0) {
+    try { const value = JSON.parse(policyResult.stdout)?.configRequirements?.requirements?.featureRequirements?.hooks; syntheticPolicy = value === true ? 'reported-enabled' : value === false ? 'reported-disabled' : 'not-reported'; } catch { /* Do not expose the report. */ }
+  }
   child = spawn(executable, ['/d', '/s', '/c', 'codex app-server'], { cwd: workspace, env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
   child.stderr.on('data', data => { const text = String(data); if (/access.*denied|os error 5|EPERM/i.test(text)) signals.add('access-denied'); if (/failed to|error/i.test(text)) signals.add('cli-error'); }); // Do not echo diagnostics.
-  const pending = new Map(), completed = new Map(), finalMessages = new Map(); let next = 0;
+  const pending = new Map(), completed = new Map(), finalMessages = new Map(); let next = 0, analysisTransport = null;
   rejectPending = error => { for (const wait of pending.values()) wait.reject(error); pending.clear(); };
   child.once('exit', () => rejectPending(new Error('Synthetic CLI exited.')));
   child.once('error', () => rejectPending(new Error('Synthetic CLI could not start.')));
   createInterface({ input: child.stdout }).on('line', line => {
     let message; try { message = JSON.parse(line); } catch { return; }
     if (message.id !== undefined && typeof message.method !== 'string') { const wait = pending.get(message.id); if (!wait) return; pending.delete(message.id); if (message.error) wait.reject(new Error(`Synthetic RPC failed: ${message.error.code}`)); else wait.resolve(message.result); }
+    if (typeof message.method === 'string' && message.id === undefined) analysisTransport?.notification(message);
     if (message.method === 'turn/completed' && typeof message.params?.turn?.id === 'string') completed.set(message.params.turn.id, message.params.turn.status);
     if (message.method === 'item/completed' && message.params?.item?.type === 'agentMessage' && typeof message.params?.turnId === 'string' && typeof message.params.item.text === 'string') finalMessages.set(message.params.turnId, message.params.item.text);
-    if (message.id !== undefined && typeof message.method === 'string') { serverRequests.push(message.method); child.stdin.write(`${JSON.stringify({ id: message.id, error: { code: -32003, message: 'Synthetic probe denies requests.' } })}\n`); }
+    if (message.id !== undefined && typeof message.method === 'string') { serverRequests.push(message.method); if (!analysisTransport?.serverRequest(message)) child.stdin.write(`${JSON.stringify({ id: message.id, error: { code: -32003, message: 'Synthetic probe denies requests.' } })}\n`); }
   });
   const send = (method, params) => new Promise((resolve, reject) => { if (cancelled) { reject(new Error('Synthetic probe cancelled.')); return; } const id = ++next; pending.set(id, { resolve, reject }); child.stdin.write(`${JSON.stringify({ id, method, params })}\n`); });
   deadline = createProbeDeadline(50_000, () => { cancelled = true; const error = new Error(`Synthetic App Server probe timed out at ${phase}; signals: ${[...signals].join(',') || 'none'}.`); rejectPending(error); return error; });
@@ -197,16 +217,27 @@ try {
     phase = 'analysis-e2e'; activeCase = phase; caseRequests = 0;
     const segment = { snapshotId: 'synthetic-snapshot', projectRevision: 1, sourceId: 'synthetic-source', sourcePath: 'synthetic-private-path.md', sourceSha256: 'a'.repeat(64), segmentId: 'synthetic-segment', offset: 0, text: 'Synthetic selected source', instruction: 'Synthetic request' };
     const draft = new AnalysisDraft(segment.snapshotId, segment.projectRevision, 1, async () => segment);
-    await draft.runNext(async value => {
+    let admission = false;
+    analysisTransport = new AnalysisTransport({ request: send, respondError: (id, code, message) => child.stdin.write(`${JSON.stringify({ id, error: { code, message } })}\n`), stopAndWait: async () => {
+      if (!child.pid || child.exitCode !== null || child.signalCode !== null) throw new Error('Synthetic termination unavailable.');
+      const exited = once(child, 'exit').then(() => true, () => false);
+      const killed = spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore', timeout: 5000 });
+      if (killed.status !== 0 || !await Promise.race([exited, new Promise(resolve => setTimeout(() => resolve(false), 5000))])) throw new Error('Synthetic termination not confirmed.');
+      confirmedStopped = true;
+    } }, { cwd: workspace, model: 'synthetic-model', config: { ...policy.config, 'features.plugins': false, 'features.hooks': false }, disabledPluginIds: policy.disabledPluginIds, canRun: () => true, acquire: () => { if (admission) return null; admission = true; return () => { admission = false; }; }, timeoutMs: 15000 });
+    await draft.runNext(async (value, signal) => {
+      phase = 'analysis-e2e-build';
       const request = buildSegmentAnalysisRequest(value);
       assert.ok(!request.input[0].text.includes(segment.sourcePath));
-      const started = await send('thread/start', { cwd: workspace, model: 'synthetic-model', sandbox: 'read-only', approvalPolicy: 'never', ephemeral: true, environments: [], config: { ...policy.config, 'features.plugins': false, 'features.hooks': false } });
-      const turn = await send('turn/start', { threadId: started.thread.id, ...request, sandboxPolicy: { type: 'readOnly', networkAccess: false }, approvalPolicy: 'never', environments: [] });
-      await waitForTurn(turn.turn.id);
-      assert.equal(completed.get(turn.turn.id), 'completed');
-      return finalMessages.get(turn.turn.id) || '';
+      phase = 'analysis-e2e-transport';
+      return analysisTransport.run(value, signal);
     });
     const draftResult = draft.inspect();
+    if (draftResult.segments[0]?.status === 'failed') {
+      const reason = draftResult.segments[0].error;
+      if (['STALE_INPUT', 'INVALID_OUTPUT', 'MODEL_FAILED', 'LIMIT_EXCEEDED'].includes(reason)) phase = `analysis-e2e-${reason.toLowerCase().replaceAll('_', '-')}`;
+    }
+    assert.equal(admission, false, 'Synthetic transport admission was not released.');
     assert.equal(analysisInputObserved, true, 'The synthetic selected input did not reach the provider.');
     assert.equal(analysisSchemaObserved, true, 'The structured-output schema did not reach the provider.');
     assert.equal(privatePathObserved, false, 'The private source path reached the provider.');
@@ -216,13 +247,16 @@ try {
     const finalPluginCalls = (await readFile(path.join(scratch, 'synthetic-plugin-calls.txt'), 'utf8')).trim().split('\n').filter(Boolean).length;
     assert.equal(finalMcpCalls, 1); assert.equal(finalPluginCalls, 1);
     cases.push({ name: 'analysis-e2e', tools: observations.at(-1), context: contextObservations.at(-1), turnStatus: 'completed', providerRequests: caseRequests, toolOutputs: [], syntheticMcpCalls: finalMcpCalls, syntheticPluginCalls: finalPluginCalls });
-    return { cli: version, provider: 'loopback-synthetic', environment: 'empty', inventory, cases };
+    return { cli: version, provider: 'loopback-synthetic', environment: 'empty', startupReport, syntheticPolicy, inventory, cases };
   };
   observations.result = await Promise.race([run(), deadline.promise]);
+} catch (error) {
+  primaryFailure = classifyProbeFailure(error);
 } finally {
+ try {
   cancelled = true; deadline?.clear(); rejectPending(new Error('Synthetic probe ended.'));
-  let childStopped = !child, terminationResult = child ? 'unconfirmed' : 'not-started';
-  if (child && child.exitCode === null && child.signalCode === null && child.pid) {
+  let childStopped = !child || confirmedStopped; terminationResult = child ? confirmedStopped ? 'helper-exit-0' : 'unconfirmed' : 'not-started';
+  if (child && !confirmedStopped && child.exitCode === null && child.signalCode === null && child.pid) {
     const stopped = once(child, 'exit').then(() => true, () => false);
     const killed = spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore', timeout: 5000 });
     terminationResult = Number.isInteger(killed.status) ? `helper-exit-${killed.status}` : 'helper-unavailable-or-timeout';
@@ -239,8 +273,10 @@ try {
   assert.equal((await realpath(scratch)).toLowerCase(), path.resolve(scratch).toLowerCase());
   assert.equal(path.dirname(await realpath(scratch)).toLowerCase(), (await realpath(parent)).toLowerCase());
   assert.ok(path.basename(scratch).startsWith('issue-tool-probe-'));
-  if (childStopped) await rm(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
-  else throw new Error(`Synthetic CLI termination was not confirmed at ${phase} (${terminationResult}); signals: ${[...signals].join(',') || 'none'}. Its isolated scratch directory was preserved.`);
+  if (childStopped && !helperTerminationUnconfirmed) await rm(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
+  else throw new Error(`Synthetic CLI termination was not confirmed at ${phase} (${terminationResult}; helper-unconfirmed: ${helperTerminationUnconfirmed}); signals: ${[...signals].join(',') || 'none'}. Its isolated scratch directory was preserved.`);
+ } catch (error) { cleanupFailure = classifyProbeFailure(error); }
 }
+if (primaryFailure || cleanupFailure) throw new Error(describeProbeFailure({ phase, primary: primaryFailure, cleanup: cleanupFailure, termination: terminationResult }));
 const { cases, ...summary } = observations.result;
 console.log(JSON.stringify({ ...summary, cases: cases.map(item => ({ name: item.name, ...(item.tools ? { tools: item.tools.map(tool => tool.name), context: item.context, turnStatus: item.turnStatus, providerRequests: item.providerRequests, toolOutputs: item.toolOutputs, syntheticMcpCalls: item.syntheticMcpCalls, syntheticPluginCalls: item.syntheticPluginCalls } : { error: item.error }) })) }));

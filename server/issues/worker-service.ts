@@ -46,6 +46,7 @@ export function validateIssueWorkerRequest(value: unknown): IssueWorkerRequest {
       if (!projectId(v.projectId) || !revision(v.expectedRevision) || !validProjectIssueCursor(v.cursor) || v.filters !== undefined && !validProjectIssueFilters(v.filters)) return invalid();
       return v as IssueWorkerRequest;
     case "document.diagnostics":
+    case "document.sourceTrace":
       keys(["operation", "projectId", "documentId", "expectedRevision", "offset"]);
       if (!projectId(v.projectId) || !issueId(v.documentId) || !revision(v.expectedRevision) || !Number.isSafeInteger(v.offset) || Number(v.offset) < 0) return invalid();
       return v as IssueWorkerRequest;
@@ -89,6 +90,7 @@ export async function dispatchIssueWorkerRequest(store: IssueStore, input: unkno
     case "issue.list": return { kind: "issue.list", page: await new IssueView(store).list(request.projectId, request.documentId, request.expectedRevision, request.offset, request.filters) };
     case "issue.projectSearch": return { kind: "issue.projectSearch", page: await new IssueView(store).projectSearch(request.projectId, request.expectedRevision, request.cursor, request.filters) };
     case "document.diagnostics": return { kind: "document.diagnostics", report: await new IssueView(store).diagnostics(request.projectId, request.documentId, request.expectedRevision, request.offset) };
+    case "document.sourceTrace": return { kind: "document.sourceTrace", page: await new IssueView(store).sourceTrace(request.projectId, request.documentId, request.expectedRevision, request.offset) };
     case "requirement.detail": return { kind: "requirement.detail", ...await new IssueView(store).requirementDetail(request.projectId, request.documentId, request.expectedRevision, request.requirementId, request.offset) };
     case "category.list": return { kind: "category.list", page: await new IssueView(store).categories(request.projectId, request.documentId, request.expectedRevision, request.parentId, request.offset) };
     case "issue.detail": return { kind: "issue.detail", issue: await new IssueView(store).detail(request.projectId, request.documentId, request.expectedRevision, request.issueId) };

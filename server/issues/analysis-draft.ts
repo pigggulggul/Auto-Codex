@@ -1,4 +1,5 @@
 import { AnalysisOutputError, parseSegmentRequirements, type RequirementCandidate, type SegmentEvidence } from "./analysis-output.js";
+import type { AnalysisSegmentPage } from "../../shared/issues/sources.js";
 
 type SegmentStatus = "pending" | "running" | "processed" | "failed" | "interrupted";
 type Failure = "STALE_INPUT" | "INVALID_OUTPUT" | "MODEL_FAILED" | "LIMIT_EXCEEDED";
@@ -26,6 +27,19 @@ export class AnalysisDraft {
     const counts: Record<SegmentStatus, number> = { pending: 0, running: 0, processed: 0, failed: 0, interrupted: 0 };
     for (const segment of this.segments) counts[segment.status]++;
     return counts;
+  }
+  /** One segment and a bounded candidate page; no instruction or raw source is returned. */
+  segmentPage(index: number, offset: number): AnalysisSegmentPage {
+    if (this.disposed || !Number.isSafeInteger(index) || index < 0 || index >= this.segments.length || !Number.isSafeInteger(offset) || offset < 0) throw new Error("Invalid segment position");
+    const segment = this.segments[index]; if (offset > segment.requirements.length) throw new Error("Invalid candidate position");
+    const items: RequirementCandidate[] = []; let bytes = 1024;
+    for (const candidate of segment.requirements.slice(offset, offset + 32)) {
+      const size = Buffer.byteLength(JSON.stringify(candidate), "utf8") + 1;
+      if (bytes + size > 192 * 1024) break;
+      items.push(candidate); bytes += size;
+    }
+    if (!items.length && offset < segment.requirements.length) throw new Error("Candidate exceeds response limit");
+    return structuredClone({ index, status: segment.status, error: segment.error ?? null, items, nextOffset: offset + items.length < segment.requirements.length ? offset + items.length : null });
   }
   interrupt(): void {
     if (!this.active) return;

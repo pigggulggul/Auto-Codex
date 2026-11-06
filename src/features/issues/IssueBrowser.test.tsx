@@ -5,6 +5,11 @@ import { IssueCategoryNavigation, IssueDependencyList, IssueDetailBack, IssueDia
 import { AnalysisSources } from "./AnalysisSources";
 import { IssueApi } from "./api";
 
+it("offers the linked requirement for a category mismatch instead of treating it as an issue", () => {
+  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 1, requirementCount: 1, linkedRequirementCount: 1, totalFindings: 1, findings: { items: [{ code: "issue-requirement-category-mismatch", entityId: "issue-a", title: "이슈", relatedEntityId: "req-b", provenance: null }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenIssue={() => {}} onOpenRequirement={() => {}} />);
+  expect(html).toContain("연결 요구사항 상세 보기"); expect(html).not.toContain("비교 이슈 상세 보기");
+});
+
 it("renders untrusted issue text as escaped text with a readable status", () => {
   const html = renderToStaticMarkup(<IssueRow issue={{ id: "issue-1", title: "<script>alert(1)</script>", version: "1.2.0", category: "<img src=x>", localStatus: "needs_review", importedStatus: "completed", missingCriteria: true, unverifiedDependencies: 2 }} disabled={false} onOpen={() => {}} />);
   expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
@@ -56,6 +61,12 @@ it("labels diagnostic scope and escapes untrusted titles", () => {
   expect(html).toContain("원문 누락, 의미적 완전성, 실제 코드 동작은 확인하지 않았습니다.");
   expect(html).toContain("&lt;script&gt;unsafe&lt;/script&gt;"); expect(html).not.toContain("<script>");
   expect(html).toContain("완료 조건이 없는 이슈");
+});
+
+it("shows an unlinked source without inventing a requirement or issue action", () => {
+  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "source-unlinked", entityId: "source-1", title: "<자료>", provenance: null }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenIssue={() => {}} onOpenRequirement={() => {}} />);
+  expect(html).toContain("요구사항에 연결되지 않은 자료"); expect(html).toContain("&lt;자료&gt;");
+  expect(html).not.toContain("source-1 이슈 상세 보기"); expect(html).not.toContain("source-1 요구사항 상세 보기");
 });
 
 it("shows matching text as a review candidate with its comparison ID", () => {

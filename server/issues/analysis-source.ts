@@ -6,7 +6,7 @@ import { isAllowedSelectedDrive, localDrives } from "./selected-document.js";
 
 export const MAX_ANALYSIS_SOURCE_BYTES = 1024 * 1024;
 export class AnalysisSourceError extends Error {
-  constructor(readonly code: "PATH_INVALID" | "LIMIT_EXCEEDED" | "STALE_INPUT" | "INTERRUPTED" | "INVALID_TEXT", message: string) { super(message); }
+  constructor(readonly code: "PATH_INVALID" | "LIMIT_EXCEEDED" | "STALE_INPUT" | "INTERRUPTED" | "INVALID_TEXT" | "BUSY", message: string) { super(message); }
 }
 const fail = (code: AnalysisSourceError["code"], message: string): never => { throw new AnalysisSourceError(code, message); };
 const excludedDirectory = /^(?:\.git|\.local-data|\.cache|\.codex|\.aws|\.ssh|node_modules|dist|build|coverage|\.next|\.turbo|\.vite|\.venv|venv|__pycache__|secrets|credentials)$/i;

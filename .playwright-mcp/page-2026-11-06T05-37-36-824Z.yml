@@ -1,0 +1,98 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - button "Auto Codex 나의 작업실" [ref=e5] [cursor=pointer]: auto codex.
+    - region "대화와 프로젝트" [ref=e6]:
+      - button "✎ 새 채팅 조사 모드" [disabled] [ref=e7]:
+        - text: ✎ 새 채팅
+        - generic [ref=e8]: 조사 모드
+      - generic [ref=e9]:
+        - strong [ref=e10]: 프로젝트
+        - button "프로젝트 폴더 추가" [disabled] [ref=e11]: + 폴더
+      - generic [ref=e12]:
+        - generic [ref=e13]: 대화와 프로젝트 검색
+        - textbox "대화와 프로젝트 검색" [ref=e14]:
+          - /placeholder: 프로젝트 또는 대화 검색
+      - paragraph [ref=e16]: 저장된 대화가 없습니다.
+    - paragraph [ref=e17]: PERSONAL WORKSPACE
+    - navigation "작업실 탐색" [ref=e18]:
+      - button "대화와 픽셀 화면" [ref=e19] [cursor=pointer]
+      - button "Codex 활동 센터" [ref=e21] [cursor=pointer]
+      - paragraph [ref=e23]: YOUR DESIGN PROCESS
+      - button "디자인 작업실" [ref=e24] [cursor=pointer]
+    - generic [ref=e26]:
+      - group [ref=e27]:
+        - generic "프로젝트 · 스킬 설정" [ref=e28] [cursor=pointer]
+      - paragraph [ref=e29]: LOCAL WORKSPACE저장과 실행 연결은 로컬 브리지가 관리합니다.
+      - link "Free icons from Streamline ↗" [ref=e30] [cursor=pointer]:
+        - /url: https://streamlinehq.com
+  - main [ref=e31]:
+    - link "작업 내용으로 건너뛰기" [ref=e32] [cursor=pointer]:
+      - /url: "#workspace-heading"
+    - generic [ref=e33]:
+      - link "Auto Codex 홈" [ref=e34] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e35]:
+          - strong [ref=e36]: 나의 작업실
+          - generic [ref=e37]: 나의 작업실
+      - generic [ref=e38]:
+        - generic [ref=e39]: gpt-6.1-sol
+        - generic "로컬에서 집계한 토큰 사용량" [ref=e40]:
+          - generic [ref=e41]:
+            - generic [ref=e42]: 오늘 토큰
+            - strong [ref=e43]: "0"
+          - generic [ref=e44]:
+            - generic [ref=e45]: 7일 토큰
+            - strong [ref=e46]: "0"
+        - generic [ref=e47]: bridge offline
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - paragraph [ref=e51]: AUTO CODEX / LOCAL WORKSPACE
+        - heading "나의 작업실" [active] [level=1] [ref=e52]
+        - paragraph [ref=e53]: 생각을 정리하고, Codex와 함께 다음 작업을 시작하세요.
+      - status [ref=e54]: 진행 작업 없음
+    - navigation "작업 모드" [ref=e55]:
+      - button "Codex 대화" [ref=e56] [cursor=pointer]
+      - button "아뜰리에 디자인" [ref=e57] [cursor=pointer]
+      - button "이슈 처리" [ref=e58] [cursor=pointer]
+    - region "작업실 홈" [ref=e60]:
+      - button "일반 Codex 작업 시작" [ref=e62] [cursor=pointer]:
+        - text: 일반 Codex 작업 시작
+        - generic [aria-hidden] [ref=e63]: →
+      - region [ref=e64]:
+        - generic [ref=e65]:
+          - generic [ref=e66]:
+            - heading "어디서 시작할까요?" [level=2] [ref=e67]
+            - paragraph [ref=e68]: 지금 가진 생각·원본·컨셉·실제 결과에서 설계를 시작하세요.
+          - generic [ref=e69]: 로컬 수동 작업실
+        - generic [ref=e70]:
+          - button [ref=e71] [cursor=pointer]:
+            - text: "01"
+            - heading "아이디어부터" [level=3] [ref=e72]
+            - paragraph [ref=e73]: 만들고 싶은 제품과 사용자를 정리해요.
+            - text: 이 시작점으로 설계하기
+          - button [ref=e74] [cursor=pointer]:
+            - text: "02"
+            - heading "이미지부터" [level=3] [ref=e75]
+            - paragraph [ref=e76]: 레퍼런스의 관찰과 적용 이유를 연결해요.
+            - text: 이 시작점으로 설계하기
+          - button [ref=e77] [cursor=pointer]:
+            - text: "03"
+            - heading "컨셉 확정" [level=3] [ref=e78]
+            - paragraph [ref=e79]: 정한 방향을 구체적인 표현 규칙으로 옮겨요.
+            - text: 이 시작점으로 설계하기
+          - button [ref=e80] [cursor=pointer]:
+            - text: "04"
+            - heading "기존 결과 개선" [level=3] [ref=e81]
+            - paragraph [ref=e82]: 실제 결과와 의도의 차이를 살펴봐요.
+            - text: 이 시작점으로 설계하기
+        - button "디자인 작업실 열기 →" [ref=e83] [cursor=pointer]
+      - region [ref=e84]:
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - heading "이어서 작업하기" [level=2] [ref=e87]
+            - paragraph [ref=e88]: 로컬 브리지에서 불러온 대화입니다.
+          - button "대화와 결과 열기 ↗" [ref=e89] [cursor=pointer]
+        - paragraph [ref=e90]: 불러온 대화가 없습니다. 일반 Codex 작업에서 새 대화를 시작하세요.
+    - generic [ref=e91]:
+      - generic [ref=e92]: Auto Codex · local-first
+      - generic [ref=e93]: 애니메이션은 시스템 설정과 애니메이션 토글을 따르며, 상태·이동은 실제 App Server 이벤트를 반영합니다.

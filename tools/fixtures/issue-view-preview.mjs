@@ -2,10 +2,12 @@ import { WebSocketServer } from 'ws';
 
 // Disposable UI-only fixture. It simulates the native confirmation; it is not a security test.
 const server = new WebSocketServer({ host: '127.0.0.1', port: 4781 });
+const simulateAnalysis = process.argv.includes('--simulate-analysis');
 server.on('error', () => { console.error('Synthetic preview could not bind to 127.0.0.1:4781.'); process.exitCode = 1; });
 server.on('listening', () => console.log('Synthetic issue view preview is ready for 45 seconds.'));
 server.on('connection', socket => {
   let selectedSource = false;
+  let analysisStarted = false;
   const sourceId = 'source_12345678-1234-4123-8123-123456789abc';
   const sourceText = '합성 예시 자료입니다.\n이 텍스트는 미리보기 화면 검사용입니다.';
   const sources = () => ({ items: selectedSource ? [{ id: sourceId, relativePath: 'docs/합성자료.md', bytes: Buffer.byteLength(sourceText), sha256: 'a'.repeat(64), projectRevision: 2 }] : [], totalBytes: selectedSource ? Buffer.byteLength(sourceText) : 0 });
@@ -23,6 +25,11 @@ server.on('connection', socket => {
     if (message.type === 'issues.sources.read') return socket.send(JSON.stringify({ ...base, action: 'sourceRead', chunk: { sourceId, offset: message.offset, text: sourceText.slice(message.offset), nextOffset: null } }));
     if (message.type === 'issues.analysis.prepare') return socket.send(JSON.stringify({ ...base, action: 'snapshotPrepare', snapshot: { id: 'snapshot_12345678-1234-4123-8123-123456789abc', projectRevision: 2, sources: [{ id: sourceId, relativePath: 'docs/합성자료.md', sha256: 'a'.repeat(64), segmentCount: 1 }], totalSegments: 1, processedSegments: 0, hasInstruction: Boolean(message.instruction.trim()) } }));
     if (message.type === 'issues.analysis.check') return socket.send(JSON.stringify({ ...base, action: 'snapshotCheck', freshness: { snapshotId: message.snapshotId, projectRevision: message.expectedRevision, files: [{ id: sourceId, state: 'unchanged' }] } }));
+    const fakeStatus = () => analysisStarted ? { state: 'complete', progress: { isRunning: false, disposed: false, pending: 0, running: 0, processed: 1, failed: 0, interrupted: 0 } } : 'unavailable';
+    if (message.type === 'issues.analysis.status') return socket.send(JSON.stringify({ ...base, action: 'analysisStatus', analysisStatus: fakeStatus() }));
+    if (message.type === 'issues.analysis.start') { if (simulateAnalysis) { analysisStarted = true; return socket.send(JSON.stringify({ ...base, action: 'analysisStart', analysisStatus: fakeStatus() })); } return socket.send(JSON.stringify({ type: 'issues.project.result', v: 1, clientRequestId: message.clientRequestId, action: 'analysisStart', ok: false, error: { code: 'ANALYSIS_UNAVAILABLE', message: '분석 실행과 도구 정책이 아직 준비되지 않았습니다.' } })); }
+    if (message.type === 'issues.analysis.segment' && simulateAnalysis && analysisStarted) return socket.send(JSON.stringify({ ...base, action: 'analysisSegment', analysisSegment: { index: message.index, status: 'processed', error: null, items: message.offset === 0 ? [{ id: 'requirement-synthetic', text: '합성 요구사항 후보', origin: 'source', uncertainty: '', evidence: { sourceId, sourcePath: 'docs/합성자료.md', sourceSha256: 'a'.repeat(64), segmentId: 'segment-synthetic', quote: '합성', start: 0, end: 2 } }] : [], nextOffset: null } }));
+    if (message.type === 'issues.analysis.clear' && simulateAnalysis) { analysisStarted = false; return socket.send(JSON.stringify({ ...base, action: 'analysisClear', analysisStatus: 'unavailable' })); }
     if (message.type !== 'issues.view.query') return;
     const q = message.query; let view;
     if (q.kind === 'documents') view = { kind: 'documents', revision: 2, documents: [{ id: 'doc-synthetic', documentRevision: 1, issueCount: 2 }], nextAfterId: null };

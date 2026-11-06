@@ -28,10 +28,29 @@ describe("isolated issue dispatch journal", () => {
       expect(() => journal.markRunning(selection.projectId, attemptId, "thread", "turn")).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
       expect(journal.beginDispatch(selection.projectId, attemptId).phase).toBe("dispatching");
       expect(journal.markRunning(selection.projectId, attemptId, "thread", "turn")).toMatchObject({ phase: "running", threadId: "thread", turnId: "turn" });
-      expect(journal.settle(selection.projectId, attemptId, "verification_required")).toMatchObject({ phase: "settled", outcome: "verification_required" });
+      journal.beginVerification(selection.projectId, attemptId);
+      expect(journal.settle(selection.projectId, attemptId, "verification_finished")).toMatchObject({ phase: "settled", outcome: "verification_finished" });
       expect(() => journal.beginDispatch(selection.projectId, attemptId)).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
       expect(journal.prepare({ ...selection, idempotencyKey: "request-b" }).created).toBe(true);
       expect(() => journal.get("project-b", attemptId)).toThrow(expect.objectContaining({ code: "NOT_FOUND" }));
+    } finally { db.close(); }
+  });
+
+  it("keeps the project reserved through verification and does not claim an issue was verified", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(EXECUTION_JOURNAL_SCHEMA); const journal = new ExecutionJournal(db), { attemptId } = journal.prepare(selection).record;
+      expect(() => journal.beginVerification(selection.projectId, attemptId)).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
+      expect(() => journal.settle(selection.projectId, attemptId, "failed")).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
+      journal.beginDispatch(selection.projectId, attemptId);
+      expect(() => journal.settle(selection.projectId, attemptId, "verification_finished")).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
+      journal.markRunning(selection.projectId, attemptId, "thread", "turn");
+      expect(journal.beginVerification(selection.projectId, attemptId)).toMatchObject({ phase: "verifying", outcome: null });
+      expect(() => journal.prepare({ ...selection, idempotencyKey: "other" })).toThrow(expect.objectContaining({ code: "PROJECT_BUSY" }));
+      expect(journal.prepare(selection)).toMatchObject({ created: false, record: { phase: "verifying" } });
+      expect(() => journal.settle(selection.projectId, attemptId, "verification_required" as never)).toThrow(expect.objectContaining({ code: "INVALID_INPUT" }));
+      expect(journal.settle(selection.projectId, attemptId, "verification_finished")).toMatchObject({ phase: "settled", outcome: "verification_finished" });
+      expect(journal.prepare({ ...selection, idempotencyKey: "other" }).created).toBe(true);
     } finally { db.close(); }
   });
 
@@ -57,11 +76,17 @@ describe("isolated issue dispatch journal", () => {
       const running = journal.prepare({ ...selection, projectId: "project-c" }).record;
       journal.beginDispatch("project-c", running.attemptId);
       journal.markRunning("project-c", running.attemptId, "thread", "turn");
+      const verifying = journal.prepare({ ...selection, projectId: "project-d" }).record;
+      journal.beginDispatch("project-d", verifying.attemptId);
+      journal.markRunning("project-d", verifying.attemptId, "thread-d", "turn-d");
+      journal.beginVerification("project-d", verifying.attemptId);
       db.close();
       db = new DatabaseSync(filename); db.exec("PRAGMA synchronous=FULL"); journal = new ExecutionJournal(db);
-      expect(journal.recoverAfterRestart()).toEqual({ interrupted: 1, unknown: 2 });
+      expect(journal.recoverAfterRestart()).toEqual({ interrupted: 1, unknown: 3 });
       expect(journal.get("project-b", unsent.attemptId)).toMatchObject({ phase: "settled", outcome: "interrupted" });
       expect(journal.get("project-c", running.attemptId)).toMatchObject({ phase: "outcome_unknown", threadId: "thread", turnId: "turn" });
+      expect(journal.get("project-d", verifying.attemptId)).toMatchObject({ phase: "outcome_unknown", threadId: "thread-d", turnId: "turn-d" });
+      expect(() => journal.prepare({ ...selection, projectId: "project-d", idempotencyKey: "new" })).toThrow(expect.objectContaining({ code: "PROJECT_BUSY" }));
       expect(journal.get(selection.projectId, sent.attemptId)).toMatchObject({ phase: "outcome_unknown", outcome: null, threadId: null, turnId: null });
       expect(journal.prepare(selection)).toMatchObject({ created: false, record: { attemptId: sent.attemptId, phase: "outcome_unknown" } });
       expect(() => journal.prepare({ ...selection, idempotencyKey: "request-b" })).toThrow(expect.objectContaining({ code: "PROJECT_BUSY" }));
@@ -91,6 +116,33 @@ describe("isolated issue dispatch journal", () => {
       expect(journal.markOutcomeUnknown(selection.projectId, record.attemptId)).toMatchObject({ phase: "outcome_unknown", outcome: null });
       expect(journal.prepare(selection)).toMatchObject({ created: false, record: { phase: "outcome_unknown" } });
       expect(() => journal.prepare({ ...selection, idempotencyKey: "new" })).toThrow(expect.objectContaining({ code: "PROJECT_BUSY" }));
+    } finally { db.close(); }
+  });
+  it("rejects inconsistent phase, outcome and turn identity combinations at the database boundary", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(EXECUTION_JOURNAL_SCHEMA); const journal = new ExecutionJournal(db), record = journal.prepare(selection).record;
+      const update = db.prepare("UPDATE issue_dispatch_journal SET phase=?,outcome=?,thread_id=?,turn_id=? WHERE attempt_id=?");
+      for (const values of [["settled", null, null, null], ["prepared", "failed", null, null], ["running", null, null, null], ["dispatching", null, "thread", "turn"], ["outcome_unknown", null, "thread", null]]) {
+        expect(() => update.run(...values, record.attemptId)).toThrow();
+      }
+      expect(journal.get(selection.projectId, record.attemptId).phase).toBe("prepared");
+    } finally { db.close(); }
+  });
+  it("fails closed on corrupted records, unexpected inputs and control characters in turn IDs", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(EXECUTION_JOURNAL_SCHEMA); const journal = new ExecutionJournal(db);
+      expect(() => journal.prepare({ ...selection, extra: "ignored" } as typeof selection)).toThrow(expect.objectContaining({ code: "INVALID_INPUT" }));
+      const record = journal.prepare(selection).record; journal.beginDispatch(selection.projectId, record.attemptId);
+      expect(() => journal.markRunning(selection.projectId, record.attemptId, "thread\nforged", "turn")).toThrow(expect.objectContaining({ code: "INVALID_INPUT" }));
+      db.exec("PRAGMA ignore_check_constraints=ON");
+      db.prepare("UPDATE issue_dispatch_journal SET phase='running',thread_id=NULL,turn_id=NULL WHERE attempt_id=?").run(record.attemptId);
+      expect(() => journal.get(selection.projectId, record.attemptId)).toThrow(expect.objectContaining({ code: "CORRUPT_RECORD" }));
+      expect(() => journal.prepare(selection)).toThrow(expect.objectContaining({ code: "CORRUPT_RECORD" }));
+      const other = journal.prepare({ ...selection, projectId: "project-b" }).record;
+      expect(() => journal.recoverAfterRestart()).toThrow(expect.objectContaining({ code: "CORRUPT_RECORD" }));
+      expect(journal.get("project-b", other.attemptId).phase).toBe("prepared");
     } finally { db.close(); }
   });
 });
