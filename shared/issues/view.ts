@@ -2,14 +2,31 @@ export type IssueViewStatus = "ready" | "retryable" | "failed" | "needs_review";
 export type IssueImportedStatus = IssueViewStatus | "completed";
 export type IssueDocumentSummary = { id: string; documentRevision: number; issueCount: number };
 export type IssueSummary = { id: string; title: string; version: string; category: string | null; localStatus: IssueViewStatus; importedStatus: IssueImportedStatus; missingCriteria: boolean; unverifiedDependencies: number };
-export type IssueDetail = IssueSummary & { description: string; criteriaCount: number; requirementCount: number; dependencyCount: number };
+export type IssueCandidateReason = "state" | "missing-criteria" | "review" | "dependency";
+export const MAX_PREVIEW_SELECTION = 8;
+export const MAX_PREVIEW_DEPENDENCIES = 3;
+export type IssueCandidateOptions = { includeRetryable: boolean; includeFailed: boolean };
+export type IssueCandidatePreview = { id: string; title: string; version: string; order: number; localStatus: IssueViewStatus; candidateReasons: IssueCandidateReason[]; unverifiedDependencyCount: number; dependencyPreview: { id: string; title: string }[] };
+export function validCandidateOptions(value: unknown): value is IssueCandidateOptions {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const options = value as Record<string, unknown>;
+  return Object.keys(options).length === 2 && Object.keys(options).every(key => key === "includeRetryable" || key === "includeFailed") && typeof options.includeRetryable === "boolean" && typeof options.includeFailed === "boolean";
+}
+export function validCandidateIds(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length > 0 && value.length <= MAX_PREVIEW_SELECTION && value.every(id => typeof id === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(id)) && new Set(value).size === value.length;
+}
+export type IssueDetail = IssueSummary & { description: string; criteriaCount: number; requirementCount: number; dependencyCount: number; candidateReasons: IssueCandidateReason[] };
 export type IssueRequirementView = { id: string; text: string; origin: "source" | "user" | "ai-proposal"; sourceName: string | null; locator: string | null };
 export type RequirementDetail = IssueRequirementView & { category: string | null; linkedIssueCount: number };
 export type SourceTrace = { sourceId: string; sourceName: string; requirement: IssueRequirementView | null };
 export type IssueDependencyView = { id: string; title: string; localStatus: IssueViewStatus; importedStatus: IssueImportedStatus };
 export type IssueCategoryView = { id: string; title: string; hasChildren: boolean };
 export type Page<T> = { items: T[]; nextOffset: number | null };
+<<<<<<< HEAD
 export type IssueFindingCode = "source-unlinked" | "requirement-unlinked" | "requirement-uncategorized" | "requirement-same-text" | "requirement-ai-proposal" | "issue-unlinked" | "issue-uncategorized" | "issue-missing-description" | "issue-missing-criteria" | "issue-unverified-completion" | "issue-same-title" | "issue-same-version-order" | "issue-requirement-category-mismatch";
+=======
+export type IssueFindingCode = "requirement-unlinked" | "requirement-uncategorized" | "requirement-same-text" | "requirement-ai-proposal" | "issue-unlinked" | "issue-uncategorized" | "issue-missing-description" | "issue-missing-criteria" | "issue-unverified-completion" | "issue-same-title" | "issue-same-version-order" | "category-empty" | "category-no-requirements" | "category-no-issues" | "source-unreferenced";
+>>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
 export type IssueFinding = { code: IssueFindingCode; entityId: string; title: string | null; provenance: { origin: IssueRequirementView["origin"]; sourceName: string | null; locator: string | null } | null; relatedEntityId?: string };
 export type IssueDiagnosticReport = { documentRevision: number; issueCount: number; requirementCount: number; linkedRequirementCount: number; totalFindings: number; findings: Page<IssueFinding> };
 export type IssueFilters = { search?: string; status?: IssueViewStatus; version?: string; categoryId?: string | null };
@@ -44,6 +61,7 @@ export type IssueViewQuery =
   | { kind: "sourceTrace"; documentId: string; expectedRevision: number; offset: number }
   | { kind: "requirementDetail"; documentId: string; expectedRevision: number; requirementId: string; offset: number }
   | { kind: "detail"; documentId: string; expectedRevision: number; issueId: string }
+  | { kind: "candidatePreview"; documentId: string; expectedRevision: number; issueIds: string[]; options?: IssueCandidateOptions }
   | { kind: "criteria" | "requirements" | "dependencies"; documentId: string; expectedRevision: number; issueId: string; offset: number };
 export type IssueViewResult =
   | { kind: "documents"; revision: number; documents: IssueDocumentSummary[]; nextAfterId: string | null }
@@ -54,6 +72,7 @@ export type IssueViewResult =
   | { kind: "sourceTrace"; revision: number; page: Page<SourceTrace> }
   | { kind: "requirementDetail"; revision: number; requirement: RequirementDetail; page: Page<IssueSummary> }
   | { kind: "detail"; revision: number; issue: IssueDetail }
+  | { kind: "candidatePreview"; revision: number; options: IssueCandidateOptions; items: IssueCandidatePreview[] }
   | { kind: "criteria"; revision: number; page: Page<string> }
   | { kind: "dependencies"; revision: number; page: Page<IssueDependencyView> }
   | { kind: "requirements"; revision: number; page: Page<IssueRequirementView> };

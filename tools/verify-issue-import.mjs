@@ -17,7 +17,7 @@ const parent = path.resolve('.cache'); await mkdir(parent, { recursive: true });
 const root = await mkdtemp(path.join(parent, 'issue-import-integration-'));
 const workspace = path.join(root, 'workspace'); await mkdir(workspace);
 const source = path.join(root, 'external.md'), plain = path.join(root, 'plain.md');
-const json = { format: 'auto-codex-issues', formatVersion: 1, documentId: 'doc-1', revision: 1, sources: [], categories: [{ id: 'cat-root', parentId: null, title: 'root', order: 0 }, { id: 'cat-child', parentId: 'cat-root', title: 'child', order: 0 }], requirements: [], issues: [
+const json = { format: 'auto-codex-issues', formatVersion: 1, documentId: 'doc-1', revision: 1, sources: [{ id: 'source-unused', name: 'synthetic source', contentHash: `sha256:${'a'.repeat(64)}` }], categories: [{ id: 'cat-root', parentId: null, title: 'root', order: 0 }, { id: 'cat-child', parentId: 'cat-root', title: 'child', order: 0 }], requirements: [], issues: [
   { id: 'issue-1', categoryId: 'cat-child', requirementIds: [], version: '1.0.0', order: 0, title: 'synthetic', description: '', acceptanceCriteria: ['synthetic'], dependencyIds: [], status: 'completed' },
   { id: 'issue-2', categoryId: null, requirementIds: [], version: '1.1.0', order: 0, title: 'dependent', description: '', acceptanceCriteria: ['synthetic'], dependencyIds: ['issue-1'], status: 'ready' },
 ] };
@@ -60,8 +60,23 @@ try {
   assert.deepEqual(absent.page.items, []);
   const detail = (await ask('issues.view.query', { query: { kind: 'detail', documentId: 'doc-1', expectedRevision: docs.revision, issueId: 'issue-1' } })).view;
   assert.equal(detail.issue.importedStatus, 'completed');
+  assert.deepEqual(detail.issue.candidateReasons, ['state', 'review']);
+  const dependentDetail = (await ask('issues.view.query', { query: { kind: 'detail', documentId: 'doc-1', expectedRevision: docs.revision, issueId: 'issue-2' } })).view;
+  assert.deepEqual(dependentDetail.issue.candidateReasons, ['dependency']);
+  const previewQuery = { kind: 'candidatePreview', documentId: 'doc-1', expectedRevision: docs.revision, issueIds: ['issue-2', 'issue-1'] };
+  assert.equal((await ask('issues.view.query', { query: previewQuery }, new AbortController().signal)).error.code, 'VIEW_AUTH_REQUIRED');
+  const preview = await ask('issues.view.query', { query: previewQuery });
+  assert.deepEqual(preview.view.options, { includeRetryable: false, includeFailed: false });
+  assert.deepEqual(preview.view.items, [{ id: 'issue-2', title: 'dependent', version: '1.1.0', order: 0, localStatus: 'ready', candidateReasons: ['dependency'], unverifiedDependencyCount: 1, dependencyPreview: [{ id: 'issue-1', title: 'synthetic' }] }, { id: 'issue-1', title: 'synthetic', version: '1.0.0', order: 0, localStatus: 'needs_review', candidateReasons: ['state', 'review'], unverifiedDependencyCount: 0, dependencyPreview: [] }]);
+  const extended = await ask('issues.view.query', { query: { ...previewQuery, options: { includeRetryable: true, includeFailed: true } } });
+  assert.deepEqual(extended.view.options, { includeRetryable: true, includeFailed: true });
+  assert.deepEqual(extended.view.items.map(item => item.candidateReasons), [['dependency'], ['state', 'review']]);
+  assert.equal((await ask('issues.view.query', { query: { ...previewQuery, issueIds: ['issue-1', 'missing'] } })).error.code, 'NOT_FOUND');
+  assert.equal((await ask('issues.view.query', { query: { ...previewQuery, expectedRevision: docs.revision - 1 } })).error.code, 'VERSION_CONFLICT');
   const diagnostics = (await ask('issues.view.query', { query: { kind: 'diagnostics', documentId: 'doc-1', expectedRevision: docs.revision, offset: 0 } })).view;
-  assert.equal(diagnostics.report.totalFindings, 6); assert.equal(diagnostics.report.requirementCount, 0);
+  assert.equal(diagnostics.report.totalFindings, 8); assert.equal(diagnostics.report.requirementCount, 0);
+  assert.ok(diagnostics.report.findings.items.some(item => item.code === 'category-no-requirements' && item.entityId === 'cat-child'));
+  assert.ok(diagnostics.report.findings.items.some(item => item.code === 'source-unreferenced' && item.entityId === 'source-unused'));
   assert.ok(diagnostics.report.findings.items.some(item => item.code === 'issue-unverified-completion' && item.entityId === 'issue-1'));
   const criteria = (await ask('issues.view.query', { query: { kind: 'criteria', documentId: 'doc-1', expectedRevision: docs.revision, issueId: 'issue-1', offset: 0 } })).view;
   assert.deepEqual(criteria.page.items, ['synthetic']);

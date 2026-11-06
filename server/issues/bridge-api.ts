@@ -7,9 +7,14 @@ import { AnalysisSourceError } from "./analysis-source.js";
 import { IssueSourceSessions, SourceSessionError } from "./source-session.js";
 import { AnalysisDraft } from "./analysis-draft.js";
 import { AnalysisBatch } from "./analysis-batch.js";
+<<<<<<< HEAD
 import { AnalysisExecution } from "./analysis-execution.js";
 import { validIssueFilters, validProjectIssueCursor, validProjectIssueFilters, type IssueViewQuery, type IssueViewResult } from "../../shared/issues/view.js";
 import type { AnalysisFreshness, AnalysisSegmentPage, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../shared/issues/sources.js";
+=======
+import { validCandidateIds, validCandidateOptions, validIssueFilters, validProjectIssueCursor, validProjectIssueFilters, type IssueViewQuery, type IssueViewResult } from "../../shared/issues/view.js";
+import type { AnalysisFreshness, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../shared/issues/sources.js";
+>>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
 import { performance } from "node:perf_hooks";
 import path from "node:path";
 
@@ -47,6 +52,7 @@ function parseViewQuery(value: unknown): IssueViewQuery {
     case "sourceTrace": keys(["kind", "documentId", "expectedRevision", "offset"]); if (!id(q.documentId) || !revision() || !offset()) throw new Error("invalid"); break;
     case "requirementDetail": keys(["kind", "documentId", "expectedRevision", "requirementId", "offset"]); if (!id(q.documentId) || !revision() || !id(q.requirementId) || !offset()) throw new Error("invalid"); break;
     case "detail": keys(["kind", "documentId", "expectedRevision", "issueId"]); if (!id(q.documentId) || !revision() || !id(q.issueId)) throw new Error("invalid"); break;
+    case "candidatePreview": keys(["kind", "documentId", "expectedRevision", "issueIds", "options"]); if (!id(q.documentId) || !revision() || !validCandidateIds(q.issueIds) || q.options !== undefined && !validCandidateOptions(q.options)) throw new Error("invalid"); break;
     case "criteria": case "requirements": case "dependencies": keys(["kind", "documentId", "expectedRevision", "issueId", "offset"]); if (!id(q.documentId) || !revision() || !id(q.issueId) || !offset()) throw new Error("invalid"); break;
     default: throw new Error("invalid");
   }

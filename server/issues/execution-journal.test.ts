@@ -7,6 +7,41 @@ import { EXECUTION_JOURNAL_SCHEMA, ExecutionJournal } from "./execution-journal.
 const selection = { projectId: "project-a", issueId: "issue-a", idempotencyKey: "request-a", projectRevision: 2, requestDigest: "a".repeat(64) };
 
 describe("isolated issue dispatch journal", () => {
+  it("lists bounded project-scoped history without exposing private correlation fields or releasing unknown attempts", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(EXECUTION_JOURNAL_SCHEMA); const journal = new ExecutionJournal(db), expectedIds: string[] = [];
+      for (let index = 0; index < 40; index++) {
+        const record = journal.prepare({ ...selection, issueId: `issue-${index}`, idempotencyKey: `request-${index}` }).record;
+        expectedIds.push(record.attemptId);
+        journal.settle(selection.projectId, record.attemptId, index % 2 ? "failed" : "verification_required");
+      }
+      const uncertain = journal.prepare({ ...selection, issueId: "uncertain", idempotencyKey: "request-uncertain" }).record;
+      expectedIds.push(uncertain.attemptId); journal.beginDispatch(selection.projectId, uncertain.attemptId);
+      journal.markRunning(selection.projectId, uncertain.attemptId, "synthetic-thread", "synthetic-turn"); journal.markOutcomeUnknown(selection.projectId, uncertain.attemptId);
+      const other = journal.prepare({ ...selection, projectId: "project-b", issueId: "other-project" }).record;
+      const first = journal.history(selection.projectId), second = journal.history(selection.projectId, first.nextAfterId);
+      expect(first.items).toHaveLength(32); expect(first.nextAfterId).toBe(first.items.at(-1)?.attemptId); expect(second.items).toHaveLength(9); expect(second.nextAfterId).toBeNull();
+      const items = [...first.items, ...second.items];
+      expect(items.map(item => item.attemptId)).toEqual(expectedIds.sort());
+      expect(items.find(item => item.attemptId === uncertain.attemptId)).toEqual({ attemptId: uncertain.attemptId, issueId: "uncertain", projectRevision: 2, phase: "outcome_unknown", outcome: null, hasRuntimeReference: true });
+      expect(items.some(item => item.attemptId === other.attemptId || item.issueId === "other-project")).toBe(false);
+      expect(JSON.stringify(items)).not.toContain("synthetic-thread"); expect(JSON.stringify(items)).not.toContain("synthetic-turn"); expect(JSON.stringify(items)).not.toContain(selection.requestDigest); expect(JSON.stringify(items)).not.toContain("request-");
+      expect(journal.history("project-b").items).toMatchObject([{ attemptId: other.attemptId, issueId: "other-project", phase: "prepared", hasRuntimeReference: false }]);
+      expect(journal.history("project-missing")).toEqual({ items: [], nextAfterId: null });
+      expect(() => journal.prepare({ ...selection, idempotencyKey: "another" })).toThrow(expect.objectContaining({ code: "PROJECT_BUSY" }));
+      expect(journal.get(selection.projectId, uncertain.attemptId).phase).toBe("outcome_unknown");
+    } finally { db.close(); }
+  });
+  it("rejects malformed history cursors and limits without changing the journal", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(EXECUTION_JOURNAL_SCHEMA); const journal = new ExecutionJournal(db), record = journal.prepare(selection).record;
+      for (const [projectId, afterId, limit] of [["../outside", null, 1], ["project-a", "../outside", 1], ["project-a", "", 1], ["project-a", null, 0], ["project-a", null, 33], ["project-a", null, 1.5]] as const) expect(() => journal.history(projectId, afterId, limit)).toThrow(expect.objectContaining({ code: "INVALID_INPUT" }));
+      expect(journal.history(selection.projectId, null, 1)).toMatchObject({ items: [{ attemptId: record.attemptId, phase: "prepared", hasRuntimeReference: false }], nextAfterId: null });
+      expect(journal.get(selection.projectId, record.attemptId).phase).toBe("prepared");
+    } finally { db.close(); }
+  });
   it("deduplicates a request, rejects changed payloads and reserves one attempt per project", () => {
     const db = new DatabaseSync(":memory:");
     try {

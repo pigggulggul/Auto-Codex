@@ -11,13 +11,42 @@ const record = (value: unknown): value is RecordValue => Boolean(value && typeof
 const invalid = (): never => { throw new AnalysisToolPolicyError(); };
 const serverName = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value);
 const pluginId = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 200 && !/[\x00-\x1f\x7f]/.test(value);
+const forbiddenForcedFeatures = ["shell_tool", "unified_exec", "multi_agent", "goals", "view_image", "apps", "plugins", "hooks", "codex_hooks"];
+const managedHookEvents = new Set(["Interrupt", "PermissionRequest", "PostCompact", "PostModelRequest", "PostToolUse", "PreCompact", "PreModelRequest", "PreToolUse", "SessionEnd", "SessionStart", "Stop", "SubagentStart", "SubagentStop", "UserPromptSubmit"]);
+
+/** Reject known incompatible managed requirements. An accepted reply still proves no isolation. */
+export function requireCompatibleAnalysisRequirements(response: unknown): void {
+  if (!record(response) || !Object.hasOwn(response, "requirements")) return invalid();
+  const requirements = response.requirements;
+  if (requirements === null) return;
+  if (!record(requirements)) return invalid();
+  const features = requirements.featureRequirements;
+  if (features !== null && features !== undefined) {
+    if (!record(features) || Object.keys(features).length > 512 || Object.values(features).some(value => typeof value !== "boolean")) return invalid();
+    if (forbiddenForcedFeatures.some(name => features[name] === true)) return invalid();
+  }
+  const hooks = requirements.hooks;
+  if (hooks !== null && hooks !== undefined) {
+    if (!record(hooks) || Object.keys(hooks).length > managedHookEvents.size + 2) return invalid();
+    for (const [key, value] of Object.entries(hooks)) {
+      if (key === "managedDir" || key === "windowsManagedDir") { if (value !== null && value !== undefined && value !== "") return invalid(); }
+      else if (!managedHookEvents.has(key) || !Array.isArray(value) || value.length !== 0) return invalid();
+    }
+  }
+  if (requirements.additionalDeveloperInstructions !== null && requirements.additionalDeveloperInstructions !== undefined && requirements.additionalDeveloperInstructions !== "") return invalid();
+  for (const [key, wanted] of [["allowedSandboxModes", "read-only"], ["allowedApprovalPolicies", "never"], ["allowedWebSearchModes", "disabled"]] as const) {
+    const allowed = requirements[key];
+    if (allowed !== null && allowed !== undefined && (!Array.isArray(allowed) || allowed.length > 128 || !allowed.includes(wanted))) return invalid();
+  }
+}
 
 /**
  * Builds a deny candidate from server-owned App Server replies, without logging configuration.
  * `verified: false` is intentional: local plugin enumeration and dynamic tools may be incomplete,
  * and turn-level plugin overrides cannot prevent thread-start hooks. Never dispatch from this result.
  */
-export function buildUnverifiedAnalysisToolPolicy(configResponse: unknown, pages: InventoryPage[], pluginResponse: unknown): UnverifiedAnalysisToolPolicy {
+export function buildUnverifiedAnalysisToolPolicy(configResponse: unknown, pages: InventoryPage[], pluginResponse: unknown, requirementsResponse: unknown): UnverifiedAnalysisToolPolicy {
+  requireCompatibleAnalysisRequirements(requirementsResponse);
   if (!record(configResponse) || !record(configResponse.config) || !Array.isArray(pages) || pages.length < 1 || pages.length > 64 || !record(pluginResponse) || !Array.isArray(pluginResponse.marketplaces) || pluginResponse.marketplaces.length > 128 || !Array.isArray(pluginResponse.marketplaceLoadErrors) || pluginResponse.marketplaceLoadErrors.length !== 0) return invalid();
   const serverNames = new Set<string>(), pluginIds = new Set<string>();
   const configured = configResponse.config.mcp_servers;
@@ -55,10 +84,10 @@ export function buildUnverifiedAnalysisToolPolicy(configResponse: unknown, pages
   if (pluginIds.size > 512) return invalid();
   // Private change detector only: the input can contain credentials. Never log, persist or expose its digest.
   let inventory: string;
-  try { inventory = JSON.stringify([configResponse, pages, pluginResponse]); } catch { return invalid(); }
+  try { inventory = JSON.stringify([configResponse, pages, pluginResponse, requirementsResponse]); } catch { return invalid(); }
   if (Buffer.byteLength(inventory, "utf8") > 2 * 1024 * 1024) return invalid();
   const inventoryHash = createHash("sha256").update(inventory).digest("hex");
-  const config: Record<string, boolean | string> = { 'features.shell_tool': false, 'features.unified_exec': false, 'features.multi_agent': false, 'features.goals': false, 'features.view_image': false, 'features.apps': false, 'web_search': 'disabled' };
+  const config: Record<string, boolean | string> = { 'features.shell_tool': false, 'features.unified_exec': false, 'features.multi_agent': false, 'features.goals': false, 'features.view_image': false, 'features.apps': false, 'features.plugins': false, 'features.hooks': false, 'web_search': 'disabled' };
   for (const name of [...serverNames].sort()) config[`mcp_servers.${name}.enabled`] = false;
   return { verified: false, config, disabledPluginIds: [...pluginIds].sort(), serverCount: serverNames.size, pluginCount: pluginIds.size, inventoryHash };
 }

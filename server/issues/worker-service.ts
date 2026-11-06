@@ -2,7 +2,7 @@ import { IssueDocumentError, MAX_DOCUMENT_BYTES, serializeIssueDocument } from "
 import { IssueStore, IssueStoreError } from "./store.js";
 import type { IssueWorkerErrorCode, IssueWorkerRequest, IssueWorkerResult } from "./worker-contract.js";
 import { IssueView } from "./issue-view.js";
-import { validIssueFilters, validProjectIssueCursor, validProjectIssueFilters } from "../../shared/issues/view.js";
+import { validCandidateIds, validCandidateOptions, validIssueFilters, validProjectIssueCursor, validProjectIssueFilters } from "../../shared/issues/view.js";
 
 export class IssueWorkerRequestError extends Error {
   readonly code = "INVALID_INPUT";
@@ -62,6 +62,10 @@ export function validateIssueWorkerRequest(value: unknown): IssueWorkerRequest {
       keys(["operation", "projectId", "documentId", "expectedRevision", "issueId"]);
       if (!projectId(v.projectId) || !issueId(v.documentId) || !revision(v.expectedRevision) || !issueId(v.issueId)) return invalid();
       return v as IssueWorkerRequest;
+    case "issue.candidatePreview":
+      keys(["operation", "projectId", "documentId", "expectedRevision", "issueIds", "options"]);
+      if (!projectId(v.projectId) || !issueId(v.documentId) || !revision(v.expectedRevision) || !validCandidateIds(v.issueIds) || v.options !== undefined && !validCandidateOptions(v.options)) return invalid();
+      return v as IssueWorkerRequest;
     case "issue.criteria":
     case "issue.requirements":
     case "issue.dependencies":
@@ -94,6 +98,7 @@ export async function dispatchIssueWorkerRequest(store: IssueStore, input: unkno
     case "requirement.detail": return { kind: "requirement.detail", ...await new IssueView(store).requirementDetail(request.projectId, request.documentId, request.expectedRevision, request.requirementId, request.offset) };
     case "category.list": return { kind: "category.list", page: await new IssueView(store).categories(request.projectId, request.documentId, request.expectedRevision, request.parentId, request.offset) };
     case "issue.detail": return { kind: "issue.detail", issue: await new IssueView(store).detail(request.projectId, request.documentId, request.expectedRevision, request.issueId) };
+    case "issue.candidatePreview": return { kind: "issue.candidatePreview", items: await new IssueView(store).candidatePreview(request.projectId, request.documentId, request.expectedRevision, request.issueIds, request.options) };
     case "issue.criteria": return { kind: "issue.criteria", page: await new IssueView(store).criteria(request.projectId, request.documentId, request.expectedRevision, request.issueId, request.offset) };
     case "issue.requirements": return { kind: "issue.requirements", page: await new IssueView(store).requirements(request.projectId, request.documentId, request.expectedRevision, request.issueId, request.offset) };
     case "issue.dependencies": return { kind: "issue.dependencies", page: await new IssueView(store).dependencies(request.projectId, request.documentId, request.expectedRevision, request.issueId, request.offset) };

@@ -1,6 +1,10 @@
 import type { IssueDocument } from "./document.js";
 import type { IssueStoreCode } from "./store.js";
+<<<<<<< HEAD
 import type { IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueFilters, IssueRequirementView, IssueSummary, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage, RequirementDetail, SourceTrace } from "../../shared/issues/view.js";
+=======
+import type { IssueCandidateOptions, IssueCandidatePreview, IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueFilters, IssueRequirementView, IssueSummary, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage, RequirementDetail } from "../../shared/issues/view.js";
+>>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
 
 /** Internal bridge-to-worker messages only. No message is a renderer authorization. */
 export type IssueWorkerRequest =
@@ -18,6 +22,7 @@ export type IssueWorkerRequest =
   | { operation: "document.sourceTrace"; projectId: string; documentId: string; expectedRevision: number; offset: number }
   | { operation: "requirement.detail"; projectId: string; documentId: string; expectedRevision: number; requirementId: string; offset: number }
   | { operation: "issue.detail"; projectId: string; documentId: string; expectedRevision: number; issueId: string }
+  | { operation: "issue.candidatePreview"; projectId: string; documentId: string; expectedRevision: number; issueIds: string[]; options?: IssueCandidateOptions }
   | { operation: "issue.criteria" | "issue.requirements" | "issue.dependencies"; projectId: string; documentId: string; expectedRevision: number; issueId: string; offset: number };
 
 export type IssueWorkerResult =
@@ -34,6 +39,7 @@ export type IssueWorkerResult =
   | { kind: "document.sourceTrace"; page: Page<SourceTrace> }
   | { kind: "requirement.detail"; requirement: RequirementDetail; page: Page<IssueSummary> }
   | { kind: "issue.detail"; issue: IssueDetail }
+  | { kind: "issue.candidatePreview"; items: IssueCandidatePreview[] }
   | { kind: "issue.criteria"; page: Page<string> }
   | { kind: "issue.dependencies"; page: Page<IssueDependencyView> }
   | { kind: "issue.requirements"; page: Page<IssueRequirementView> };
