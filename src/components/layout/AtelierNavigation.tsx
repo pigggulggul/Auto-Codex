@@ -9,17 +9,18 @@ export const DESIGN_STEPS = TABS.map(([id,,icon])=>[icon,TAB_LABELS[id]] as cons
 
 export const PAGE_INFO: Record<AtelierPage, { title: string; english: string; description: string }> = {
   home: { title: "나의 작업실", english: "A little space for your next idea.", description: "생각을 정리하고, Codex와 함께 다음 작업을 시작하세요." },
-  work: { title: "일반 Codex 작업", english: "Make room for your next task.", description: "프로젝트와 실행 설정을 확인하고 업무를 지시하세요. 디자인 설계 없이 바로 시작할 수 있습니다." },
-  results: { title: "대화와 결과", english: "Every step, kept in context.", description: "현재 대화와 작업별 결과를 확인하세요. 전체 보기에서 긴 본문을 읽고 원문을 복사할 수 있습니다." },
-  operations: { title: "Codex 활동 센터", english: "See the work as it happens.", description: "실제 실행 이벤트와 작업 상태를 확인합니다. 화면 이동은 실행 상태를 바꾸지 않습니다." },
+  work: { title: "Codex 대화", english: "Make room for your next task.", description: "Codex에게 작업을 요청하고 대화를 이어가세요." },
+  results: { title: "대화 결과 · 픽셀 화면", english: "Every step, kept in context.", description: "대화 결과와 픽셀 화면을 전환해 확인하세요." },
+  operations: { title: "실행 활동", english: "See the work as it happens.", description: "실제 실행 활동과 작업별 결과를 확인하세요." },
   pixel: { title: "픽셀 화면", english: "A small world, real activity.", description: "역할별 캐릭터와 픽셀 공간에서 실제 작업 흐름을 살펴보세요." },
   settings: { title: "작업실 설정", english: "A workspace that fits you.", description: "프로젝트·모델·스킬을 설정하고 화면 표시 방식을 선택하세요." },
-  design: { title: "디자인 작업실", english: "Intention before decoration.", description: "아이디어를 정리하고, 원하는 분위기와 화면을 하나씩 구체화해요." },
+  design: { title: "아뜰리에 디자인", english: "Intention before decoration.", description: "아이디어부터 화면과 제작까지 디자인하세요." },
   issues: { title: "이슈 처리", english: "From requirements to verified work.", description: "프로젝트의 요구사항과 이슈를 살펴보고 순서에 따라 처리합니다." },
 };
 
 const MAIN_PAGES = [
-  ["results", "prompt", "대화와 픽셀 화면"], ["operations", "flow", "Codex 활동 센터"],
+  ["work", "prompt", "Codex 대화"], ["design", "brief", "아뜰리에 디자인"], ["issues", "flow", "이슈 처리"],
+  ["results", "prompt", "대화 결과 · 픽셀 화면"], ["operations", "flow", "실행 활동"],
 ] as const;
 
 export function AtelierIcon({ name }: { name: string }) {
@@ -33,10 +34,9 @@ type Props = {
   onMobileClose: () => void;
   hidden?: boolean;
   conversationSidebar?:ReactNode;
-  sidebarSettings?:ReactNode;
 };
 
-export function AtelierNavigation({ page, onNavigate, mobileOpen, onMobileClose, hidden,conversationSidebar,sidebarSettings }: Props) {
+export function AtelierNavigation({ page, onNavigate, mobileOpen, onMobileClose, hidden,conversationSidebar }: Props) {
   const drawer = useRef<HTMLDialogElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
 
@@ -60,15 +60,12 @@ export function AtelierNavigation({ page, onNavigate, mobileOpen, onMobileClose,
   const navigate = (next: AtelierPage) => { onNavigate(next); onMobileClose(); };
   const content = <>
     <button type="button" className="atelier-wordmark" onClick={() => navigate("home")} aria-label="Auto Codex 나의 작업실">auto codex<span>.</span></button>
-    {conversationSidebar}
-    <p className="atelier-nav-label">PERSONAL WORKSPACE</p>
+    <p className="atelier-nav-label">작업 공간</p>
     <nav aria-label="작업실 탐색">
       {MAIN_PAGES.map(([id, icon, label]) => <button key={id} type="button" className={`atelier-nav-item ${(page === id || id === "results" && page === "pixel") ? "is-current" : ""}`} aria-current={(page === id || id === "results" && page === "pixel") ? "page" : undefined} onClick={() => navigate(id)}><AtelierIcon name={icon} />{label}</button>)}
-      <p className="atelier-nav-label">YOUR DESIGN PROCESS</p>
-      <button type="button" className={`atelier-nav-item ${page === "design" ? "is-current" : ""}`} aria-current={page === "design" ? "page" : undefined} onClick={() => navigate("design")}><AtelierIcon name="brief" />디자인 작업실</button>
     </nav>
+    {conversationSidebar}
     <div className="atelier-nav-bottom">
-      {sidebarSettings}
       <p className="atelier-local-note">LOCAL WORKSPACE<br />저장과 실행 연결은 로컬 브리지가 관리합니다.</p>
       <a className="atelier-attribution" href="https://streamlinehq.com" target="_blank" rel="noreferrer">Free icons from Streamline ↗</a>
     </div>

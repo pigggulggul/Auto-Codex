@@ -22,6 +22,43 @@ async function setup() {
 const project = "project_12345678-1234-4123-8123-123456789abc";
 
 describe("issue worker internal contract", () => {
+  it("blocks a different project while any prior execution is unresolved", async () => {
+    const { store, workspace, root } = await setup(), other = path.join(root, "other"); await mkdir(other);
+    const first = await dispatchIssueWorkerRequest(store, { operation: "project.create", selectedPath: workspace });
+    const second = await dispatchIssueWorkerRequest(store, { operation: "project.create", selectedPath: other });
+    if (first.kind !== "project" || second.kind !== "project") throw new Error("wrong response");
+    const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc", revision: 1, sources: [], categories: [], requirements: [], issues: [{ id: "issue", categoryId: null, requirementIds: [], version: "1.0.0", order: 0, title: "synthetic", description: "", acceptanceCriteria: ["test"], dependencyIds: [], status: "ready" }] };
+    const bytes = new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(doc)}\n\`\`\``);
+    for (const projectId of [first.id, second.id]) await dispatchIssueWorkerRequest(store, { operation: "document.import", projectId, expectedRevision: 1, bytes });
+    const request = (projectId: string) => ({ operation: "execution.prepare", projectId, documentId: "doc", issueId: "issue", expectedRevision: 2, idempotencyKey: "key", policy: { sandbox: "workspace-write", networkAccess: false, approval: "manual", revision: 1 } });
+    const created = await dispatchIssueWorkerRequest(store, request(first.id));
+    if (created.kind !== "execution.prepare") throw new Error("wrong response");
+    await expect(dispatchIssueWorkerRequest(store, request(second.id))).rejects.toMatchObject({ code: "PROJECT_BUSY" });
+    const reopened = await IssueStore.open(root);
+    try { await expect(dispatchIssueWorkerRequest(reopened, request(second.id))).rejects.toMatchObject({ code: "PROJECT_BUSY" }); }
+    finally { reopened.close(); }
+    expect(await dispatchIssueWorkerRequest(store, request(first.id))).toMatchObject({ created: false, record: { attemptId: created.record.attemptId } });
+    const transition = { operation: "execution.transition", projectId: first.id, attemptId: created.record.attemptId, expectedRevision: 2 };
+    for (const action of [{ type: "dispatch" }, { type: "running", threadId: "thread", turnId: "turn" }, { type: "unknown" }]) {
+      await dispatchIssueWorkerRequest(store, { ...transition, action });
+      await expect(dispatchIssueWorkerRequest(store, request(second.id))).rejects.toMatchObject({ code: "PROJECT_BUSY" });
+    }
+    // The worker itself is internal and trusts its caller to have established
+    // process termination and explicit user review before this operation.
+    await dispatchIssueWorkerRequest(store, { operation: "execution.reconcile", projectId: first.id, attemptId: created.record.attemptId, expectedRevision: 2, reason: "synthetic review" });
+    const secondAttempt = await dispatchIssueWorkerRequest(store, request(second.id));
+    if (secondAttempt.kind !== "execution.prepare") throw new Error("wrong response");
+    await dispatchIssueWorkerRequest(store, { operation: "execution.transition", projectId: second.id, attemptId: secondAttempt.record.attemptId, expectedRevision: 2, action: { type: "settle", outcome: "interrupted" } });
+    const concurrentStore = await IssueStore.open(root);
+    try {
+      const results = await Promise.allSettled([
+        dispatchIssueWorkerRequest(store, { ...request(first.id), idempotencyKey: "new-key" }),
+        dispatchIssueWorkerRequest(concurrentStore, { ...request(second.id), idempotencyKey: "new-key" }),
+      ]);
+      expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+      expect(results.filter(result => result.status === "rejected")).toMatchObject([{ reason: { code: "PROJECT_BUSY" } }]);
+    } finally { concurrentStore.close(); }
+  });
   it("journals a synthetic issue attempt and correlated approval through the store", async () => {
     const { store, workspace } = await setup();
     const created = await dispatchIssueWorkerRequest(store, { operation: "project.create", selectedPath: workspace });
@@ -45,6 +82,10 @@ describe("issue worker internal contract", () => {
     expect(await dispatchIssueWorkerRequest(store, { ...transition, action: { type: "unknown" } })).toMatchObject({ record: { phase: "outcome_unknown" } });
     const history = await dispatchIssueWorkerRequest(store, { operation: "execution.history", projectId: created.id, expectedRevision: 2, afterId: null });
     expect(history).toMatchObject({ kind: "execution.history", page: { items: [{ phase: "outcome_unknown", approvals: { expired: 1 } }] } });
+    const recovery = { operation: "execution.reconcile", projectId: created.id, attemptId: prepared.record.attemptId, expectedRevision: 2, reason: "synthetic review" };
+    await expect(dispatchIssueWorkerRequest(store, { ...recovery, expectedRevision: 1 })).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    expect(await dispatchIssueWorkerRequest(store, recovery)).toMatchObject({ kind: "execution.reconcile", record: { phase: "settled", outcome: "reconciled_unknown" } });
+    await expect(dispatchIssueWorkerRequest(store, recovery)).rejects.toMatchObject({ code: "INVALID_TRANSITION" });
   });
   it("persists an owned approval through the relay and store before the synthetic write", async () => {
     const { store, workspace, root } = await setup(), owner = new AbortController();
@@ -101,6 +142,8 @@ describe("issue worker internal contract", () => {
       { operation: "project.read", projectId: "wrong" },
       { operation: "execution.approval", binding: { projectId: project, attemptId: "attempt", threadId: "thread", turnId: "turn", requestId: 1, permission: "all" }, expectedRevision: 1, action: { type: "request", kind: "command" } },
       { operation: "execution.approval", binding: { projectId: project, attemptId: "attempt", threadId: "thread", turnId: "turn", requestId: 1 }, expectedRevision: 1, action: { type: "respond", decision: "acceptForSession" } },
+      ...["", " ", "x\0y", "x".repeat(2001)].map(reason => ({ operation: "execution.reconcile", projectId: project, attemptId: "attempt", expectedRevision: 1, reason })),
+      { operation: "execution.reconcile", projectId: project, attemptId: "attempt", expectedRevision: 1, reason: "reviewed", confirmed: true },
       { operation: "document.read", projectId: project, documentId: "../outside" },
       { operation: "document.import", projectId: project, expectedRevision: 1, bytes: new Uint8Array(MAX_DOCUMENT_BYTES + 1) },
       { operation: "document.list", projectId: project, expectedRevision: 1, limit: 101 },

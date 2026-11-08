@@ -45,7 +45,7 @@ import {
 import { characterIndexForRole, type WorldCharacterAssignments } from "../lib/worldCharacters";
 import { alphaBounds, drawCharacterSprite, type SpriteBounds } from "../world/spriteRendering";
 
-type Props = {
+export type Props = {
   run: RunSnapshot | null;
   bridgeConnected: boolean;
   appServerReady: boolean;
@@ -391,7 +391,7 @@ function activityBubble(agent: WorldAgent, handoff: Handoff | null, now: number)
   return null;
 }
 
-export function PixelOffice({
+export function LegacyPixelOffice({
   run,
   bridgeConnected,
   appServerReady,
@@ -976,3 +976,5 @@ export function PixelOffice({
     </section>
   );
 }
+
+export { PixelStudio as PixelOffice } from './PixelStudio';

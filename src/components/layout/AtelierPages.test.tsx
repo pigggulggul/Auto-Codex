@@ -4,11 +4,11 @@ import { AtelierNavigation } from "./AtelierNavigation";
 import { AtelierHome, AtelierPreparation } from "./AtelierPages";
 
 describe("Atelier shell boundaries", () => {
-  it("shows one results and pixel destination and keeps design navigation compact", () => {
+  it("shows the main workspaces and marks the results destination for the pixel view", () => {
     const html = renderToStaticMarkup(<AtelierNavigation page="pixel" mobileOpen={false} onNavigate={() => {}} onMobileClose={() => {}} />);
     expect(html).toContain('aria-current="page"');
-    for (const label of ["대화와 픽셀 화면", "Codex 활동 센터", "디자인 작업실"]) expect(html).toContain(label);
-    for (const label of ["일반 Codex 작업", "작업실 설정", "기존 화면으로 전환", "디자인 작업 단계"]) expect(html).not.toContain(label);
+    for (const label of ["Codex 대화", "아뜰리에 디자인", "이슈 처리", "대화 결과 · 픽셀 화면", "실행 활동"]) expect(html).toContain(label);
+    for (const label of ["프로젝트 · 스킬 설정", "작업실 설정", "디자인 작업 단계"]) expect(html).not.toContain(label);
   });
 
   it("shows only received conversation data, escapes it, and prevents switching while busy", () => {

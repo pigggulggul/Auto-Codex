@@ -22,5 +22,10 @@ describe("OperationsPanel character identity", () => {
     expect(html).toContain("width:64px;height:64px");
     expect(html).toContain("background-size:128px 256px");
     expect(html).toContain("background-position:0 -128px");
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('role="tabpanel"');
+    expect(html).toContain('aria-selected="true"');
+    expect(html).toContain("활동 내역");
+    expect(html).toContain("작업 목록");
   });
 });

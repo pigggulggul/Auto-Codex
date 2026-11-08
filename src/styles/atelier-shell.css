@@ -281,3 +281,36 @@ html:has(.atelier-app), body:has(.atelier-app) { background: #fff; background-im
 .atelier-app .sidebar-settings .conversation-name-actions { flex-wrap:wrap; }
 @media(max-width:550px) { .atelier-app .work-composer .work-composer-actions { align-items:flex-end; } .atelier-app .work-composer .work-quick-controls { flex:1 1 200px; } .atelier-app .work-composer .run-button, .atelier-app .work-composer .stop-button { min-width:0; } }
 .atelier-app .work-model-refresh { border:1px solid #e2e2e5; border-radius:20px; padding:7px 9px; color:#555; background:#f7f7f8; font-size:11px; }
+
+/* ReUI-style navigation, tabs, and controls with the local design tokens. */
+.atelier-sidebar { background:#fafafa; }
+.atelier-nav-label { margin:24px 12px 8px; color:#62636a; font-size:12px; font-weight:700; letter-spacing:0; }
+.atelier-nav-item { min-height:44px; padding:10px 12px; color:#3f4047; font-size:14px; font-weight:600; }
+.atelier-nav-item.is-current { background:#fce7ec; color:#8f1738; box-shadow:inset 3px 0 #a92248; }
+.atelier-sidebar .chat-sidebar, .atelier-nav-dialog .chat-sidebar { margin-top:22px; border-top:1px solid var(--atelier-line); border-bottom:0; padding-top:16px; }
+.chat-sidebar-heading, .chat-search input, .chat-group button, .chat-empty { font-size:13px; }
+.chat-sidebar-heading button, .chat-group summary { font-size:13px; }
+.atelier-workspace-heading h1 { font-size:27px; font-weight:700; }
+.atelier-workspace-heading > div > p:last-child { color:#4f5058; font-size:14px; }
+.atelier-app .main-view-switch { display:flex; width:max-content; max-width:100%; padding:4px; margin-bottom:16px; border-color:#cfd0d5; border-radius:9px; }
+.atelier-app .main-view-switch button { min-height:42px; padding:9px 18px; color:#474850; font-size:14px; font-weight:600; }
+.atelier-app .main-view-switch button.active { color:#202127; border-color:#d4d5da; box-shadow:0 1px 3px #2021271a; }
+.reui-tabs { display:flex; flex-wrap:wrap; gap:4px; padding:5px; margin:14px 18px; border:1px solid #d4d5da; border-radius:9px; background:#f2f2f4; }
+.reui-tabs button { flex:1 1 auto; min-height:42px; padding:9px 14px; border:1px solid transparent; border-radius:6px; background:transparent; color:#45464e; font:inherit; font-size:14px; font-weight:600; cursor:pointer; }
+.reui-tabs button.active { border-color:#d4d5da; background:#fff; color:#202127; box-shadow:0 1px 3px #2021271a; }
+.reui-tabs button:focus-visible { outline:3px solid #a92248; outline-offset:2px; }
+.atelier-app .operations-panel { background:#fff; }
+.atelier-app .operations-content { padding:18px; }
+.atelier-app .operations-heading h2 { font-size:21px; font-weight:700; }
+.atelier-app .activity-card, .atelier-app .result-card { border-color:#d4d5da; }
+.atelier-app .activity-copy h3 { font-size:15px; }
+.atelier-app .activity-copy p, .atelier-app .activity-copy time, .atelier-app .activity-source { font-size:13px; }
+.atelier-app .panel-empty strong { color:#303137; font-size:16px; }
+.atelier-app .panel-empty small { color:#55565d; font-size:14px; }
+.work-settings { margin:0 0 12px; border:1px solid #d4d5da; border-radius:10px; background:#fff; }
+.work-settings > summary { padding:12px 16px; color:#303137; font-size:14px; font-weight:600; cursor:pointer; }
+.atelier-app .work-settings .control-card { margin:0; border:0; border-top:1px solid #d4d5da; box-shadow:none; }
+.atelier-app .work-composer-context, .atelier-app .work-composer-context button { font-size:13px; }
+.atelier-app .work-quick-controls label, .atelier-app .work-quick-controls select { font-size:13px; }
+.atelier-app .connection-badge, .atelier-app .top-model { font-size:12px; }
+@media(max-width:600px) { .reui-tabs { margin:10px; } .reui-tabs button { padding-inline:8px; font-size:13px; } .atelier-app .main-view-switch { width:100%; } .atelier-app .main-view-switch button { flex:1; padding-inline:8px; } }

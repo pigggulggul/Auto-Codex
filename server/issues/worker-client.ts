@@ -84,7 +84,7 @@ export class IssueWorkerClient {
       await this.ready;
       if (this.closing || this.failure) throw this.failure || new IssueWorkerClientError("WORKER_UNAVAILABLE", "이슈 저장소가 종료 중입니다.");
       if (mayStart && !mayStart()) throw new IssueWorkerClientError("STALE_SELECTION", "프로젝트나 연결 상태가 바뀌어 이슈 요청을 시작하지 않았습니다.");
-      const result = await this.send({ request: safeRequest }, safeRequest.operation === "project.create" || safeRequest.operation === "document.import" || safeRequest.operation === "execution.approval" || safeRequest.operation === "execution.invalidateApprovals" || safeRequest.operation === "execution.prepare" || safeRequest.operation === "execution.transition");
+      const result = await this.send({ request: safeRequest }, safeRequest.operation === "project.create" || safeRequest.operation === "document.import" || safeRequest.operation === "execution.approval" || safeRequest.operation === "execution.invalidateApprovals" || safeRequest.operation === "execution.reconcile" || safeRequest.operation === "execution.prepare" || safeRequest.operation === "execution.transition");
       if (!result) throw new IssueWorkerClientError("WORKER_UNAVAILABLE", "이슈 저장소 응답이 없습니다.");
       return result;
     } finally { this.inFlight--; }

@@ -3,6 +3,7 @@ import type { IssueWorkerRequest, IssueWorkerResult } from "./worker-contract.js
 import type { IssueViewQuery, IssueViewResult } from "../../shared/issues/view.js";
 import { freezeExecutionPolicy, type ExecutionIntentInput, type FrozenExecutionIntent } from "./execution-intent.js";
 import type { JournalRecord } from "./execution-journal.js";
+import type { ExecutionApprovalRouter } from "./execution-approval-router.js";
 
 /** Supplied by the bridge, never constructed from an individual renderer message. */
 export type IssueProjectSelection = {
@@ -31,7 +32,7 @@ export class IssueProjectContext {
     if (now.workspaceMode !== "project" || now.generation !== selection.generation || now.projectPath !== selection.projectPath) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 선택이 변경되었습니다. 이전 프로젝트에 저장된 상태를 확인하세요.");
   }
   private async request(selection: SelectedProject, message: IssueWorkerRequest, mayStart: () => boolean = () => true): Promise<IssueWorkerResult> {
-    const mutating = message.operation === "project.create" || message.operation === "document.import" || message.operation === "execution.prepare" || message.operation === "execution.transition" || message.operation === "execution.approval" || message.operation === "execution.invalidateApprovals";
+    const mutating = message.operation === "project.create" || message.operation === "document.import" || message.operation === "execution.prepare" || message.operation === "execution.transition" || message.operation === "execution.approval" || message.operation === "execution.invalidateApprovals" || message.operation === "execution.reconcile";
     this.verify(selection);
     try {
       const result = await this.worker.request(message, () => { const now = this.currentSelection(); return now.workspaceMode === "project" && now.projectPath === selection.projectPath && now.generation === selection.generation && mayStart(); });
@@ -82,6 +83,35 @@ export class IssueProjectContext {
     const result = await this.request(selected, fixed, allowed);
     if (!allowed()) throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "승인 기록 결과를 확인하지 못했습니다. 자동 재전송하지 마세요.");
     if (result.kind !== "execution.approval") throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "승인 기록 결과를 확인하지 못했습니다. 자동 재전송하지 마세요.");
+  }
+
+  /** Trusted bridge only. mayReconcile must verify exclusive admission, actual
+   * previous-process termination and explicit review; the callback is not proof. */
+  async reconcileExecution(input: { projectId: string; attemptId: string; expectedRevision: number; reason: string }, mayReconcile: () => boolean): Promise<JournalRecord> {
+    const fixed = { projectId: input.projectId, attemptId: input.attemptId, expectedRevision: input.expectedRevision, reason: input.reason };
+    const allowed = () => { try { return mayReconcile() === true; } catch { return false; } };
+    const selected = this.capture(), project = await this.lookup(selected);
+    if (!project || project.id !== fixed.projectId || project.revision !== fixed.expectedRevision || !allowed()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 복구 권한이 변경되었습니다.");
+    const result = await this.request(selected, { operation: "execution.reconcile", ...fixed }, allowed);
+    if (!allowed() || result.kind !== "execution.reconcile") throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "복구 기록 결과를 확인하지 못했습니다. 상태를 다시 확인하세요.");
+    return result.record;
+  }
+
+  /** Trusted runtime only. The caller must already own shared admission and
+   * stop the actual process on unsafe; this method does not establish either. */
+  async registerExecutionApprovals(router: ExecutionApprovalRouter, input: { projectId: string; expectedRevision: number; attemptId: string; owner: AbortSignal }, mayRun: () => boolean, unsafe: () => void): Promise<{ bindThread: (threadId: string) => void; bindTurn: (turnId: string) => void; close: () => void }> {
+    const fixed = { projectId: input.projectId, expectedRevision: input.expectedRevision, attemptId: input.attemptId, owner: input.owner };
+    const selected = this.capture();
+    const allowed = () => {
+      try { const current = this.currentSelection(); return !fixed.owner.aborted && current.workspaceMode === "project" && current.projectPath === selected.projectPath && current.generation === selected.generation && mayRun() === true; }
+      catch { return false; }
+    };
+    const project = await this.lookup(selected);
+    if (!project || project.id !== fixed.projectId || project.revision !== fixed.expectedRevision || !allowed()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 실행 권한이 변경되었습니다.");
+    return router.registerLaunching({
+      owner: fixed.owner, projectId: fixed.projectId, attemptId: fixed.attemptId, valid: allowed, unsafe,
+      persist: (binding, action) => this.recordExecutionApproval({ operation: "execution.approval", binding, expectedRevision: fixed.expectedRevision, action }, fixed.projectId, allowed),
+    });
   }
   private async lookup(selection: SelectedProject): Promise<{ id: string; revision: number } | null> {
     const result = await this.request(selection, { operation: "project.lookup", selectedPath: selection.projectPath });

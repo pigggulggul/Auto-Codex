@@ -3,14 +3,14 @@ import type {Tab} from '../../../shared/atelier/types';
 export const TAB_LABELS:Record<Tab,string>={design:'아이디어 정리',flow:'이용 순서',reference:'참고 이미지',concept:'분위기 정하기',style:'색·글자와 자료',brief:'설계 요약',prompt:'만들기 준비',review:'결과 확인·수정'};
 
 export const TAB_GUIDANCE:Record<Tab,{title:string;description:string;example:string;next:Tab;action:string}>={
- design:{title:'어떤 아이디어인가요?',description:'처음 적은 아이디어로 전체 디자인 설계를 만들어 보세요. 화면·기능·스타일을 먼저 등록할 필요 없어요. 설계에 영향을 주는 질문만 확인하고 함께 다듬어요.',example:'예: 혼자 여행하는 사람이 마음에 드는 장소를 모아 하루 일정을 만드는 앱',next:'flow',action:'다음: 사용하는 순서 생각하기'},
- flow:{title:'사용자는 어떤 순서로 쓰나요?',description:'화면은 사용자가 보는 한 장면이고, 흐름은 그 장면을 오가는 순서예요. 먼저 장면 하나, 그다음 시작부터 완료까지의 순서를 적으세요.',example:'예: 장소 찾기 → 마음에 드는 장소 담기 → 하루 일정 보기. “검색 결과 없음”도 하나의 화면 상태예요.',next:'reference',action:'다음: 좋아하는 이미지 참고하기'},
- reference:{title:'어떤 모습이 마음에 드나요?',description:'참고하고 싶은 이미지를 올리고 좋아하는 부분을 적는 곳이에요. 준비한 이미지가 없으면 건너뛰어도 돼요. 이미지를 AI가 자동으로 분석하지는 않아요.',example:'예: 이 이미지의 넓은 여백과 큰 제목이 좋아요. 사진은 그대로 쓰지 않고 배치만 참고할래요.',next:'concept',action:'다음: 전체 분위기 정하기'},
- concept:{title:'어떤 느낌으로 만들까요?',description:'컨셉은 화면 전체가 함께 따를 분위기예요. 한 가지 방향을 짧게 정하고, 마음에 들면 “이 방향 선택·확정”을 누르세요.',example:'예: 여행 노트처럼 따뜻하고 편안하게. 사진을 크게, 설명은 짧게.',next:'style',action:'다음: 색·글자와 필요한 자료 정하기'},
- style:{title:'어떻게 보이고, 어떤 자료가 필요할까요?',description:'스타일은 색·글자·버튼 모양 같은 표현 약속이에요. 리소스는 그 약속을 구현할 사진·아이콘·서체 같은 재료예요. 필요한 것부터 하나씩 추가하세요.',example:'예: 스타일 = 주요 버튼은 초록색. 리소스 = 장소 사진 3장. 라이선스 = 그 사진을 이 서비스에 써도 되는 조건.',next:'brief',action:'다음: 지금까지 정한 내용 모아보기'},
- brief:{title:'내 생각이 잘 정리되었나요?',description:'디자인 브리프는 지금까지 저장한 설계의 요약이에요. 빠진 내용은 안내를 눌러 돌아가고, 내 의도와 맞는지 확인하세요.',example:'아래의 미정 항목은 오류가 아니에요. 실제 제작 전에 필요한 결정만 차근차근 채우면 돼요.',next:'prompt',action:'다음: 제작할 내용 준비하기'},
- prompt:{title:'이 설계를 제작 요청으로 바꿔요',description:'프롬프트는 AI에 전달할 작업 설명이에요. 고정본은 특정 시점의 설계를 묶은 복사본으로, 이후 편집과 별도로 보관해요.',example:'순서: 설계 요약 확인 → 제작 기준 고정 → 연결할 폴더 확인 → 제작 시작. 설계 제안과 달리 제작은 실제 파일을 바꿀 수 있어요.',next:'review',action:'다음: 만든 결과 확인하기'},
- review:{title:'만든 결과가 생각과 맞나요?',description:'실제로 만든 화면이나 실행 기록을 등록하고 기대한 결과와 비교하세요. 아직 만든 결과가 없으면 이 단계는 나중에 해도 돼요.',example:'예: 저장 버튼이 잘 보이는가? 직접 눌렀을 때 파일이 내려받아지는가? 보이는 모습과 실제 동작을 따로 확인해요.',next:'design',action:'아이디어로 돌아가기'}
+ design:{title:'아이디어 정리',description:'만들 제품과 필요한 기능을 정하세요.',example:'',next:'flow',action:'다음: 이용 순서'},
+ flow:{title:'이용 순서',description:'화면과 화면 사이의 이동을 정하세요.',example:'',next:'reference',action:'다음: 참고 이미지'},
+ reference:{title:'참고 이미지',description:'이미지를 추가하고 참고할 부분을 기록하세요. 자동 분석은 제공하지 않습니다.',example:'',next:'concept',action:'다음: 분위기'},
+ concept:{title:'분위기 정하기',description:'디자인 방향을 정하고 확정하세요.',example:'',next:'style',action:'다음: 색·글자와 자료'},
+ style:{title:'색·글자와 자료',description:'스타일과 필요한 이미지·글꼴을 정하세요.',example:'',next:'brief',action:'다음: 설계 요약'},
+ brief:{title:'설계 요약',description:'저장한 설계와 미정 항목을 확인하세요.',example:'',next:'prompt',action:'다음: 만들기 준비'},
+ prompt:{title:'만들기 준비',description:'설계 고정본과 제작 요청을 준비하세요. 제작은 실제 파일을 변경할 수 있습니다.',example:'',next:'review',action:'다음: 결과 확인'},
+ review:{title:'결과 확인·수정',description:'실제 결과를 등록하고 설계와 비교하세요.',example:'',next:'design',action:'아이디어로 돌아가기'}
 };
 
 /** Shared plain-language hints for the editor, proposal and review forms. */

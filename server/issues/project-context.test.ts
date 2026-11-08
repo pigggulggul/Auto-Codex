@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { IssueProjectContext, type IssueProjectSelection } from "./project-context.js";
+import { ExecutionApprovalRouter } from "./execution-approval-router.js";
 import { IssueWorkerClientError } from "./worker-client.js";
 import type { IssueWorkerRequest, IssueWorkerResult } from "./worker-contract.js";
 
@@ -12,6 +13,74 @@ function deferred<T>() {
 }
 
 describe("bridge-owned issue project context", () => {
+  it("does not send reconciliation without a current trusted guard", async () => {
+    const calls: IssueWorkerRequest[] = [];
+    const context = new IssueProjectContext(initial, { request: async input => { calls.push(input); if (input.operation === "project.lookup") return { kind: "project.lookup", project }; throw new Error("must not mutate"); } });
+    await expect(context.reconcileExecution({ projectId: project.id, attemptId: "attempt-a", expectedRevision: 1, reason: "synthetic review" }, () => false)).rejects.toMatchObject({ code: "STALE_SELECTION" });
+    expect(calls.map(call => call.operation)).toEqual(["project.lookup"]);
+  });
+  it("snapshots only recovery fields before an asynchronous project lookup", async () => {
+    const waiting = deferred<IssueWorkerResult>(), calls: IssueWorkerRequest[] = [];
+    const context = new IssueProjectContext(initial, { request: input => {
+      calls.push(input);
+      if (input.operation === "project.lookup") return waiting.promise;
+      return Promise.reject(new IssueWorkerClientError("WORKER_UNAVAILABLE", "synthetic"));
+    } });
+    const input = { projectId: project.id, attemptId: "attempt-a", expectedRevision: 1, reason: "reviewed", operation: "project.create" };
+    const result = context.reconcileExecution(input, () => true);
+    input.attemptId = "attempt-other"; input.reason = "changed";
+    waiting.resolve({ kind: "project.lookup", project });
+    await expect(result).rejects.toMatchObject({ code: "WORKER_UNAVAILABLE" });
+    expect(calls[1]).toEqual({ operation: "execution.reconcile", projectId: project.id, attemptId: "attempt-a", expectedRevision: 1, reason: "reviewed" });
+  });
+  it("reports uncertain reconciliation if the guard expires after a worker mutation", async () => {
+    let allowed = true; const pending = deferred<IssueWorkerResult>(), started = deferred<void>();
+    const context = new IssueProjectContext(initial, { request: input => { if (input.operation === "project.lookup") return Promise.resolve({ kind: "project.lookup", project }); started.resolve(); return pending.promise; } });
+    const result = context.reconcileExecution({ projectId: project.id, attemptId: "attempt-a", expectedRevision: 1, reason: "synthetic review" }, () => allowed);
+    await started.promise; allowed = false;
+    pending.resolve({ kind: "execution.reconcile", record: {} as never });
+    await expect(result).rejects.toMatchObject({ code: "OUTCOME_UNKNOWN" });
+  });
+  it("persists owned approval events through the selected project before sending a decision", async () => {
+    const calls: IssueWorkerRequest[] = [], events: string[] = [], shown: string[] = [], owner = new AbortController();
+    const context = new IssueProjectContext(initial, { request: async (input, mayStart) => {
+      expect(mayStart?.()).toBe(true); calls.push(input);
+      if (input.operation === "project.lookup") return { kind: "project.lookup", project };
+      if (input.operation === "execution.approval") { events.push(input.action.type); return { kind: "execution.approval" }; }
+      throw new Error("unexpected operation");
+    } });
+    const router = new ExecutionApprovalRouter({ show: (_owner, id) => { events.push("show"); shown.push(id); }, write: () => { events.push("write"); }, deny: () => { events.push("deny"); }, resolved: () => { events.push("resolved"); } });
+    const session = await context.registerExecutionApprovals(router, { projectId: project.id, expectedRevision: 1, attemptId: "attempt-a", owner: owner.signal }, () => true, () => { events.push("unsafe"); });
+    session.bindThread("thread-a"); session.bindTurn("turn-a");
+    expect(router.serverRequest({ id: 7, method: "item/commandExecution/requestApproval", params: { threadId: "thread-a", turnId: "turn-a" } })).toBe(true);
+    await vi.waitFor(() => expect(shown).toHaveLength(1));
+    await expect(router.resolve(shown[0], new AbortController().signal, "accept")).rejects.toThrow();
+    await router.resolve(shown[0], owner.signal, "decline"); session.close();
+    expect(events).toEqual(["request", "show", "respond", "write", "finish", "resolved"]);
+    const entries = calls.filter(input => input.operation === "execution.approval");
+    expect(entries).toHaveLength(3);
+    for (const entry of entries) expect(entry).toMatchObject({ expectedRevision: 1, binding: { projectId: project.id, attemptId: "attempt-a", threadId: "thread-a", turnId: "turn-a", requestId: 7 } });
+  });
+  it("refuses registration when the project or admission changed", async () => {
+    const context = new IssueProjectContext(initial, { request: async () => ({ kind: "project.lookup", project }) });
+    const router = new ExecutionApprovalRouter({ show: () => {}, write: () => {}, deny: () => {}, resolved: () => {} });
+    const input = { projectId: project.id, expectedRevision: 1, attemptId: "attempt-a", owner: new AbortController().signal };
+    await expect(context.registerExecutionApprovals(router, { ...input, projectId: "other" }, () => true, () => {})).rejects.toMatchObject({ code: "STALE_SELECTION" });
+    await expect(context.registerExecutionApprovals(router, input, () => false, () => {})).rejects.toMatchObject({ code: "STALE_SELECTION" });
+    expect(router.serverRequest({ id: 1, method: "item/commandExecution/requestApproval", params: {} })).toBe(false);
+  });
+  it("does not send an approval after the project selection changes", async () => {
+    let selection = initial(), unsafe = 0; const owner = new AbortController(), shown: string[] = [], writes: string[] = [];
+    const context = new IssueProjectContext(() => selection, { request: async input => input.operation === "project.lookup" ? { kind: "project.lookup", project } : { kind: "execution.approval" } });
+    const router = new ExecutionApprovalRouter({ show: (_owner, id) => { shown.push(id); }, write: () => { writes.push("write"); }, deny: () => {}, resolved: () => {} });
+    const session = await context.registerExecutionApprovals(router, { projectId: project.id, expectedRevision: 1, attemptId: "attempt-a", owner: owner.signal }, () => true, () => { unsafe++; });
+    session.bindThread("thread-a"); session.bindTurn("turn-a");
+    router.serverRequest({ id: 1, method: "item/commandExecution/requestApproval", params: { threadId: "thread-a", turnId: "turn-a" } });
+    await vi.waitFor(() => expect(shown).toHaveLength(1));
+    selection = { ...selection, generation: 2 };
+    await expect(router.resolve(shown[0], owner.signal, "accept")).rejects.toThrow();
+    expect(writes).toEqual([]); expect(unsafe).toBe(1); session.close();
+  });
   it("treats malformed replies to issue mutations as uncertain", async () => {
     const context = new IssueProjectContext(initial, { request: async input => input.operation === "project.lookup" ? { kind: "project.lookup", project } : { kind: "project", ...project } });
     const policy = { sandbox: "workspace-write" as const, networkAccess: false as const, approval: "manual" as const, revision: 1 };

@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { ActivityEvent, AgentRole, RunSnapshot } from "../../shared/protocol";
 import { PET_PRESENTATIONS } from "../lib/petCatalog";
 import { characterIndexForRole, type WorldCharacterAssignments } from "../lib/worldCharacters";
 import { WorldCharacter } from "./WorldCharacter";
 import { taskSkillLabel } from "../lib/taskSkill";
+import { ReuiTabs } from "./ui/ReuiTabs";
 
 type PanelTab = "activity" | "results" | "quests";
 
@@ -44,6 +45,7 @@ function timeLabel(timestamp: string): string {
 
 export function OperationsPanel({ activities, run, assistantText, taskOutputs, characterAssignments, animationEnabled = true, streaming, onOpenResults }: Props) {
   const [tab, setTab] = useState<PanelTab>("activity");
+  const panelId = useId();
   const outputs = useMemo(() => run?.tasks.map((task) => ({
     task,
     text: taskOutputs[task.id] || task.resultSummary || task.error || "",
@@ -53,17 +55,17 @@ export function OperationsPanel({ activities, run, assistantText, taskOutputs, c
   return (
     <aside className="operations-panel">
       <div className="operations-heading">
-        <div><span className="eyebrow">LIVE OPERATIONS</span><h2>Codex 활동 센터</h2></div>
-        <span className={`runtime-pulse ${streaming ? "active" : ""}`}>{streaming ? "RUNNING" : "READY"}</span>
+        <div><span className="eyebrow">실시간 실행 정보</span><h2>실행 활동</h2></div>
+        <span className={`runtime-pulse ${streaming ? "active" : ""}`}>{streaming ? "진행 중" : "대기 중"}</span>
       </div>
 
-      <div className="operations-tabs" role="tablist" aria-label="실행 정보">
-        <button type="button" role="tab" aria-selected={tab === "activity"} className={tab === "activity" ? "active" : ""} onClick={() => setTab("activity")}><span>◉</span> 활동</button>
-        <button type="button" role="tab" aria-selected={tab === "results"} className={tab === "results" ? "active" : ""} onClick={() => setTab("results")}><span>▤</span> 결과</button>
-        <button type="button" role="tab" aria-selected={tab === "quests"} className={tab === "quests" ? "active" : ""} onClick={() => setTab("quests")}><span>◆</span> 퀘스트</button>
-      </div>
+      <ReuiTabs label="실행 정보" panelId={panelId} value={tab} onChange={setTab} items={[
+        { value: "activity", label: "활동 내역" },
+        { value: "results", label: "작업 결과" },
+        { value: "quests", label: "작업 목록" },
+      ]} />
 
-      <div className="operations-content">
+      <div className="operations-content" id={panelId} role="tabpanel" aria-labelledby={`${panelId}-${tab}`} tabIndex={0}>
         {tab === "activity" && (
           <div className="activity-feed">
             {activities.length === 0 ? (
@@ -115,7 +117,7 @@ export function OperationsPanel({ activities, run, assistantText, taskOutputs, c
                 <div><strong>{task.title}</strong><small>{ROLE_LABELS[task.agentRole]} · {task.access.toUpperCase()}</small><small>스킬 배정: {taskSkillLabel(task)}</small>{task.skillRationale && <small>{task.skillRationale}</small>}{task.dependsOn.length > 0 && <em>← {task.dependsOn.join(", ")}</em>}</div>
                 <span className="quest-status">{task.status}</span>
               </article>
-            )) : <div className="panel-empty"><span>◆</span><strong>퀘스트를 기다리는 중</strong><small>팀 작업을 시작하면 DAG 순서와 담당 캐릭터가 표시됩니다.</small></div>}
+            )) : <div className="panel-empty"><span>◆</span><strong>진행 중인 팀 작업이 없습니다</strong><small>팀 작업을 시작하면 작업 순서와 담당자가 표시됩니다.</small></div>}
           </div>
         )}
       </div>

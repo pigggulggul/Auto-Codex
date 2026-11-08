@@ -34,6 +34,8 @@ export function validateIssueWorkerRequest(value: unknown): IssueWorkerRequest {
       keys(["operation", "projectId", "expectedRevision", "afterId"]); if (!projectId(v.projectId) || !revision(v.expectedRevision) || !(v.afterId === null || issueId(v.afterId))) return invalid(); return v as IssueWorkerRequest;
     case "execution.invalidateApprovals":
       keys(["operation", "projectId", "attemptId", "expectedRevision"]); if (!projectId(v.projectId) || !issueId(v.attemptId) || !revision(v.expectedRevision)) return invalid(); return v as IssueWorkerRequest;
+    case "execution.reconcile":
+      keys(["operation", "projectId", "attemptId", "expectedRevision", "reason"]); if (!projectId(v.projectId) || !issueId(v.attemptId) || !revision(v.expectedRevision) || typeof v.reason !== "string" || !v.reason.trim() || v.reason.length > 2000 || v.reason.includes("\0")) return invalid(); return v as IssueWorkerRequest;
     case "execution.prepare":
       keys(["operation", "projectId", "documentId", "issueId", "expectedRevision", "idempotencyKey", "policy"]);
       if (!projectId(v.projectId) || !issueId(v.documentId) || !issueId(v.issueId) || !revision(v.expectedRevision) || !issueId(v.idempotencyKey)) return invalid();
@@ -133,6 +135,7 @@ export async function dispatchIssueWorkerRequest(store: IssueStore, input: unkno
     case "execution.history": return { kind: "execution.history", page: await store.executionHistory(request.projectId, request.expectedRevision, request.afterId) };
     case "execution.approval": await store.executionApproval(request.binding, request.expectedRevision, request.action); return { kind: "execution.approval" };
     case "execution.invalidateApprovals": return { kind: "execution.invalidateApprovals", ...await store.invalidateUnknownApprovals(request.projectId, request.attemptId, request.expectedRevision) };
+    case "execution.reconcile": return { kind: "execution.reconcile", record: await store.reconcileExecution(request.projectId, request.attemptId, request.expectedRevision, request.reason) };
     case "execution.prepare": { const { operation: _operation, ...input } = request; return { kind: "execution.prepare", ...await store.prepareExecution(input) }; }
     case "execution.transition": return { kind: "execution.transition", record: await store.transitionExecution(request.projectId, request.expectedRevision, request.attemptId, request.action) };
     case "document.import": return { kind: "import", ...await store.importDocument(request.projectId, request.expectedRevision, request.bytes) };

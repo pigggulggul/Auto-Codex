@@ -61,7 +61,7 @@ describe('manual workspace transport and drafts',()=>{
  });
  it('keeps design navigation compact and reports offline/manual AI state without success',()=>{
   const nav=renderToStaticMarkup(<AtelierNavigation page="design" mobileOpen={false} onNavigate={()=>{}} onMobileClose={()=>{}}/>);
-  expect(nav).toContain('디자인 작업실');expect(nav).not.toContain('디자인 작업 단계');
+  expect(nav).toContain('아뜰리에 디자인');expect(nav).not.toContain('디자인 작업 단계');
   const html=renderToStaticMarkup(<AtelierWorkspace api={new AtelierApi()} connected={false}/>);
   for(const title of ['아이디어부터','이미지부터','컨셉 확정','기존 결과 개선'])expect(html).toContain(title);
   expect(html).toContain('연결이 끊겼습니다');expect(html).toContain('AI 설계 제안은 아직 연결되지 않았습니다');expect(html).not.toContain('실행 완료');

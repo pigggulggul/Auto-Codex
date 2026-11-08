@@ -14,6 +14,7 @@ export type IssueWorkerRequest =
   | { operation: "execution.history"; projectId: string; expectedRevision: number; afterId: string | null }
   | { operation: "execution.approval"; binding: ApprovalBinding; expectedRevision: number; action: { type: "request"; kind: ApprovalKind } | { type: "respond"; decision: ApprovalDecision } | { type: "finish"; result: "sent" | "outcome_unknown" } }
   | { operation: "execution.invalidateApprovals"; projectId: string; attemptId: string; expectedRevision: number }
+  | { operation: "execution.reconcile"; projectId: string; attemptId: string; expectedRevision: number; reason: string }
   | { operation: "execution.prepare"; projectId: string; documentId: string; issueId: string; expectedRevision: number; idempotencyKey: string; policy: ExecutionIntentInput["policy"] }
   | { operation: "execution.transition"; projectId: string; attemptId: string; expectedRevision: number; action: { type: "dispatch" | "verifying" | "unknown" } | { type: "running"; threadId: string; turnId: string } | { type: "settle"; outcome: "interrupted" | "failed" | "verification_finished" } }
   | { operation: "document.import"; projectId: string; expectedRevision: number; bytes: Uint8Array }
@@ -36,6 +37,7 @@ export type IssueWorkerResult =
   | { kind: "execution.history"; page: JournalHistoryPage }
   | { kind: "execution.approval" }
   | { kind: "execution.invalidateApprovals"; expired: number; unknown: number }
+  | { kind: "execution.reconcile"; record: JournalRecord }
   | { kind: "execution.prepare"; intent: FrozenExecutionIntent; record: JournalRecord; created: boolean }
   | { kind: "execution.transition"; record: JournalRecord }
   | { kind: "import"; documentId: string; revision: number; alreadyImported: boolean; issueCount: number }

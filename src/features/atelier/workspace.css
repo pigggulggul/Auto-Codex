@@ -18,3 +18,13 @@
 .design-proposal-dialog-bar { position:sticky; top:0; z-index:4; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid #e8e2da; background:#fff; font-weight:700; }
 .design-proposal-dialog .design-proposals { margin:0; border:0; border-radius:0; }
 @media(max-width:600px) { .design-workspace .design-ai-button { margin-left:0; width:100%; } .design-workspace .design-question { padding:18px; } .design-question .design-form h3 { font-size:18px; } }
+
+.design-tabs { gap:6px; padding:12px; border:1px solid #d8d9dd; border-radius:10px; background:#f4f4f5; }
+.design-tabs button { min-height:42px; border-color:transparent; background:transparent; font-weight:600; }
+.design-tabs button[aria-current=page] { background:#fff; color:#8f1738; border-color:#d8d9dd; box-shadow:0 1px 3px #2021271a; }
+.design-entry-grid button { border-color:#cfd0d5; border-radius:10px; background:#fff; }
+.design-entry-grid button:hover { border-color:#a92248; background:#fff8fa; }
+.design-entry-grid strong { font-size:16px; }
+.design-step-intro { padding:20px 24px; background:#f8f8fa; border-color:#d8d9dd; }
+.design-step-intro h2 { margin:6px 0; font-size:22px; }
+.design-step-intro p { margin:6px 0 12px; }

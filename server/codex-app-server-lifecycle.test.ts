@@ -6,6 +6,10 @@ import { ExecutionJournal, EXECUTION_JOURNAL_SCHEMA } from "./issues/execution-j
 import { ExecutionApprovalJournal } from "./issues/execution-approval-journal.js";
 import { ExecutionApprovalRelay } from "./issues/execution-approval-relay.js";
 import { ExecutionApprovalRouter } from "./issues/execution-approval-router.js";
+import { IssueAppServerTransport } from "./issues/execution-app-server.js";
+import { IssueExecutionRuntime } from "./issues/execution-runtime.js";
+import { freezeExecutionIntent } from "./issues/execution-intent.js";
+import type { IssueProjectContext } from "./issues/project-context.js";
 
 const mocks = vi.hoisted(() => ({ spawn: vi.fn() }));
 vi.mock("node:child_process", () => ({ spawn: mocks.spawn }));
@@ -129,6 +133,48 @@ describe("App Server lifecycle isolation", () => {
       await vi.waitFor(() => expect(shown).not.toBe("")); await router.resolve(shown, owner.signal, "decline");
       expect(db.prepare("SELECT state,decision FROM issue_approval_journal").get()).toMatchObject({ state: "sent", decision: "decline" });
       launch.close(); expect(unsafe).toBe(0); first.emit("exit", 0, null);
+    } finally { db.close(); }
+  });
+
+  it("runs the issue coordinator through the real App Server parser and journal", async () => {
+    const first = child(95), server = new CodexAppServer(), db = new DatabaseSync(":memory:"), [killer] = useChildren(first); db.exec(EXECUTION_JOURNAL_SCHEMA);
+    try {
+      const journal = new ExecutionJournal(db), approvals = new ExecutionApprovalJournal(db), owner = new AbortController();
+      const started = server.start(); reply(first, 1, {}); await started;
+      const writes: string[] = []; first.stdin.on("data", (value: Buffer) => writes.push(value.toString()));
+      const intent = freezeExecutionIntent({ projectId: "project-a", documentId: "doc-a", issueId: "issue-a", projectRevision: 1, documentRevision: 1, instruction: "synthetic issue", policy: { sandbox: "workspace-write", networkAccess: false, approval: "manual", revision: 1 } }).intent;
+      let shown = "", held = false;
+      const router = new ExecutionApprovalRouter({ show: (_signal, id) => { shown = id; }, write: (request, decision) => server.respondAndWait(request.id, { decision }), deny: () => { throw new Error("unexpected denial"); }, resolved: () => {} });
+      server.on("request", request => { expect(router.serverRequest(request)).toBe(true); });
+      server.on("terminationConfirmed", () => router.resetAfterConfirmedStop());
+      const context = {
+        prepareExecution: async () => ({ intent, ...journal.prepare({ projectId: "project-a", issueId: "issue-a", idempotencyKey: "key", projectRevision: 1, requestDigest: "a".repeat(64) }) }),
+        transitionExecution: async (input: Parameters<IssueProjectContext["transitionExecution"]>[0]) => {
+          const a = input.action;
+          if (a.type === "dispatch") return journal.beginDispatch("project-a", input.attemptId);
+          if (a.type === "running") return journal.markRunning("project-a", input.attemptId, a.threadId, a.turnId);
+          if (a.type === "verifying") return journal.beginVerification("project-a", input.attemptId);
+          if (a.type === "unknown") return journal.markOutcomeUnknown("project-a", input.attemptId);
+          if (a.type === "settle") return journal.settle("project-a", input.attemptId, a.outcome);
+          throw new Error("unexpected transition");
+        },
+        registerExecutionApprovals: async (_router: ExecutionApprovalRouter, input: { owner: AbortSignal; projectId: string; attemptId: string }, valid: () => boolean, unsafe: () => void) => router.registerLaunching({ ...input, valid, unsafe, persist: async (binding, action) => { if (action.type === "request") approvals.recordRequest(binding, action.kind); else if (action.type === "respond") approvals.beginResponse(binding, action.decision); else approvals.finishResponse(binding, action.result); } }),
+      } as unknown as Pick<IssueProjectContext, "prepareExecution" | "transitionExecution" | "registerExecutionApprovals">;
+      const transport = new IssueAppServerTransport(server, { projectPath: "C:/synthetic/project", model: "test-model", validateProject: async value => value, canRun: () => held });
+      const runtime = new IssueExecutionRuntime({ context, router, transport, permitted: () => true, acquire: () => { held = true; return () => { held = false; }; } });
+      const run = runtime.run({ projectId: "project-a", documentId: "doc-a", issueId: "issue-a", expectedRevision: 1, idempotencyKey: "key", owner: owner.signal });
+      await vi.waitFor(() => expect(writes.some(line => line.includes('"method":"thread/start"'))).toBe(true)); reply(first, 2, { thread: { id: "thread-a" } });
+      await vi.waitFor(() => expect(writes.some(line => line.includes('"method":"turn/start"'))).toBe(true)); reply(first, 3, { turn: { id: "turn-a" } });
+      await vi.waitFor(() => expect(db.prepare("SELECT phase FROM issue_dispatch_journal").get()?.phase).toBe("running"));
+      first.stdout.write(`${JSON.stringify({ id: 17, method: "item/commandExecution/requestApproval", params: { threadId: "thread-a", turnId: "turn-a" } })}\n`);
+      await vi.waitFor(() => expect(shown).not.toBe("")); await router.resolve(shown, owner.signal, "decline");
+      first.stdout.write(`${JSON.stringify({ method: "turn/completed", params: { threadId: "thread-a", turn: { id: "turn-a", status: "completed" } } })}\n`);
+      if (process.platform === "win32") await vi.waitFor(() => expect(mocks.spawn).toHaveBeenCalledTimes(2));
+      else await vi.waitFor(() => expect(first.kill).toHaveBeenCalled());
+      first.emit("exit", 0, null); if (process.platform === "win32") killer.emit("exit", 0, null);
+      expect((await run).phase).toBe("verifying"); expect(held).toBe(false);
+      expect(db.prepare("SELECT state,decision FROM issue_approval_journal").get()).toMatchObject({ state: "sent", decision: "decline" });
+      expect(writes.some(line => line.includes('"id":17') && line.includes('"decision":"decline"'))).toBe(true);
     } finally { db.close(); }
   });
 

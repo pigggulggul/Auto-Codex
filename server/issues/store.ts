@@ -3,7 +3,7 @@ import { lstat, mkdir, open, realpath, rename, stat } from "node:fs/promises";
 import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { MAX_DOCUMENT_BYTES, parseIssueDocument, type IssueDocument } from "./document.js";
-import { EXECUTION_JOURNAL_SCHEMA, ExecutionJournal, type JournalHistoryPage, type JournalRecord } from "./execution-journal.js";
+import { EXECUTION_JOURNAL_SCHEMA, ExecutionJournal, ExecutionJournalError, type JournalHistoryPage, type JournalRecord } from "./execution-journal.js";
 import { EXECUTION_APPROVAL_SCHEMA, ExecutionApprovalJournal, type ApprovalBinding, type ApprovalDecision, type ApprovalKind } from "./execution-approval-journal.js";
 import { prepareStoredIssueIntent } from "./execution-stored-intent.js";
 import type { ExecutionIntentInput, FrozenExecutionIntent } from "./execution-intent.js";
@@ -186,13 +186,19 @@ export class IssueStore {
    * actual runtime configuration and the selection again before dispatch. */
   async prepareExecution(input: { projectId: string; documentId: string; issueId: string; expectedRevision: number; idempotencyKey: string; policy: ExecutionIntentInput["policy"] }): Promise<{ intent: FrozenExecutionIntent; record: JournalRecord; created: boolean }> {
     await this.checkedProject(input.projectId);
-    const journal = this.executionJournal(input.projectId, input.expectedRevision);
+    const journal = this.executionJournal(input.projectId, input.expectedRevision, true);
     return prepareStoredIssueIntent(this, journal, { ...input, mayPrepare: () => true });
   }
 
-  private executionJournal(projectId: string, expectedRevision: number): ExecutionJournal {
+  private executionJournal(projectId: string, expectedRevision: number, exclusivePreparation = false): ExecutionJournal {
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다.");
-    return new ExecutionJournal(this.db, () => { if (this.project(projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다."); });
+    return new ExecutionJournal(this.db, () => {
+      if (this.project(projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다.");
+      // The shared App Server can outlive a bridge crash. An unresolved attempt
+      // in any project must block another issue dispatch, even after restart.
+      // This executes under BEGIN IMMEDIATE with the journal insertion.
+      if (exclusivePreparation && this.db.prepare("SELECT 1 FROM issue_dispatch_journal WHERE project_id<>? AND phase IN ('prepared','dispatching','running','verifying','outcome_unknown') LIMIT 1").get(projectId)) throw new ExecutionJournalError("PROJECT_BUSY");
+    });
   }
 
   /** Called by a trusted runtime, not an authorization or proof of events. */
@@ -225,6 +231,13 @@ export class IssueStore {
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다.");
     const journal = new ExecutionApprovalJournal(this.db, () => { if (this.project(projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다."); });
     return journal.invalidateUnknownAttempt(projectId, attemptId);
+  }
+
+  /** Internal worker operation. The bridge must establish termination proof,
+   * exclusive ownership and explicit user review before invoking it. */
+  async reconcileExecution(projectId: string, attemptId: string, expectedRevision: number, reason: string): Promise<JournalRecord> {
+    await this.checkedProject(projectId);
+    return this.executionJournal(projectId, expectedRevision).reconcileUnknown(projectId, attemptId, reason, () => true);
   }
 
   /** Lookup never creates or rebinds a project. selectedPath must come from the bridge's current selection. */

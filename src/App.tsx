@@ -254,7 +254,7 @@ export default function App() {
               </details>
   );
 
-  const sidebarSettings = <details className="sidebar-settings"><summary>프로젝트 · 스킬 설정</summary><aside className="control-card" aria-label="프로젝트와 실행 설정">
+  const workSettings = <details className="work-settings"><summary>대화 · 프로젝트 · 스킬 설정</summary><aside className="control-card" aria-label="대화와 실행 설정">
               <ConversationPicker
                 conversations={bridge.conversations}
                 activeConversationId={bridge.snapshot.activeConversationId}
@@ -293,7 +293,7 @@ export default function App() {
 
   return (
     <div className={atelier ? "atelier-app" : "legacy-frame"} data-page={page}>
-    <AtelierNavigation page={page} onNavigate={navigate} mobileOpen={mobileMenuOpen} onMobileClose={closeMobileMenu} hidden={!atelier} sidebarSettings={sidebarSettings} conversationSidebar={<ConversationSidebar conversations={bridge.conversations} activeConversationId={bridge.snapshot.activeConversationId} disabled={busy || !bridge.snapshot.connected || bridge.isPickingProject} isPicking={bridge.isPickingProject} onNewResearch={() => { if (bridge.setWorkspaceMode("research")) { bridge.setResearchNetworkAccess(false); bridge.newConversation(); navigate("work"); closeMobileMenu(); } }} onPickProject={() => { if (bridge.pickProject()) { navigate("work"); closeMobileMenu(); } }} onSelect={id => { if (bridge.selectConversation(id)) { navigate("work"); closeMobileMenu(); } }} onDelete={bridge.deleteConversation} />} />
+    <AtelierNavigation page={page} onNavigate={navigate} mobileOpen={mobileMenuOpen} onMobileClose={closeMobileMenu} hidden={!atelier} conversationSidebar={<ConversationSidebar conversations={bridge.conversations} activeConversationId={bridge.snapshot.activeConversationId} disabled={busy || !bridge.snapshot.connected || bridge.isPickingProject} isPicking={bridge.isPickingProject} onNewResearch={() => { if (bridge.setWorkspaceMode("research")) { bridge.setResearchNetworkAccess(false); bridge.newConversation(); navigate("work"); closeMobileMenu(); } }} onPickProject={() => { if (bridge.pickProject()) { navigate("work"); closeMobileMenu(); } }} onSelect={id => { if (bridge.selectConversation(id)) { navigate("work"); closeMobileMenu(); } }} onDelete={bridge.deleteConversation} />} />
     <main id="workspace-main" className={`app-shell ${atelier ? "atelier-main" : "metaverse-app"} ${animationEnabled ? "motion-enabled" : "motion-disabled"}`}>
       <a className="atelier-skip-link" href="#workspace-heading" hidden={!atelier}>작업 내용으로 건너뛰기</a>
       <header className="topbar">
@@ -318,12 +318,6 @@ export default function App() {
       {!atelier && <div className="atelier-return-bar"><span>기존 Auto-Codex 화면</span><button type="button" onClick={() => { changeShell("atelier"); navigate("issues"); }}>이슈 처리</button><button type="button" onClick={() => changeShell("atelier")}>Atelier 화면으로 돌아가기 →</button></div>}
 
       {atelier && <div className="atelier-workspace-heading"><div><p className="atelier-kicker">AUTO CODEX / LOCAL WORKSPACE</p><h1 id="workspace-heading" tabIndex={-1} ref={pageHeading}>{PAGE_INFO[page].title}</h1><p>{PAGE_INFO[page].description}</p></div><span className={`atelier-run-indicator ${busy ? "is-active" : ""}`} role="status">{bridge.approvals.length ? `승인 대기 ${bridge.approvals.length}건` : busy ? "작업 진행 중" : "진행 작업 없음"}</span></div>}
-
-      {atelier && <nav className="workspace-modes" aria-label="작업 모드">
-        <button type="button" aria-current={page === "work" ? "page" : undefined} onClick={() => navigate("work")}>Codex 대화</button>
-        <button type="button" aria-current={page === "design" ? "page" : undefined} onClick={() => navigate("design")}>아뜰리에 디자인</button>
-        <button type="button" aria-current={page === "issues" ? "page" : undefined} onClick={() => navigate("issues")}>이슈 처리</button>
-      </nav>}
 
       {bridge.lastError && (
         <div className="error-banner" role="alert">
@@ -432,9 +426,9 @@ export default function App() {
         </div>
 
         <div className="world-column" hidden={!showWorld}>
-          <div className="main-view-switch" role="tablist" aria-label="메인 화면 선택" hidden={atelier && page === "work"}>
-            <button type="button" role="tab" aria-selected={mainView === "pixel"} className={mainView === "pixel" ? "active" : ""} onClick={() => atelier ? navigate("pixel") : setMainView("pixel")}>▦ 픽셀 화면</button>
-            <button type="button" role="tab" aria-selected={mainView === "results"} className={mainView === "results" ? "active" : ""} onClick={() => atelier ? navigate("results") : setMainView("results")}>▤ 결과 화면</button>
+          <div className="main-view-switch" role="group" aria-label="화면 선택" hidden={atelier && page === "work"}>
+            <button type="button" aria-pressed={mainView === "results"} className={mainView === "results" ? "active" : ""} onClick={() => atelier ? navigate("results") : setMainView("results")}>▤ 대화 결과</button>
+            <button type="button" aria-pressed={mainView === "pixel"} className={mainView === "pixel" ? "active" : ""} onClick={() => atelier ? navigate("pixel") : setMainView("pixel")}>▦ 픽셀 화면</button>
           </div>
           <div hidden={mainView !== "pixel"}>
             <PixelOffice
@@ -465,7 +459,7 @@ export default function App() {
               taskOutputs={bridge.taskOutputs}
             />
           </div>
-          {atelier && page === "work" && <div className="work-composer"><div className="work-composer-context"><span title={projectPath || undefined}>{workspaceMode === "research" ? "조사 모드" : projectPath ? projectPath.split(/[\\/]/).filter(Boolean).at(-1) : "프로젝트를 선택하세요"} · 이 컴퓨터</span><button type="button" onClick={bridge.newConversation} disabled={busy || !bridge.snapshot.connected || bridge.isPickingProject}>현재 작업공간에서 새 대화</button></div>{promptControls}</div>}
+          {atelier && page === "work" && <>{workSettings}<div className="work-composer"><div className="work-composer-context"><span title={projectPath || undefined}>{workspaceMode === "research" ? "조사 모드" : projectPath ? projectPath.split(/[\\/]/).filter(Boolean).at(-1) : "프로젝트를 선택하세요"} · 이 컴퓨터</span><button type="button" onClick={bridge.newConversation} disabled={busy || !bridge.snapshot.connected || bridge.isPickingProject}>현재 작업공간에서 새 대화</button></div>{promptControls}</div></>}
         </div>
 
       </div>

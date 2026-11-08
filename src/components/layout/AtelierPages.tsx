@@ -20,7 +20,7 @@ export function AtelierHome({ onNavigate, conversations, onSelectConversation, b
         ["아이디어부터", "만들고 싶은 제품과 사용자를 정리해요."], ["이미지부터", "레퍼런스의 관찰과 적용 이유를 연결해요."],
         ["컨셉 확정", "정한 방향을 구체적인 표현 규칙으로 옮겨요."], ["기존 결과 개선", "실제 결과와 의도의 차이를 살펴봐요."],
       ].map(([title, description], index) => <button type="button" className="atelier-entry" key={title} disabled={!onStartDesign} onClick={()=>onStartDesign?.((['idea','image','concept','improve'] as const)[index])}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{description}</p><small>{onStartDesign?'이 시작점으로 설계하기':'연결 예정'}</small></button>)}</div>
-      <button type="button" className="atelier-text-link" onClick={() => onNavigate("design")}>디자인 작업실 열기 →</button>
+      <button type="button" className="atelier-text-link" onClick={() => onNavigate("design")}>아뜰리에 디자인 열기 →</button>
     </section>
     <section className="atelier-home-section" aria-labelledby="atelier-recent-title"><div className="atelier-section-title"><div><h2 id="atelier-recent-title">이어서 작업하기</h2><p>로컬 브리지에서 불러온 대화입니다.</p></div><button type="button" className="atelier-text-link" onClick={() => onNavigate("results")}>대화와 결과 열기 ↗</button></div>
       {conversations.length ? <div className="atelier-conversation-list">{conversations.slice(0, 4).map((conversation) => <button key={conversation.id} type="button" disabled={busy} onClick={() => onSelectConversation(conversation.id)}><span><strong>{conversation.title}</strong><small>{conversation.preview || "아직 대화 내용이 없습니다."}</small></span><span>{conversation.messageCount}개 메시지</span><span aria-hidden="true">↗</span></button>)}</div> : <p className="atelier-empty-note">불러온 대화가 없습니다. 일반 Codex 작업에서 새 대화를 시작하세요.</p>}
