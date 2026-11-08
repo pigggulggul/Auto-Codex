@@ -1,4 +1,5 @@
 export type IssueViewStatus = "ready" | "retryable" | "failed" | "needs_review";
+export type IssueExecutionHistoryEntry = { attemptId: string; issueId: string; projectRevision: number; phase: "prepared" | "dispatching" | "running" | "verifying" | "outcome_unknown" | "settled"; outcome: "interrupted" | "failed" | "verification_finished" | "reconciled_unknown" | null; hasRuntimeReference: boolean; approvals: { pending: number; responding: number; sent: number; outcome_unknown: number; expired: number } };
 export type IssueImportedStatus = IssueViewStatus | "completed";
 export type IssueDocumentSummary = { id: string; documentRevision: number; issueCount: number };
 export type IssueSummary = { id: string; title: string; version: string; category: string | null; localStatus: IssueViewStatus; importedStatus: IssueImportedStatus; missingCriteria: boolean; unverifiedDependencies: number };
@@ -22,11 +23,7 @@ export type SourceTrace = { sourceId: string; sourceName: string; requirement: I
 export type IssueDependencyView = { id: string; title: string; localStatus: IssueViewStatus; importedStatus: IssueImportedStatus };
 export type IssueCategoryView = { id: string; title: string; hasChildren: boolean };
 export type Page<T> = { items: T[]; nextOffset: number | null };
-<<<<<<< HEAD
-export type IssueFindingCode = "source-unlinked" | "requirement-unlinked" | "requirement-uncategorized" | "requirement-same-text" | "requirement-ai-proposal" | "issue-unlinked" | "issue-uncategorized" | "issue-missing-description" | "issue-missing-criteria" | "issue-unverified-completion" | "issue-same-title" | "issue-same-version-order" | "issue-requirement-category-mismatch";
-=======
-export type IssueFindingCode = "requirement-unlinked" | "requirement-uncategorized" | "requirement-same-text" | "requirement-ai-proposal" | "issue-unlinked" | "issue-uncategorized" | "issue-missing-description" | "issue-missing-criteria" | "issue-unverified-completion" | "issue-same-title" | "issue-same-version-order" | "category-empty" | "category-no-requirements" | "category-no-issues" | "source-unreferenced";
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
+export type IssueFindingCode = "source-unlinked" | "requirement-unlinked" | "requirement-uncategorized" | "requirement-same-text" | "requirement-ai-proposal" | "issue-unlinked" | "issue-uncategorized" | "issue-missing-description" | "issue-missing-criteria" | "issue-unverified-completion" | "issue-same-title" | "issue-same-version-order" | "issue-requirement-category-mismatch" | "category-empty" | "category-no-requirements" | "category-no-issues";
 export type IssueFinding = { code: IssueFindingCode; entityId: string; title: string | null; provenance: { origin: IssueRequirementView["origin"]; sourceName: string | null; locator: string | null } | null; relatedEntityId?: string };
 export type IssueDiagnosticReport = { documentRevision: number; issueCount: number; requirementCount: number; linkedRequirementCount: number; totalFindings: number; findings: Page<IssueFinding> };
 export type IssueFilters = { search?: string; status?: IssueViewStatus; version?: string; categoryId?: string | null };
@@ -54,6 +51,7 @@ export function validProjectIssueCursor(value: unknown): value is ProjectIssueCu
 }
 export type IssueViewQuery =
   | { kind: "documents"; expectedRevision?: number; afterId?: string }
+  | { kind: "executionHistory"; expectedRevision: number; afterId: string | null }
   | { kind: "issues"; documentId: string; expectedRevision: number; offset: number; filters?: IssueFilters }
   | { kind: "projectIssues"; expectedRevision: number; cursor: ProjectIssueCursor; filters?: ProjectIssueFilters }
   | { kind: "categories"; documentId: string; expectedRevision: number; parentId: string | null; offset: number }
@@ -65,6 +63,7 @@ export type IssueViewQuery =
   | { kind: "criteria" | "requirements" | "dependencies"; documentId: string; expectedRevision: number; issueId: string; offset: number };
 export type IssueViewResult =
   | { kind: "documents"; revision: number; documents: IssueDocumentSummary[]; nextAfterId: string | null }
+  | { kind: "executionHistory"; revision: number; page: { items: IssueExecutionHistoryEntry[]; nextAfterId: string | null } }
   | { kind: "issues"; revision: number; page: Page<IssueSummary> }
   | { kind: "projectIssues"; revision: number; page: ProjectIssuePage }
   | { kind: "categories"; revision: number; page: Page<IssueCategoryView> }

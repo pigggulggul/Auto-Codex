@@ -1,10 +1,5 @@
-<<<<<<< HEAD
-import { validProjectIssueCursor, type IssueViewQuery, type IssueViewResult } from "../../../shared/issues/view";
-import type { AnalysisFreshness, AnalysisRunStatus, AnalysisSegmentPage, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../../shared/issues/sources";
-=======
-import { MAX_PREVIEW_DEPENDENCIES, validCandidateOptions, validProjectIssueCursor, type IssueViewQuery, type IssueViewResult } from "../../../shared/issues/view";
-import type { AnalysisFreshness, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../../shared/issues/sources";
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
+import { MAX_PREVIEW_DEPENDENCIES, validCandidateOptions, validProjectIssueCursor, type IssueViewQuery, type IssueViewResult } from "../../../shared/issues/view.js";
+import type { AnalysisFreshness, AnalysisRunStatus, AnalysisSegmentPage, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../../shared/issues/sources.js";
 
 type Action = "status" | "bind" | "import" | "export" | "authorizeView" | "view" | "releaseView" | "sourceAdd" | "sourceList" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck" | "analysisStatus" | "analysisStart" | "analysisInterrupt" | "analysisClear" | "analysisSegment" | "analysisRetry";
 type FreshnessRequest = { snapshotId: string; expectedRevision: number; expectedIds: string[] };
@@ -70,19 +65,22 @@ const localStatus = (value: unknown) => ["ready", "retryable", "failed", "needs_
 const dependency = (value: unknown) => record(value) && shortId(value.id) && label(value.title, 255) && localStatus(value.localStatus) && (localStatus(value.importedStatus) || value.importedStatus === "completed");
 const summary = (value: unknown) => dependency(value) && record(value) && label(value.version, 1024) && (value.category === null || label(value.category, 255)) && typeof value.missingCriteria === "boolean" && nonnegative(value.unverifiedDependencies);
 function validFinding(item: unknown): boolean {
-<<<<<<< HEAD
-  if (!record(item) || typeof item.code !== "string" || !["source-unlinked", "requirement-unlinked", "requirement-uncategorized", "requirement-same-text", "requirement-ai-proposal", "issue-unlinked", "issue-uncategorized", "issue-missing-description", "issue-missing-criteria", "issue-unverified-completion", "issue-same-title", "issue-same-version-order", "issue-requirement-category-mismatch"].includes(item.code) || !shortId(item.entityId) || !(item.title === null || label(item.title, 32768))) return false;
+  if (!record(item) || typeof item.code !== "string" || !["source-unlinked", "requirement-unlinked", "requirement-uncategorized", "requirement-same-text", "requirement-ai-proposal", "issue-unlinked", "issue-uncategorized", "issue-missing-description", "issue-missing-criteria", "issue-unverified-completion", "issue-same-title", "issue-same-version-order", "issue-requirement-category-mismatch", "category-empty", "category-no-requirements", "category-no-issues"].includes(item.code) || !shortId(item.entityId) || !(item.title === null || label(item.title, 32768))) return false;
   const duplicate = item.code === "requirement-same-text" || item.code === "issue-same-title" || item.code === "issue-same-version-order" || item.code === "issue-requirement-category-mismatch";
-=======
-  if (!record(item) || typeof item.code !== "string" || !["requirement-unlinked", "requirement-uncategorized", "requirement-same-text", "requirement-ai-proposal", "issue-unlinked", "issue-uncategorized", "issue-missing-description", "issue-missing-criteria", "issue-unverified-completion", "issue-same-title", "issue-same-version-order", "category-empty", "category-no-requirements", "category-no-issues", "source-unreferenced"].includes(item.code) || !shortId(item.entityId) || !(item.title === null || label(item.title, 32768))) return false;
-  const duplicate = item.code === "requirement-same-text" || item.code === "issue-same-title" || item.code === "issue-same-version-order";
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
   if (duplicate ? !shortId(item.relatedEntityId) || item.relatedEntityId === item.entityId : item.relatedEntityId !== undefined) return false;
   return item.code.startsWith("requirement-") ? record(item.provenance) && typeof item.provenance.origin === "string" && ["source", "user", "ai-proposal"].includes(item.provenance.origin) && (item.code !== "requirement-ai-proposal" || item.provenance.origin === "ai-proposal") && (item.provenance.sourceName === null || label(item.provenance.sourceName, 255)) && (item.provenance.locator === null || label(item.provenance.locator, 1024)) : item.provenance === null;
 }
 function validView(value: unknown): value is IssueViewResult {
   if (!record(value) || !Number.isSafeInteger(value.revision) || Number(value.revision) < 1) return false;
   if (value.kind === "documents") return Array.isArray(value.documents) && value.documents.length <= 32 && value.documents.every(item => record(item) && shortId(item.id) && Number.isSafeInteger(item.documentRevision) && Number(item.documentRevision) > 0 && nonnegative(item.issueCount)) && (value.nextAfterId === null || shortId(value.nextAfterId));
+  if (value.kind === "executionHistory") {
+    const p = value.page;
+    return record(p) && Array.isArray(p.items) && p.items.length <= 32 && p.items.every(item => {
+      if (!record(item) || !shortId(item.attemptId) || !shortId(item.issueId) || !Number.isSafeInteger(item.projectRevision) || Number(item.projectRevision) < 1 || !["prepared", "dispatching", "running", "verifying", "outcome_unknown", "settled"].includes(String(item.phase)) || !(item.outcome === null || ["interrupted", "failed", "verification_finished", "reconciled_unknown"].includes(String(item.outcome))) || (item.phase === "settled") !== (item.outcome !== null) || typeof item.hasRuntimeReference !== "boolean" || !record(item.approvals)) return false;
+      const keys = ["pending", "responding", "sent", "outcome_unknown", "expired"];
+      return Object.keys(item.approvals).length === keys.length && keys.every(key => nonnegative((item.approvals as Record<string, unknown>)[key])) && keys.reduce((sum, key) => sum + Number((item.approvals as Record<string, unknown>)[key]), 0) <= 1024;
+    }) && (p.nextAfterId === null || shortId(p.nextAfterId));
+  }
   if (value.kind === "diagnostics") {
     const r = value.report;
     return record(r) && Number.isSafeInteger(r.documentRevision) && Number(r.documentRevision) > 0 && nonnegative(r.issueCount) && nonnegative(r.requirementCount) && nonnegative(r.linkedRequirementCount) && Number(r.linkedRequirementCount) <= Number(r.requirementCount) && nonnegative(r.totalFindings) && record(r.findings) && Array.isArray(r.findings.items) && r.findings.items.length <= 32 && r.findings.items.length <= Number(r.totalFindings) && r.findings.items.every(validFinding) && (r.findings.nextOffset === null || r.findings.items.length > 0 && nonnegative(r.findings.nextOffset) && Number(r.findings.nextOffset) < Number(r.totalFindings));
@@ -114,6 +112,11 @@ function matchesViewRequest(view: IssueViewResult, query: IssueViewQuery | undef
     let previous = query.afterId ?? "";
     for (const item of view.documents) { if (item.id <= previous) return false; previous = item.id; }
     return view.nextAfterId === null || view.documents.length > 0 && view.nextAfterId === previous;
+  }
+  if (view.kind === "executionHistory" && query.kind === "executionHistory") {
+    let previous = query.afterId ?? "";
+    for (const item of view.page.items) { if (item.attemptId <= previous) return false; previous = item.attemptId; }
+    return view.page.nextAfterId === null || view.page.items.length > 0 && view.page.nextAfterId === previous;
   }
   if (view.kind === "detail" && query.kind === "detail") return view.issue.id === query.issueId;
   if (view.kind === "candidatePreview" && query.kind === "candidatePreview") {
@@ -174,19 +177,12 @@ export class IssueApi {
     const snapshotQuery = action === "snapshotPrepare" ? query as AnalysisSnapshotRequest : undefined;
     const freshnessQuery = action === "snapshotCheck" ? query as FreshnessRequest : undefined;
     const viewQuery = action === "view" && query && "kind" in query ? query as IssueViewQuery : undefined;
-<<<<<<< HEAD
     const segmentQuery = action === "analysisSegment" && query && "index" in query ? query : undefined;
-    const entry: Pending = { id, action, ...(sourceQuery ? { sourceId: sourceQuery.sourceId, offset: sourceQuery.offset } : {}), ...(segmentQuery ? { segmentIndex: segmentQuery.index, offset: segmentQuery.offset } : {}), ...(viewQuery ? { viewQuery: viewQuery.kind === "projectIssues" ? { ...viewQuery, cursor: { ...viewQuery.cursor } } : { ...viewQuery } } : {}), ...(snapshotQuery ? { snapshotRequest: { expectedRevision: snapshotQuery.expectedRevision, expectedSources: snapshotQuery.expectedSources.map(item => ({ ...item })), hasInstruction: !!snapshotQuery.instruction.trim() } } : {}), ...(freshnessQuery ? { freshnessRequest: { ...freshnessQuery, expectedIds: [...freshnessQuery.expectedIds] } } : {}), promise, resolve, reject, timer };
+    const entry: Pending = { id, action, ...(sourceQuery ? { sourceId: sourceQuery.sourceId, offset: sourceQuery.offset } : {}), ...(segmentQuery ? { segmentIndex: segmentQuery.index, offset: segmentQuery.offset } : {}), ...(viewQuery ? { viewQuery: viewQuery.kind === "projectIssues" ? { ...viewQuery, cursor: { ...viewQuery.cursor } } : viewQuery.kind === "candidatePreview" ? { ...viewQuery, issueIds: [...viewQuery.issueIds], ...(viewQuery.options ? { options: { ...viewQuery.options } } : {}) } : { ...viewQuery } } : {}), ...(snapshotQuery ? { snapshotRequest: { expectedRevision: snapshotQuery.expectedRevision, expectedSources: snapshotQuery.expectedSources.map(item => ({ ...item })), hasInstruction: !!snapshotQuery.instruction.trim() } } : {}), ...(freshnessQuery ? { freshnessRequest: { ...freshnessQuery, expectedIds: [...freshnessQuery.expectedIds] } } : {}), promise, resolve, reject, timer };
     if (priority) this.interruptPending = entry; else this.pending = entry;
     const type = action === "import" ? "issues.document.import" : action === "export" ? "issues.document.export" : action === "authorizeView" ? "issues.view.authorize" : action === "view" ? "issues.view.query" : action === "releaseView" ? "issues.view.release" : action === "sourceAdd" ? "issues.sources.add" : action === "sourceList" ? "issues.sources.list" : action === "sourceRead" ? "issues.sources.read" : action === "sourceRemove" ? "issues.sources.remove" : action === "snapshotPrepare" ? "issues.analysis.prepare" : action === "snapshotCheck" ? "issues.analysis.check" : action === "analysisStatus" ? "issues.analysis.status" : action === "analysisStart" ? "issues.analysis.start" : action === "analysisInterrupt" ? "issues.analysis.interrupt" : action === "analysisClear" ? "issues.analysis.clear" : action === "analysisSegment" ? "issues.analysis.segment" : action === "analysisRetry" ? "issues.analysis.retry" : `issues.project.${action}`;
     try { this.send(JSON.stringify({ type, v: 1, clientRequestId: id, ...(action === "view" ? { query } : {}), ...(action === "export" || action === "sourceRead" || action === "sourceRemove" || action === "snapshotPrepare" || action === "analysisStart" || action === "analysisSegment" || action === "analysisRetry" ? query : {}), ...(freshnessQuery ? { snapshotId: freshnessQuery.snapshotId, expectedRevision: freshnessQuery.expectedRevision } : {}) })); }
     catch { clearTimeout(timer); if (priority) this.interruptPending = null; else this.pending = null; reject(new IssueApiError("DISCONNECTED", "브리지에 요청을 전달하지 못했습니다.")); }
-=======
-    this.pending = { id, action, ...(sourceQuery ? { sourceId: sourceQuery.sourceId, offset: sourceQuery.offset } : {}), ...(viewQuery ? { viewQuery: viewQuery.kind === "projectIssues" ? { ...viewQuery, cursor: { ...viewQuery.cursor } } : viewQuery.kind === "candidatePreview" ? { ...viewQuery, issueIds: [...viewQuery.issueIds], ...(viewQuery.options ? { options: { ...viewQuery.options } } : {}) } : { ...viewQuery } } : {}), ...(snapshotQuery ? { snapshotRequest: { expectedRevision: snapshotQuery.expectedRevision, expectedSources: snapshotQuery.expectedSources.map(item => ({ ...item })), hasInstruction: !!snapshotQuery.instruction.trim() } } : {}), ...(freshnessQuery ? { freshnessRequest: { ...freshnessQuery, expectedIds: [...freshnessQuery.expectedIds] } } : {}), promise, resolve, reject, timer };
-    const type = action === "import" ? "issues.document.import" : action === "export" ? "issues.document.export" : action === "authorizeView" ? "issues.view.authorize" : action === "view" ? "issues.view.query" : action === "releaseView" ? "issues.view.release" : action === "sourceAdd" ? "issues.sources.add" : action === "sourceList" ? "issues.sources.list" : action === "sourceRead" ? "issues.sources.read" : action === "sourceRemove" ? "issues.sources.remove" : action === "snapshotPrepare" ? "issues.analysis.prepare" : action === "snapshotCheck" ? "issues.analysis.check" : `issues.project.${action}`;
-    try { this.send(JSON.stringify({ type, v: 1, clientRequestId: id, ...(action === "view" ? { query } : {}), ...(action === "export" || action === "sourceRead" || action === "sourceRemove" || action === "snapshotPrepare" ? query : {}), ...(freshnessQuery ? { snapshotId: freshnessQuery.snapshotId, expectedRevision: freshnessQuery.expectedRevision } : {}) })); }
-    catch { clearTimeout(timer); this.pending = null; reject(new IssueApiError("DISCONNECTED", "브리지에 요청을 전달하지 못했습니다.")); }
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
     return promise;
   }
   receive(input: unknown): boolean {

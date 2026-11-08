@@ -108,15 +108,14 @@ it("labels diagnostic scope and escapes untrusted titles", () => {
   expect(html).toContain("완료 조건이 없는 이슈");
 });
 
-<<<<<<< HEAD
 it("shows an unlinked source without inventing a requirement or issue action", () => {
   const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "source-unlinked", entityId: "source-1", title: "<자료>", provenance: null }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenIssue={() => {}} onOpenRequirement={() => {}} />);
   expect(html).toContain("요구사항에 연결되지 않은 자료"); expect(html).toContain("&lt;자료&gt;");
   expect(html).not.toContain("source-1 이슈 상세 보기"); expect(html).not.toContain("source-1 요구사항 상세 보기");
-=======
+});
 it("labels unreferenced document sources without implying their contents were analyzed", () => {
-  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "source-unreferenced", entityId: "source-1", title: "<script>unsafe</script>", provenance: null }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenIssue={() => {}} onOpenRequirement={() => {}} onOpenCategory={() => {}} />);
-  expect(html).toContain("요구사항에서 참조하지 않은 문서상 원본 자료");
+  const html = renderToStaticMarkup(<IssueDiagnostics report={{ documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [{ code: "source-unlinked", entityId: "source-1", title: "<script>unsafe</script>", provenance: null }], nextOffset: null } }} revision={2} offset={0} history={[]} loading={false} onPrevious={() => {}} onNext={() => {}} onOpenIssue={() => {}} onOpenRequirement={() => {}} onOpenCategory={() => {}} />);
+  expect(html).toContain("요구사항에 연결되지 않은 자료");
   expect(html).toContain("원본 자료는 문서에 기록된 참조만 확인하며 파일을 읽지 않습니다.");
   expect(html).toContain("&lt;script&gt;unsafe&lt;/script&gt;"); expect(html).not.toContain("<script>");
   expect(html).not.toContain('aria-label="source-1 이슈 상세 보기"'); expect(html).not.toContain('aria-label="source-1 분류 이슈 보기"');
@@ -133,7 +132,6 @@ it("offers accessible category navigation and preserves the filter explanation",
   expect(html).toContain('disabled="" aria-label="cat-empty 분류 이슈 보기"'); expect(html).toContain("현재 검색·상태·버전 필터가 유지됩니다.");
   const nav = renderToStaticMarkup(<IssueCategoryNavigation page={{ items: [], nextOffset: null }} path={[]} selected="cat-empty" history={[]} loading={false} onAll={() => {}} onUncategorized={() => {}} onParent={() => {}} onSelect={() => {}} onPrevious={() => {}} onNext={() => {}} />);
   expect(nav).toContain("cat-empty (점검에서 선택)");
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
 });
 
 it("shows matching text as a review candidate with its comparison ID", () => {

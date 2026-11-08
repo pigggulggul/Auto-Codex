@@ -7,21 +7,16 @@ import { AnalysisSourceError } from "./analysis-source.js";
 import { IssueSourceSessions, SourceSessionError } from "./source-session.js";
 import { AnalysisDraft } from "./analysis-draft.js";
 import { AnalysisBatch } from "./analysis-batch.js";
-<<<<<<< HEAD
 import { AnalysisExecution } from "./analysis-execution.js";
-import { validIssueFilters, validProjectIssueCursor, validProjectIssueFilters, type IssueViewQuery, type IssueViewResult } from "../../shared/issues/view.js";
-import type { AnalysisFreshness, AnalysisSegmentPage, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../shared/issues/sources.js";
-=======
 import { validCandidateIds, validCandidateOptions, validIssueFilters, validProjectIssueCursor, validProjectIssueFilters, type IssueViewQuery, type IssueViewResult } from "../../shared/issues/view.js";
-import type { AnalysisFreshness, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../shared/issues/sources.js";
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
+import type { AnalysisFreshness, AnalysisSegmentPage, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../shared/issues/sources.js";
 import { performance } from "node:perf_hooks";
 import path from "node:path";
 
 type Action = "status" | "bind" | "import" | "export" | "authorizeView" | "view" | "releaseView" | "sourceAdd" | "sourceList" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck" | "analysisStatus" | "analysisStart" | "analysisInterrupt" | "analysisClear" | "analysisSegment" | "analysisRetry";
 export type IssueProjectReply = { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: true; bound: boolean; cancelled?: true; issueCount?: number; alreadyImported?: boolean; cleanupWarning?: boolean; view?: IssueViewResult; authorized?: boolean; authorizedForMs?: number; sources?: AnalysisSourceList; chunk?: AnalysisSourceChunk; snapshot?: AnalysisSnapshotSummary; freshness?: AnalysisFreshness; analysisStatus?: "unavailable" | ReturnType<AnalysisExecution["status"]>; analysisSegment?: AnalysisSegmentPage } | { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: false; error: { code: string; message: string } };
-type Context = { status(): Promise<{ project: { id: string; revision: number } | null }>; bind(): Promise<{ project: { id: string; revision: number }; alreadyBound: boolean }>; importDocument(bytes: Uint8Array, mayStart: () => boolean): Promise<{ issueCount: number; alreadyImported: boolean }>; exportDocument(documentId: string, revision: number, mayStart: () => boolean): Promise<Uint8Array>; view(query: IssueViewQuery, mayStart: () => boolean): Promise<IssueViewResult> };
-type Options = { selection(): IssueProjectSelection; context(): Context; pick(signal?: AbortSignal): Promise<string | null>; pickView(signal?: AbortSignal): Promise<string | null>; pickDocument(signal?: AbortSignal): Promise<string | null>; pickExport(projectPath: string, signal?: AbortSignal): Promise<string | null>; pickSource(projectPath: string, signal?: AbortSignal): Promise<string | null>; readSource(projectPath: string, target: string, signal?: AbortSignal): Promise<{ relativePath: string; bytes: number; sha256: string; text: string }>; readDocument(path: string, signal?: AbortSignal): Promise<Uint8Array>; writeExport(projectPath: string, target: string, bytes: Uint8Array, beforeCommit: () => Promise<void>, signal?: AbortSignal): Promise<{ cleanupWarning: boolean }>; tryAcquireWrite(): (() => void) | null; canonical(path: string): Promise<string>; busy(): boolean; now?(): number; createAnalysisExecution?: (createBatch: (admitted: () => boolean) => Promise<AnalysisBatch>) => AnalysisExecution | null };
+type Context = { status(): Promise<{ project: { id: string; revision: number } | null }>; bind(): Promise<{ project: { id: string; revision: number }; alreadyBound: boolean }>; importDocument(bytes: Uint8Array, mayStart: () => boolean, expected: { id: string; revision: number }): Promise<{ issueCount: number; alreadyImported: boolean }>; exportDocument(documentId: string, revision: number, mayStart: () => boolean, expectedProjectId: string): Promise<Uint8Array>; view(query: IssueViewQuery, mayStart: () => boolean, expectedProjectId: string): Promise<IssueViewResult> };
+type Options = { selection(): IssueProjectSelection; context(): Context; pick(signal?: AbortSignal): Promise<string | null>; pickView(signal?: AbortSignal): Promise<string | null>; pickDocument(signal?: AbortSignal): Promise<string | null>; pickExport(projectPath: string, signal?: AbortSignal): Promise<string | null>; pickSource(projectPath: string, signal?: AbortSignal): Promise<string | null>; readSource(projectPath: string, target: string, signal?: AbortSignal): Promise<{ relativePath: string; bytes: number; sha256: string; text: string }>; readDocument(path: string, signal?: AbortSignal): Promise<Uint8Array>; writeExport(projectPath: string, target: string, bytes: Uint8Array, beforeCommit: () => Promise<void>, signal?: AbortSignal): Promise<{ cleanupWarning: boolean }>; tryAcquireWrite(): (() => void) | null; canonical(path: string): Promise<string>; busy(): boolean; now?(): number; analysisAvailable?(): boolean; createAnalysisExecution?: (createBatch: (admitted: () => boolean) => Promise<AnalysisBatch>, owner: AbortSignal) => AnalysisExecution | null };
 type AnalysisLease = { invalidated: boolean; batch?: AnalysisBatch; timer: ReturnType<typeof setTimeout>; onAbort: () => void };
 const equalPath = (a: string, b: string) => process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
 const safeError = (error: unknown) => error instanceof IssueProjectContextError || error instanceof IssueWorkerClientError || error instanceof SelectedDocumentError || error instanceof IssueExportError || error instanceof AnalysisSourceError || error instanceof SourceSessionError
@@ -45,6 +40,7 @@ function parseViewQuery(value: unknown): IssueViewQuery {
   const offset = () => Number.isSafeInteger(q.offset) && Number(q.offset) >= 0;
   switch (q.kind) {
     case "documents": keys(["kind", "expectedRevision", "afterId"]); if (q.expectedRevision !== undefined && !revision() || q.afterId !== undefined && !id(q.afterId)) throw new Error("invalid"); break;
+    case "executionHistory": keys(["kind", "expectedRevision", "afterId"]); if (!revision() || !(q.afterId === null || id(q.afterId))) throw new Error("invalid"); break;
     case "issues": keys(["kind", "documentId", "expectedRevision", "offset", "filters"]); if (!id(q.documentId) || !revision() || !offset() || q.filters !== undefined && !validIssueFilters(q.filters)) throw new Error("invalid"); break;
     case "projectIssues": keys(["kind", "expectedRevision", "cursor", "filters"]); if (!revision() || !validProjectIssueCursor(q.cursor) || q.filters !== undefined && !validProjectIssueFilters(q.filters)) throw new Error("invalid"); break;
     case "categories": keys(["kind", "documentId", "expectedRevision", "parentId", "offset"]); if (!id(q.documentId) || !revision() || !offset() || !(q.parentId === null || id(q.parentId))) throw new Error("invalid"); break;
@@ -63,12 +59,14 @@ function parseViewQuery(value: unknown): IssueViewQuery {
 export class IssueBridgeApi {
   private pickerOpen = false;
   private checkingSources = false;
-  private readonly views = new WeakMap<AbortSignal, { generation: number; path: string; expires: number }>();
+  private readonly views = new WeakMap<AbortSignal, { generation: number; path: string; projectId: string; expires: number }>();
   private readonly sources = new IssueSourceSessions(() => this.now());
   private readonly analysisLeases = new Map<AbortSignal, AnalysisLease>();
   private readonly analysisExecutions = new Map<AbortSignal, AnalysisExecution>();
   private readonly analysisRevisions = new Map<AbortSignal, number>();
+  private readonly analysisProjectIds = new Map<AbortSignal, string>();
   private readonly analysisSnapshotIds = new Map<AbortSignal, string>();
+  private readonly snapshotProjects = new WeakMap<AbortSignal, { snapshotId: string; projectId: string }>();
   constructor(private readonly options: Options) {}
   private now(): number { return this.options.now?.() ?? performance.now(); }
   clearSources(): void { for (const signal of new Set([...this.analysisLeases.keys(), ...this.analysisExecutions.keys()])) this.revokeAnalysis(signal); this.sources.clearAll(); }
@@ -78,23 +76,26 @@ export class IssueBridgeApi {
   }
   private revokeAnalysis(signal: AbortSignal): void {
     const execution = this.analysisExecutions.get(signal);
-    if (execution) { execution.interrupt(); if (execution.clear()) { this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisSnapshotIds.delete(signal); } }
+    if (execution) { execution.interrupt(); if (execution.clear()) { this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisProjectIds.delete(signal); this.analysisSnapshotIds.delete(signal); } }
     const lease = this.analysisLeases.get(signal);
     if (!lease) return;
     lease.invalidated = true;
     lease.batch?.dispose();
   }
+  private revokeView(signal: AbortSignal): void {
+    this.views.delete(signal); this.revokeAnalysis(signal); this.sources.clear(signal); this.snapshotProjects.delete(signal);
+  }
   private activeView(signal: AbortSignal | undefined, connected: () => boolean) {
-    if (!signal || signal.aborted || !connected()) { if (signal) { this.revokeAnalysis(signal); this.sources.clear(signal); } return null; }
+    if (!signal || signal.aborted || !connected()) { if (signal) this.revokeView(signal); return null; }
     const grant = this.views.get(signal), current = this.options.selection();
-    if (!grant || grant.expires <= this.now() || current.workspaceMode !== "project" || current.generation !== grant.generation || current.projectPath !== grant.path) { this.revokeAnalysis(signal); this.sources.clear(signal); return null; }
+    if (!grant || grant.expires <= this.now() || current.workspaceMode !== "project" || current.generation !== grant.generation || current.projectPath !== grant.path) { this.revokeView(signal); return null; }
     return grant;
   }
   /**
    * Trusted runtime entry point, not a WebSocket operation. The runtime must acquire
    * shared admission and enforce tool isolation before using the returned batch.
    */
-  async createAnalysisBatch(signal: AbortSignal, connected: () => boolean, admitted: () => boolean, snapshotId: string, revision: number): Promise<AnalysisBatch> {
+  async createAnalysisBatch(signal: AbortSignal, connected: () => boolean, admitted: () => boolean, snapshotId: string, revision: number, expectedProjectId?: string): Promise<AnalysisBatch> {
     const grant = this.activeView(signal, connected);
     const stale = (): never => { throw new AnalysisSourceError("STALE_INPUT", "분석 입력 또는 실행 권한이 변경되었습니다. 다시 준비하세요."); };
     if (!grant || !admitted()) return stale();
@@ -104,7 +105,7 @@ export class IssueBridgeApi {
     const valid = () => Boolean(!lease.invalidated && this.activeView(signal, connected) === grant && admitted());
     try {
       const project = await this.options.context().status();
-      if (!valid() || !project.project || project.project.revision !== revision) return stale();
+      if (!valid() || !project.project || project.project.id !== grant.projectId || project.project.revision !== revision || expectedProjectId !== undefined && project.project.id !== expectedProjectId) return stale();
       const projectId = project.project.id;
       const summary = this.sources.snapshotSummary(signal, grant.generation, grant.path, revision, snapshotId);
       const loadSegment = async (index: number) => {
@@ -163,23 +164,33 @@ export class IssueBridgeApi {
       if (["analysisStatus", "analysisStart", "analysisInterrupt", "analysisClear", "analysisSegment", "analysisRetry"].includes(action)) {
         const grant = this.activeView(signal, connected);
         if (!grant || !signal) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "이슈 보기 권한을 다시 확인하세요." } };
-        const project = await this.options.context().status();
-        if (!project.project || this.activeView(signal, connected) !== grant) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "프로젝트 또는 보기 권한이 변경되었습니다." } };
+        let project: Awaited<ReturnType<Context["status"]>>;
+        try { project = await this.options.context().status(); }
+        catch (error) { if (this.views.get(signal) === grant) this.revokeView(signal); throw error; }
+        if (!project.project || this.activeView(signal, connected) !== grant) {
+          if (this.views.get(signal) === grant) this.revokeView(signal);
+          return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "프로젝트 또는 보기 권한이 변경되었습니다." } };
+        }
+        if (project.project.id !== grant.projectId) { this.revokeView(signal); throw new AnalysisSourceError("STALE_INPUT", "프로젝트가 변경되어 분석 입력을 다시 준비해야 합니다."); }
         let execution = this.analysisExecutions.get(signal);
-        if (execution && action !== "analysisClear" && project.project.revision !== this.analysisRevisions.get(signal)) {
-          this.revokeAnalysis(signal); throw new AnalysisSourceError("STALE_INPUT", "프로젝트가 변경되어 분석 결과를 다시 준비해야 합니다.");
+        if (execution && action !== "analysisClear" && (project.project.revision !== this.analysisRevisions.get(signal) || project.project.id !== this.analysisProjectIds.get(signal))) {
+          this.revokeAnalysis(signal); this.sources.clear(signal); this.snapshotProjects.delete(signal);
+          throw new AnalysisSourceError("STALE_INPUT", "프로젝트가 변경되어 분석 결과를 다시 준비해야 합니다.");
         }
         if (action === "analysisStart") {
           if (!this.options.createAnalysisExecution) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "ANALYSIS_UNAVAILABLE", message: "분석 실행과 도구 정책이 아직 준비되지 않았습니다." } };
           if (execution) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "BUSY", message: "이전 분석을 정리한 뒤 다시 시작하세요." } };
           if (project.project.revision !== Number(message.expectedRevision)) throw new AnalysisSourceError("STALE_INPUT", "프로젝트가 변경되어 다시 준비해야 합니다.");
           this.sources.snapshotSummary(signal, grant.generation, grant.path, Number(message.expectedRevision), String(message.snapshotId));
-          execution = this.options.createAnalysisExecution(admitted => this.createAnalysisBatch(signal, connected, admitted, String(message.snapshotId), Number(message.expectedRevision))) ?? undefined;
+          const selectedProjectId = project.project.id;
+          const prepared = this.snapshotProjects.get(signal);
+          if (!prepared || prepared.snapshotId !== message.snapshotId || prepared.projectId !== selectedProjectId) throw new AnalysisSourceError("STALE_INPUT", "프로젝트가 변경되어 분석 입력을 다시 준비해야 합니다.");
+          execution = this.options.createAnalysisExecution(admitted => this.createAnalysisBatch(signal, connected, admitted, String(message.snapshotId), Number(message.expectedRevision), selectedProjectId), signal) ?? undefined;
           if (!execution) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "ANALYSIS_UNAVAILABLE", message: "안전한 분석 실행을 확인할 수 없습니다." } };
-          const owned = execution; this.analysisExecutions.set(signal, owned); this.analysisRevisions.set(signal, Number(message.expectedRevision)); this.analysisSnapshotIds.set(signal, String(message.snapshotId));
+          const owned = execution; this.analysisExecutions.set(signal, owned); this.analysisRevisions.set(signal, Number(message.expectedRevision)); this.analysisProjectIds.set(signal, selectedProjectId); this.analysisSnapshotIds.set(signal, String(message.snapshotId));
           const pending = owned.start(2048);
-          if (owned.status().state === "idle") { this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisSnapshotIds.delete(signal); await pending.catch(() => {}); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "ANALYSIS_UNAVAILABLE", message: "안전한 분석 실행을 확인할 수 없습니다." } }; }
-          void pending.finally(() => { if (!this.activeView(signal, connected) && owned.clear()) { this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisSnapshotIds.delete(signal); } }).catch(() => {});
+          if (owned.status().state === "idle") { this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisProjectIds.delete(signal); this.analysisSnapshotIds.delete(signal); await pending.catch(() => {}); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "ANALYSIS_UNAVAILABLE", message: "안전한 분석 실행을 확인할 수 없습니다." } }; }
+          void pending.finally(() => { if (!this.activeView(signal, connected) && owned.clear()) { this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisProjectIds.delete(signal); this.analysisSnapshotIds.delete(signal); } }).catch(() => {});
         } else if (action === "analysisSegment") {
           if (!execution) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "NOT_FOUND", message: "분석 결과가 없습니다." } };
           const revision = this.analysisRevisions.get(signal), snapshotId = this.analysisSnapshotIds.get(signal);
@@ -200,16 +211,16 @@ export class IssueBridgeApi {
           if (!execution) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "NOT_FOUND", message: "재시도할 분석이 없습니다." } };
           const owned = execution, pending = owned.retry(Number(message.index));
           if (owned.status().state !== "running") { await pending.catch(() => {}); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "ANALYSIS_UNAVAILABLE", message: "이 구간을 다시 시작할 수 없습니다." } }; }
-          void pending.finally(() => { if (!this.activeView(signal, connected) && owned.clear()) { this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisSnapshotIds.delete(signal); } }).catch(() => {});
+          void pending.finally(() => { if (!this.activeView(signal, connected) && owned.clear()) { this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisProjectIds.delete(signal); this.analysisSnapshotIds.delete(signal); } }).catch(() => {});
         } else if (action === "analysisInterrupt") {
           if (!execution?.interrupt()) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "NOT_RUNNING", message: "중단할 분석이 없습니다." } };
         } else if (action === "analysisClear") {
           if (!execution?.clear()) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "BUSY", message: "분석이 끝난 뒤 정리하세요." } };
-          this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisSnapshotIds.delete(signal); execution = undefined;
+          this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisProjectIds.delete(signal); this.analysisSnapshotIds.delete(signal); execution = undefined;
         }
-        return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, analysisStatus: execution?.status() ?? "unavailable" };
+        return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, analysisStatus: execution?.status() ?? (this.options.analysisAvailable?.() ? { state: "idle", progress: null } : "unavailable") };
       }
-      if (action === "releaseView") { if (signal) { this.views.delete(signal); this.revokeAnalysis(signal); this.sources.clear(signal); } return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, authorized: false }; }
+      if (action === "releaseView") { if (signal) this.revokeView(signal); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, authorized: false }; }
       if (signal && this.analysisLeases.has(signal) && (action === "sourceAdd" || action === "sourceRemove" || action === "snapshotPrepare")) {
         if (!this.activeView(signal, connected)) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "자료를 보려면 현재 프로젝트 폴더를 다시 확인하세요." } };
         return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "BUSY", message: "분석이 완전히 끝난 뒤 자료를 변경하세요." } };
@@ -219,13 +230,20 @@ export class IssueBridgeApi {
         const grant = this.activeView(signal, connected);
         if (!grant || !signal) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "자료를 보려면 현재 프로젝트 폴더를 다시 확인하세요." } };
         let project: Awaited<ReturnType<Context["status"]>>;
-        try { project = await this.options.context().status(); } catch (error) { this.revokeAnalysis(signal); this.sources.clear(signal); throw error; }
-        if (!project.project || this.activeView(signal, connected) !== grant) { this.revokeAnalysis(signal); this.sources.clear(signal); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "프로젝트 또는 보기 권한이 변경되었습니다." } }; }
+        try { project = await this.options.context().status(); } catch (error) { if (this.views.get(signal) === grant) this.revokeView(signal); throw error; }
+        if (!project.project || this.activeView(signal, connected) !== grant) { if (this.views.get(signal) === grant) this.revokeView(signal); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "프로젝트 또는 보기 권한이 변경되었습니다." } }; }
+        if (project.project.id !== grant.projectId) { this.revokeView(signal); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "프로젝트가 변경되어 보기 권한을 다시 확인하세요." } }; }
         if (this.analysisLeases.has(signal) && (action === "sourceRemove" || action === "snapshotPrepare")) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "BUSY", message: "분석이 완전히 끝난 뒤 자료를 변경하세요." } };
-        if (snapshotRequest) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, snapshot: this.sources.prepare(signal, grant.generation, grant.path, project.project.revision, snapshotRequest) };
+        if (snapshotRequest) {
+          const snapshot = this.sources.prepare(signal, grant.generation, grant.path, project.project.revision, snapshotRequest);
+          this.snapshotProjects.set(signal, { snapshotId: snapshot.id, projectId: project.project.id });
+          return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, snapshot };
+        }
         if (action === "snapshotCheck") {
           const snapshotId = String(message.snapshotId), revision = Number(message.expectedRevision);
           if (project.project.revision !== revision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트가 변경되었습니다. 목록을 새로 불러오세요.");
+          const prepared = this.snapshotProjects.get(signal);
+          if (!prepared || prepared.snapshotId !== snapshotId || prepared.projectId !== project.project.id) throw new AnalysisSourceError("STALE_INPUT", "프로젝트가 변경되어 분석 입력을 다시 준비해야 합니다.");
           const sourceFiles = this.sources.snapshotFiles(signal, grant.generation, grant.path, revision, snapshotId);
           if (this.checkingSources || this.options.busy()) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "BUSY", message: "다른 작업이 끝난 뒤 원본을 확인하세요." } };
           this.checkingSources = true;
@@ -257,8 +275,13 @@ export class IssueBridgeApi {
         const query = parseViewQuery(message.query);
         const allowed = () => { if (!signal || signal.aborted || !connected()) return false; const grant = this.views.get(signal), now = this.options.selection(); return Boolean(grant && grant.expires > this.now() && now.workspaceMode === "project" && now.generation === grant.generation && now.projectPath === grant.path); };
         if (!allowed()) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "이슈 내용을 보려면 현재 프로젝트 폴더를 확인하세요." } };
-        const view = await this.options.context().view(query, allowed);
-        if (!allowed()) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "이슈 보기 권한이 만료되었거나 프로젝트가 변경되었습니다." } };
+        const grant = this.views.get(signal!)!;
+        let before: Awaited<ReturnType<Context["status"]>>, after: Awaited<ReturnType<Context["status"]>>;
+        try { before = await this.options.context().status(); } catch (error) { if (this.views.get(signal!) === grant) this.revokeView(signal!); throw error; }
+        if (!allowed() || this.views.get(signal!) !== grant || !before.project || before.project.id !== grant.projectId) { if (this.views.get(signal!) === grant) this.revokeView(signal!); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "프로젝트가 변경되어 보기 권한을 다시 확인하세요." } }; }
+        const view = await this.options.context().view(query, () => allowed() && this.views.get(signal!) === grant, grant.projectId);
+        try { after = await this.options.context().status(); } catch (error) { if (this.views.get(signal!) === grant) this.revokeView(signal!); throw error; }
+        if (!allowed() || this.views.get(signal!) !== grant || !after.project || after.project.id !== grant.projectId) { if (this.views.get(signal!) === grant) this.revokeView(signal!); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "이슈 보기 권한이 만료되었거나 프로젝트가 변경되었습니다." } }; }
         return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, view };
       }
       if (this.pickerOpen || this.options.busy()) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "BUSY", message: "진행 중인 작업이나 폴더 선택이 끝난 뒤 다시 시도하세요." } };
@@ -268,11 +291,16 @@ export class IssueBridgeApi {
       try {
         const stillSelected = () => { const now = this.options.selection(); return !signal?.aborted && connected() && now.generation === selected.generation && now.workspaceMode === "project" && now.projectPath === selected.projectPath; };
         if (action === "export") {
-          const allowed = () => { if (!signal || !stillSelected()) return false; const grant = this.views.get(signal); return Boolean(grant && grant.expires > this.now() && grant.generation === selected.generation && grant.path === selected.projectPath); };
+          const exportGrant = signal ? this.views.get(signal) : undefined;
+          const allowed = () => { if (!signal || !stillSelected()) return false; const grant = this.views.get(signal); return Boolean(grant && grant === exportGrant && grant.expires > this.now() && grant.generation === selected.generation && grant.path === selected.projectPath); };
           if (!allowed()) throw new IssueExportError("VIEW_AUTH_REQUIRED", "이슈 보기 권한이 없거나 만료되었습니다. 다시 확인하세요.");
           const documentId = message.documentId as string, expectedRevision = Number(message.expectedRevision);
-          const context = this.options.context(), before = await context.status();
-          if (!before.project || before.project.revision !== expectedRevision || !allowed()) throw new IssueExportError("STALE_SELECTION", "이슈 목록 또는 프로젝트 선택이 변경되었습니다. 다시 불러오세요.");
+          const context = this.options.context();
+          let before: Awaited<ReturnType<Context["status"]>>;
+          try { before = await context.status(); } catch (error) { if (signal && this.views.get(signal) === exportGrant) this.revokeView(signal); throw error; }
+          if ((!before.project || before.project.id !== exportGrant?.projectId) && signal && this.views.get(signal) === exportGrant) this.revokeView(signal);
+          if (!before.project || before.project.id !== this.views.get(signal!)?.projectId || before.project.revision !== expectedRevision || !allowed()) throw new IssueExportError("STALE_SELECTION", "이슈 목록 또는 프로젝트 선택이 변경되었습니다. 다시 불러오세요.");
+          const projectId = before.project.id;
           const target = await this.options.pickExport(selected.projectPath!, signal);
           if (!target) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, cancelled: true };
           const canWrite = () => allowed() && !this.options.busy();
@@ -280,11 +308,13 @@ export class IssueBridgeApi {
           const release = this.options.tryAcquireWrite();
           if (!release) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "BUSY", message: "다른 작업이 시작되어 저장하지 않았습니다. 작업이 끝난 뒤 다시 시도하세요." } };
           try {
-            const bytes = await context.exportDocument(documentId, expectedRevision, canWrite);
+            const bytes = await context.exportDocument(documentId, expectedRevision, canWrite, projectId);
             const beforeCommit = async () => {
               if (!canWrite()) throw new IssueExportError("STALE_SELECTION", "프로젝트 또는 실행 상태가 변경되어 저장하지 않았습니다.");
-              const current = await context.status();
-              if (!canWrite() || !current.project || current.project.id !== before.project!.id || current.project.revision !== expectedRevision) throw new IssueExportError("STALE_SELECTION", "이슈 목록 또는 프로젝트 선택이 변경되어 저장하지 않았습니다.");
+              let current: Awaited<ReturnType<Context["status"]>>;
+              try { current = await context.status(); } catch (error) { if (signal && this.views.get(signal) === exportGrant) this.revokeView(signal); throw error; }
+              if ((!current.project || current.project.id !== projectId) && signal && this.views.get(signal) === exportGrant) this.revokeView(signal);
+              if (!canWrite() || !current.project || current.project.id !== projectId || current.project.revision !== expectedRevision) throw new IssueExportError("STALE_SELECTION", "이슈 목록 또는 프로젝트 선택이 변경되어 저장하지 않았습니다.");
             };
             const saved = await this.options.writeExport(selected.projectPath!, target, bytes, beforeCommit, signal);
             if (!canWrite()) throw new IssueExportError("OUTCOME_UNKNOWN", "저장 중 연결 또는 프로젝트가 변경되었습니다. 선택한 위치를 확인하세요.");
@@ -293,49 +323,68 @@ export class IssueBridgeApi {
         }
         if (action === "authorizeView") {
           if (!signal) throw new Error("missing session");
-          this.views.delete(signal);
-          this.revokeAnalysis(signal);
-          this.sources.clear(signal);
-          if (!(await this.options.context().status()).project) throw new IssueProjectContextError("PROJECT_UNBOUND", "먼저 현재 프로젝트의 이슈 저장소를 연결하세요.");
+          this.revokeView(signal);
+          const before = await this.options.context().status();
+          if (!before.project) throw new IssueProjectContextError("PROJECT_UNBOUND", "먼저 현재 프로젝트의 이슈 저장소를 연결하세요.");
+          const projectId = before.project.id;
           if (!stillSelected()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 선택이 변경되었습니다.");
           const path = await this.options.pickView(signal);
           if (!path) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, cancelled: true, authorized: false };
           if (!stillSelected()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 선택이 변경되었습니다.");
           const actual = await this.options.canonical(path), expected = await this.options.canonical(selected.projectPath!);
           if (!stillSelected() || !equalPath(actual, expected)) throw new IssueProjectContextError("STALE_SELECTION", "현재 프로젝트 폴더를 다시 선택해 주세요.");
-          if (!(await this.options.context().status()).project || !stillSelected()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 선택이 변경되었습니다.");
-          this.views.set(signal, { generation: selected.generation, path: selected.projectPath!, expires: this.now() + 15 * 60_000 });
+          const after = await this.options.context().status();
+          if (!after.project || after.project.id !== projectId || !stillSelected()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 선택이 변경되었습니다.");
+          this.views.set(signal, { generation: selected.generation, path: selected.projectPath!, projectId, expires: this.now() + 15 * 60_000 });
           return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, authorized: true, authorizedForMs: 15 * 60_000 };
         }
         if (action === "sourceAdd") {
           const grant = this.activeView(signal, connected);
           if (!grant || !signal) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "자료를 선택하려면 현재 프로젝트 폴더를 다시 확인하세요." } };
-          const context = this.options.context(), before = await context.status();
+          const context = this.options.context();
+          let before: Awaited<ReturnType<Context["status"]>>;
+          try { before = await context.status(); } catch (error) { if (this.views.get(signal) === grant) this.revokeView(signal); throw error; }
           const requireGrant = () => { if (this.activeView(signal, connected) !== grant) throw new IssueExportError("VIEW_AUTH_REQUIRED", "프로젝트 또는 보기 권한이 변경되었습니다."); };
           requireGrant();
-          if (!before.project || !stillSelected()) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 선택이 변경되었습니다. 다시 확인하세요.");
+          if (!before.project || before.project.id !== grant.projectId || !stillSelected()) { this.revokeView(signal); throw new AnalysisSourceError("STALE_INPUT", "프로젝트 선택이 변경되었습니다. 다시 확인하세요."); }
+          const projectId = before.project.id, projectRevision = before.project.revision;
           const chosen = await this.options.pickSource(selected.projectPath!, signal);
           if (!chosen) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, cancelled: true };
           requireGrant();
           if (!stillSelected() || this.options.busy()) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 실행 상태가 변경되어 자료를 선택하지 않았습니다.");
+          let afterPick: Awaited<ReturnType<Context["status"]>>;
+          try { afterPick = await context.status(); } catch (error) { if (this.views.get(signal) === grant) this.revokeView(signal); throw error; }
+          requireGrant();
+          if (!afterPick.project || afterPick.project.id !== projectId) this.revokeView(signal);
+          if (!stillSelected() || this.options.busy() || !afterPick.project || afterPick.project.id !== projectId || afterPick.project.revision !== projectRevision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 이슈 저장소가 변경되어 자료를 선택하지 않았습니다.");
           const source = await this.options.readSource(selected.projectPath!, chosen, signal);
           requireGrant();
           if (!stillSelected() || this.options.busy()) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 실행 상태가 변경되어 자료를 선택하지 않았습니다.");
-          const after = await context.status();
+          let after: Awaited<ReturnType<Context["status"]>>;
+          try { after = await context.status(); } catch (error) { if (this.views.get(signal) === grant) this.revokeView(signal); throw error; }
           requireGrant();
-          if (!stillSelected() || this.options.busy() || !after.project || after.project.id !== before.project.id || after.project.revision !== before.project.revision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 이슈 저장소가 변경되어 자료를 선택하지 않았습니다.");
+          if (!after.project || after.project.id !== grant.projectId) this.revokeView(signal);
+          if (!stillSelected() || this.options.busy() || !after.project || after.project.id !== projectId || after.project.revision !== projectRevision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 이슈 저장소가 변경되어 자료를 선택하지 않았습니다.");
           if (this.analysisLeases.has(signal)) throw new AnalysisSourceError("BUSY", "분석이 완전히 끝난 뒤 자료를 변경하세요.");
-          return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, sources: this.sources.add(signal, selected.generation, selected.projectPath!, grant.expires, before.project.revision, source) };
+          return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, sources: this.sources.add(signal, selected.generation, selected.projectPath!, grant.expires, projectRevision, source) };
         }
         if (action === "import") {
-          if (!(await this.options.context().status()).project) throw new IssueProjectContextError("PROJECT_UNBOUND", "먼저 현재 프로젝트의 이슈 저장소를 연결하세요.");
+          const context = this.options.context(), before = await context.status();
+          if (!before.project) throw new IssueProjectContextError("PROJECT_UNBOUND", "먼저 현재 프로젝트의 이슈 저장소를 연결하세요.");
+          const expected = { id: before.project.id, revision: before.project.revision };
+          const checkProject = async () => {
+            const current = await context.status();
+            if (!stillSelected() || this.options.busy() || !current.project || current.project.id !== expected.id || current.project.revision !== expected.revision) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 이슈 저장소가 변경되어 문서를 가져오지 않았습니다.");
+          };
           if (!stillSelected() || this.options.busy()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 실행 상태가 변경되었습니다.");
           const file = await this.options.pickDocument(signal);
           if (!file) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, cancelled: true };
           if (!stillSelected()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 선택이 변경되어 문서를 가져오지 않았습니다.");
+          await checkProject();
           const bytes = await this.options.readDocument(file, signal);
           if (!stillSelected() || this.options.busy()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 실행 상태가 변경되어 문서를 가져오지 않았습니다.");
-          const result = await this.options.context().importDocument(bytes, () => stillSelected() && !this.options.busy());
+          await checkProject();
+          const result = await context.importDocument(bytes, () => stillSelected() && !this.options.busy(), expected);
           return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, issueCount: result.issueCount, alreadyImported: result.alreadyImported };
         }
         const path = await this.options.pick(signal);

@@ -130,6 +130,7 @@ export type ApprovalRequest = {
   agentId?: string;
   threadId?: string;
   turnId?: string;
+  oneTimeOnly?: boolean;
   requestedPermissions?: {
     network: boolean;
     readPaths: string[];

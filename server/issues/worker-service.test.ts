@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { IssueStore } from "./store.js";
 import { MAX_DOCUMENT_BYTES } from "./document.js";
 import { dispatchIssueWorkerRequest, safeIssueWorkerError, validateIssueWorkerRequest } from "./worker-service.js";
+import { ExecutionApprovalRelay } from "./execution-approval-relay.js";
+import { ExecutionJournalError } from "./execution-journal.js";
+import { StoredIntentError } from "./execution-stored-intent.js";
 
 const scratch = path.resolve(".cache"), roots: string[] = [], stores: IssueStore[] = [];
 afterEach(async () => {
@@ -18,11 +22,85 @@ async function setup() {
 const project = "project_12345678-1234-4123-8123-123456789abc";
 
 describe("issue worker internal contract", () => {
+  it("journals a synthetic issue attempt and correlated approval through the store", async () => {
+    const { store, workspace } = await setup();
+    const created = await dispatchIssueWorkerRequest(store, { operation: "project.create", selectedPath: workspace });
+    if (created.kind !== "project") throw new Error("wrong response");
+    const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc", revision: 1, sources: [], categories: [], requirements: [], issues: [{ id: "issue-a", categoryId: null, requirementIds: [], version: "1.0.0", order: 0, title: "합성", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }] };
+    const bytes = new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(doc)}\n\`\`\``);
+    await dispatchIssueWorkerRequest(store, { operation: "document.import", projectId: created.id, expectedRevision: 1, bytes });
+    const prepare = { operation: "execution.prepare", projectId: created.id, documentId: "doc", issueId: "issue-a", expectedRevision: 2, idempotencyKey: "key-a", policy: { sandbox: "workspace-write", networkAccess: false, approval: "manual", revision: 1 } };
+    const prepared = await dispatchIssueWorkerRequest(store, prepare);
+    if (prepared.kind !== "execution.prepare") throw new Error("wrong response");
+    expect(prepared).toMatchObject({ created: true, record: { phase: "prepared" } });
+    expect(await dispatchIssueWorkerRequest(store, prepare)).toMatchObject({ created: false, record: { attemptId: prepared.record.attemptId } });
+    const transition = { operation: "execution.transition", projectId: created.id, expectedRevision: 2, attemptId: prepared.record.attemptId };
+    await expect(dispatchIssueWorkerRequest(store, { ...transition, expectedRevision: 1, action: { type: "dispatch" } })).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    expect(await dispatchIssueWorkerRequest(store, { ...transition, action: { type: "dispatch" } })).toMatchObject({ record: { phase: "dispatching" } });
+    await dispatchIssueWorkerRequest(store, { ...transition, action: { type: "running", threadId: "thread", turnId: "turn" } });
+    const binding = { projectId: created.id, attemptId: prepared.record.attemptId, threadId: "thread", turnId: "turn", requestId: 8 };
+    const approval = { operation: "execution.approval", binding, expectedRevision: 2 };
+    await dispatchIssueWorkerRequest(store, { ...approval, action: { type: "request", kind: "command" } });
+    await expect(dispatchIssueWorkerRequest(store, { ...transition, action: { type: "verifying" } })).rejects.toMatchObject({ code: "INVALID_TRANSITION" });
+    expect(await dispatchIssueWorkerRequest(store, { ...transition, action: { type: "unknown" } })).toMatchObject({ record: { phase: "outcome_unknown" } });
+    const history = await dispatchIssueWorkerRequest(store, { operation: "execution.history", projectId: created.id, expectedRevision: 2, afterId: null });
+    expect(history).toMatchObject({ kind: "execution.history", page: { items: [{ phase: "outcome_unknown", approvals: { expired: 1 } }] } });
+  });
+  it("persists an owned approval through the relay and store before the synthetic write", async () => {
+    const { store, workspace, root } = await setup(), owner = new AbortController();
+    const created = await dispatchIssueWorkerRequest(store, { operation: "project.create", selectedPath: workspace });
+    if (created.kind !== "project") throw new Error("wrong response");
+    const db = new DatabaseSync(path.join(root, ".local-data", "issues", "issues.sqlite"));
+    try {
+      db.prepare("INSERT INTO issue_dispatch_journal(attempt_id,project_id,idempotency_key,issue_id,project_revision,request_digest,phase,thread_id,turn_id) VALUES(?,?,?,?,?,?,?,?,?)").run("attempt-a", created.id, "key", "issue-a", 1, "a".repeat(64), "running", "thread", "turn");
+      const binding = { projectId: created.id, attemptId: "attempt-a", threadId: "thread", turnId: "turn", requestId: 8 };
+      const events: string[] = [];
+      const relay = new ExecutionApprovalRelay({
+        valid: (b, signal) => signal === owner.signal && b.projectId === created.id && b.attemptId === "attempt-a" && b.threadId === "thread" && b.turnId === "turn" && b.requestId === 8,
+        persist: async (b, action) => { await dispatchIssueWorkerRequest(store, { operation: "execution.approval", binding: b, expectedRevision: 1, action }); events.push(action.type); },
+        show: () => { expect(db.prepare("SELECT state FROM issue_approval_journal").get()?.state).toBe("pending"); events.push("show"); },
+        send: () => { expect(db.prepare("SELECT state FROM issue_approval_journal").get()?.state).toBe("responding"); events.push("send"); },
+        unsafe: () => { events.push("unsafe"); },
+      });
+      const approvalId = await relay.request(binding, "command", owner.signal);
+      await relay.respond(approvalId, owner.signal, "decline");
+      expect(events).toEqual(["request", "show", "respond", "send", "finish"]);
+      expect(db.prepare("SELECT state,decision FROM issue_approval_journal").get()).toMatchObject({ state: "sent", decision: "decline" });
+    } finally { db.close(); }
+  });
+  it("records a correlated approval through the worker and rejects stale revisions", async () => {
+    const { store, workspace, root } = await setup();
+    const created = await dispatchIssueWorkerRequest(store, { operation: "project.create", selectedPath: workspace });
+    if (created.kind !== "project") throw new Error("wrong response");
+    const db = new DatabaseSync(path.join(root, ".local-data", "issues", "issues.sqlite"));
+    try {
+      db.prepare("INSERT INTO issue_dispatch_journal(attempt_id,project_id,idempotency_key,issue_id,project_revision,request_digest,phase,thread_id,turn_id) VALUES(?,?,?,?,?,?,?,?,?)").run("attempt-a", created.id, "key", "issue-a", 1, "a".repeat(64), "running", "thread", "turn");
+      const binding = { projectId: created.id, attemptId: "attempt-a", threadId: "thread", turnId: "turn", requestId: 5 };
+      const request = { operation: "execution.approval", binding, expectedRevision: 1, action: { type: "request", kind: "command" } };
+      expect(await dispatchIssueWorkerRequest(store, request)).toEqual({ kind: "execution.approval" });
+      await expect(dispatchIssueWorkerRequest(store, { ...request, expectedRevision: 2, action: { type: "respond", decision: "accept" } })).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+      await expect(dispatchIssueWorkerRequest(store, { ...request, binding: { ...binding, turnId: "other" }, action: { type: "respond", decision: "accept" } })).rejects.toMatchObject({ code: "INVALID_TRANSITION" });
+      expect(await dispatchIssueWorkerRequest(store, { ...request, action: { type: "respond", decision: "decline" } })).toEqual({ kind: "execution.approval" });
+      expect(await dispatchIssueWorkerRequest(store, { ...request, action: { type: "finish", result: "sent" } })).toEqual({ kind: "execution.approval" });
+      expect(db.prepare("SELECT state,decision FROM issue_approval_journal").get()).toMatchObject({ state: "sent", decision: "decline" });
+      const pending = { ...request, binding: { ...binding, requestId: 6 } };
+      await dispatchIssueWorkerRequest(store, pending);
+      const inFlight = { ...request, binding: { ...binding, requestId: 7 } };
+      await dispatchIssueWorkerRequest(store, inFlight);
+      await dispatchIssueWorkerRequest(store, { ...inFlight, action: { type: "respond", decision: "accept" } });
+      db.prepare("UPDATE issue_dispatch_journal SET phase='outcome_unknown' WHERE attempt_id=?").run("attempt-a");
+      await expect(dispatchIssueWorkerRequest(store, { operation: "execution.invalidateApprovals", projectId: created.id, attemptId: "attempt-a", expectedRevision: 2 })).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+      expect(await dispatchIssueWorkerRequest(store, { operation: "execution.invalidateApprovals", projectId: created.id, attemptId: "attempt-a", expectedRevision: 1 })).toEqual({ kind: "execution.invalidateApprovals", expired: 1, unknown: 1 });
+      expect(db.prepare("SELECT phase FROM issue_dispatch_journal WHERE attempt_id=?").get("attempt-a")?.phase).toBe("outcome_unknown");
+    } finally { db.close(); }
+  });
   it("rejects unknown operations, permission fields, malformed IDs and oversized documents", () => {
     for (const request of [
       null, [], { operation: "shell.run" },
       { operation: "project.create", selectedPath: "test", network: true },
       { operation: "project.read", projectId: "wrong" },
+      { operation: "execution.approval", binding: { projectId: project, attemptId: "attempt", threadId: "thread", turnId: "turn", requestId: 1, permission: "all" }, expectedRevision: 1, action: { type: "request", kind: "command" } },
+      { operation: "execution.approval", binding: { projectId: project, attemptId: "attempt", threadId: "thread", turnId: "turn", requestId: 1 }, expectedRevision: 1, action: { type: "respond", decision: "acceptForSession" } },
       { operation: "document.read", projectId: project, documentId: "../outside" },
       { operation: "document.import", projectId: project, expectedRevision: 1, bytes: new Uint8Array(MAX_DOCUMENT_BYTES + 1) },
       { operation: "document.list", projectId: project, expectedRevision: 1, limit: 101 },
@@ -30,15 +108,12 @@ describe("issue worker internal contract", () => {
       { operation: "issue.list", projectId: project, documentId: "doc", expectedRevision: 1, offset: 0, filters: { version: "1.2.3", path: "elsewhere" } },
       { operation: "document.diagnostics", projectId: project, documentId: "doc", expectedRevision: 1, offset: -1 },
       { operation: "document.diagnostics", projectId: project, documentId: "doc", expectedRevision: 1, offset: 0, path: "elsewhere" },
-<<<<<<< HEAD
       { operation: "document.sourceTrace", projectId: project, documentId: "../outside", expectedRevision: 1, offset: 0 },
       { operation: "document.sourceTrace", projectId: project, documentId: "doc", expectedRevision: 1, offset: -1 },
       { operation: "document.sourceTrace", projectId: project, documentId: "doc", expectedRevision: 1, offset: 0, path: "elsewhere" },
-=======
       ...[[], ["a", "a"], ["../outside"], Array.from({ length: 9 }, (_, i) => `i-${i}`)].map(issueIds => ({ operation: "issue.candidatePreview", projectId: project, documentId: "doc", expectedRevision: 1, issueIds })),
       { operation: "issue.candidatePreview", projectId: project, documentId: "doc", expectedRevision: 1, issueIds: ["issue"], permission: "all" },
       ...[{ includeRetryable: 1, includeFailed: false }, { includeRetryable: true }, { includeRetryable: false, includeFailed: false, permissions: "all" }].map(options => ({ operation: "issue.candidatePreview", projectId: project, documentId: "doc", expectedRevision: 1, issueIds: ["issue"], options })),
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
       { operation: "requirement.detail", projectId: project, documentId: "doc", expectedRevision: 1, requirementId: "../outside", offset: 0 },
       { operation: "requirement.detail", projectId: project, documentId: "doc", expectedRevision: 1, requirementId: "req", offset: -1 },
       { operation: "requirement.detail", projectId: project, documentId: "doc", expectedRevision: 1, requirementId: "req", offset: 0, network: true },
@@ -87,5 +162,11 @@ describe("issue worker internal contract", () => {
   it("does not expose unknown exception messages or stack data", () => {
     expect(safeIssueWorkerError(new Error("private synthetic value"))).toEqual({ code: "STORAGE_FAILED", message: "이슈 저장소 작업에 실패했습니다. 기존 데이터를 확인하세요." });
     expect(safeIssueWorkerError(null).message).not.toContain("private synthetic value");
+  });
+  it("returns bounded actionable errors for internal execution failures", () => {
+    expect(safeIssueWorkerError(new StoredIntentError("NOT_ELIGIBLE"))).toMatchObject({ code: "NOT_ELIGIBLE", message: "이 이슈는 현재 실행 조건을 충족하지 않습니다." });
+    expect(safeIssueWorkerError(new ExecutionJournalError("PROJECT_BUSY"))).toMatchObject({ code: "PROJECT_BUSY" });
+    const corrupted = new ExecutionJournalError("CORRUPT_RECORD"); corrupted.message = "private synthetic detail";
+    expect(safeIssueWorkerError(corrupted).message).not.toContain("private synthetic detail");
   });
 });

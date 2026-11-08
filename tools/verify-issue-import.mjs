@@ -76,7 +76,7 @@ try {
   const diagnostics = (await ask('issues.view.query', { query: { kind: 'diagnostics', documentId: 'doc-1', expectedRevision: docs.revision, offset: 0 } })).view;
   assert.equal(diagnostics.report.totalFindings, 8); assert.equal(diagnostics.report.requirementCount, 0);
   assert.ok(diagnostics.report.findings.items.some(item => item.code === 'category-no-requirements' && item.entityId === 'cat-child'));
-  assert.ok(diagnostics.report.findings.items.some(item => item.code === 'source-unreferenced' && item.entityId === 'source-unused'));
+  assert.ok(diagnostics.report.findings.items.some(item => item.code === 'source-unlinked' && item.entityId === 'source-unused'));
   assert.ok(diagnostics.report.findings.items.some(item => item.code === 'issue-unverified-completion' && item.entityId === 'issue-1'));
   const criteria = (await ask('issues.view.query', { query: { kind: 'criteria', documentId: 'doc-1', expectedRevision: docs.revision, issueId: 'issue-1', offset: 0 } })).view;
   assert.deepEqual(criteria.page.items, ['synthetic']);

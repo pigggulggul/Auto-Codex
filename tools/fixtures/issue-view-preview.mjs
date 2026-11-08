@@ -33,6 +33,7 @@ server.on('connection', socket => {
     if (message.type !== 'issues.view.query') return;
     const q = message.query; let view;
     if (q.kind === 'documents') view = { kind: 'documents', revision: 2, documents: [{ id: 'doc-synthetic', documentRevision: 1, issueCount: 2 }], nextAfterId: null };
+    if (q.kind === 'executionHistory') view = { kind: 'executionHistory', revision: 2, page: { items: [{ attemptId: 'attempt-synthetic', issueId: 'issue-login', projectRevision: 2, phase: 'outcome_unknown', outcome: null, hasRuntimeReference: true, approvals: { pending: 0, responding: 0, sent: 1, outcome_unknown: 1, expired: 2 } }], nextAfterId: null } };
     if (q.kind === 'projectIssues') view = q.cursor.afterId ? { kind: 'projectIssues', revision: 2, page: { documentId: 'doc-other', items: [{ id: 'issue-other', title: '다른 문서의 알림 처리', version: '2.0.0', category: '알림', localStatus: 'ready', importedStatus: 'ready', missingCriteria: false, unverifiedDependencies: 0 }], scannedDocuments: 1, nextCursor: null } } : { kind: 'projectIssues', revision: 2, page: { documentId: null, items: [], scannedDocuments: 8, nextCursor: { afterId: 'doc-008', issueOffset: 0 } } };
     if (q.kind === 'issues') { const items = [
       { id: 'issue-login', title: '로그인 성공과 실패 처리', version: '1.2.0', category: '계정 관리', localStatus: 'needs_review', importedStatus: 'completed', missingCriteria: false, unverifiedDependencies: 0 },

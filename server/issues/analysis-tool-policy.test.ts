@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AnalysisToolPolicyError, buildUnverifiedAnalysisToolPolicy as buildPolicy, requireCompatibleAnalysisRequirements, requireUnchangedAnalysisInventory, sameUnverifiedAnalysisInventory } from "./analysis-tool-policy.js";
+import path from "node:path";
+import { AnalysisToolPolicyError, buildUnverifiedAnalysisToolPolicy as buildPolicy, requireCompatibleAnalysisRequirements, requireNoConfiguredAnalysisHooks, requireNoListedAnalysisHooks, requireUnchangedAnalysisInventory, sameUnverifiedAnalysisInventory } from "./analysis-tool-policy.js";
 
-const buildUnverifiedAnalysisToolPolicy = (config: unknown, pages: { cursor: string | null; response: unknown }[], plugins: unknown, requirements: unknown = { requirements: null }) => buildPolicy(config, pages, plugins, requirements);
+const cwd = path.resolve("synthetic-workspace");
+const emptyHooks = () => ({ data: [{ cwd, hooks: [], errors: [], warnings: [] }] });
+const buildUnverifiedAnalysisToolPolicy = (config: unknown, pages: { cursor: string | null; response: unknown }[], plugins: unknown, requirements: unknown = { requirements: null }) => buildPolicy(config, pages, plugins, requirements, emptyHooks(), cwd);
 
 const config = () => ({ config: { mcp_servers: { alpha: { env: { TOKEN: "synthetic-private-value" } }, beta: { url: "https://synthetic.invalid/private" } }, plugins: { 'fixture@local': { enabled: true } } } });
 const pages = () => [
@@ -11,19 +14,53 @@ const pages = () => [
 const plugins = () => ({ marketplaces: [{ plugins: [{ id: 'fixture@local', installed: true, enabled: true }, { id: 'unused@local', installed: false, enabled: false }] }], marketplaceLoadErrors: [] });
 
 describe("unverified analysis tool restriction candidate", () => {
+  it("rejects configured hooks even when the hook inventory might be empty", () => {
+    for (const response of [undefined, {}, { config: null }, { config: { hooks: [] } }, { config: { hooks: false } }, { config: { hooks: { SessionStart: [{ command: "synthetic-private-hook" }] } } }]) {
+      expect(() => requireNoConfiguredAnalysisHooks(response)).toThrow(AnalysisToolPolicyError);
+    }
+    for (const hooks of [undefined, null, {}]) expect(() => requireNoConfiguredAnalysisHooks({ config: { hooks } })).not.toThrow();
+  });
   it("requires a readable requirements reply and rejects managed hooks or incompatible mandatory settings", () => {
     for (const response of [undefined, {}, { requirements: false }, { requirements: { featureRequirements: { hooks: true } } }, { requirements: { featureRequirements: { codex_hooks: true } } }, { requirements: { featureRequirements: { plugins: true } } }, { requirements: { featureRequirements: { shell_tool: true } } }, { requirements: { featureRequirements: { hooks: "false" } } }, { requirements: { hooks: { SessionStart: [{ hooks: [{ command: "synthetic-private-hook" }] }] } } }, { requirements: { hooks: { windowsManagedDir: "synthetic-private-path" } } }, { requirements: { hooks: { UnknownFutureHook: [] } } }, { requirements: { additionalDeveloperInstructions: "synthetic-private-instruction" } }, { requirements: { allowedSandboxModes: ["workspace-write"] } }, { requirements: { allowedApprovalPolicies: ["on-request"] } }, { requirements: { allowedWebSearchModes: ["live"] } }]) {
       expect(() => requireCompatibleAnalysisRequirements(response)).toThrow(AnalysisToolPolicyError);
-      expect(() => buildPolicy(config(), pages(), plugins(), response)).toThrow(AnalysisToolPolicyError);
+      expect(() => buildPolicy(config(), pages(), plugins(), response, emptyHooks(), cwd)).toThrow(AnalysisToolPolicyError);
     }
     expect(() => requireCompatibleAnalysisRequirements({ requirements: null })).not.toThrow();
     expect(() => requireCompatibleAnalysisRequirements({ requirements: { featureRequirements: { hooks: false }, hooks: { SessionStart: [], windowsManagedDir: null }, allowedSandboxModes: ["read-only"], allowedApprovalPolicies: ["never"], allowedWebSearchModes: ["disabled"] } })).not.toThrow();
-    expect(() => buildPolicy(config(), pages(), plugins(), undefined)).toThrow(AnalysisToolPolicyError);
+    expect(() => buildPolicy(config(), pages(), plugins(), undefined, emptyHooks(), cwd)).toThrow(AnalysisToolPolicyError);
+  });
+  it("rejects unknown forced-on features without leaking their names", () => {
+    const response = { requirements: { featureRequirements: { "synthetic-future-private-feature": true } } };
+    expect(() => requireCompatibleAnalysisRequirements(response)).toThrow(AnalysisToolPolicyError);
+    try { buildPolicy(config(), pages(), plugins(), response, emptyHooks(), cwd); throw new Error("expected rejection"); }
+    catch (error) { expect(error).toBeInstanceOf(AnalysisToolPolicyError); expect(String(error)).not.toContain("synthetic-future-private-feature"); }
+    expect(() => requireCompatibleAnalysisRequirements({ requirements: { featureRequirements: { "synthetic-future-feature": false } } })).not.toThrow();
+  });
+  it("rejects non-null requirements that the candidate cannot interpret", () => {
+    for (const requirements of [{ network: { enabled: true } }, { futurePolicy: false }, { allowedLoginMethods: [] }]) {
+      expect(() => requireCompatibleAnalysisRequirements({ requirements })).toThrow(AnalysisToolPolicyError);
+    }
+    expect(() => requireCompatibleAnalysisRequirements({ requirements: { futurePolicy: null } })).not.toThrow();
+  });
+  it("requires a clean hook inventory for the exact selected directory", () => {
+    expect(() => requireNoListedAnalysisHooks(emptyHooks(), cwd)).not.toThrow();
+    for (const response of [undefined, {}, { data: [] }, { data: [{ cwd, hooks: [{}], errors: [], warnings: [] }] }, { data: [{ cwd, hooks: [], errors: [{ message: "synthetic-private-error" }], warnings: [] }] }, { data: [{ cwd, hooks: [], errors: [], warnings: ["synthetic-private-warning"] }] }, { data: [{ cwd: path.resolve("other-workspace"), hooks: [], errors: [], warnings: [] }] }]) {
+      expect(() => requireNoListedAnalysisHooks(response, cwd)).toThrow(AnalysisToolPolicyError);
+      expect(() => buildPolicy(config(), pages(), plugins(), { requirements: null }, response, cwd)).toThrow(AnalysisToolPolicyError);
+    }
+    expect(() => buildPolicy(config(), pages(), plugins(), { requirements: null }, undefined, cwd)).toThrow(AnalysisToolPolicyError);
+    expect(() => requireNoListedAnalysisHooks({ data: [{ cwd: `${cwd}\0bad`, hooks: [], errors: [], warnings: [] }] }, cwd)).toThrow(AnalysisToolPolicyError);
+    expect(() => requireNoListedAnalysisHooks(emptyHooks(), `${cwd}${"a".repeat(32769)}`)).toThrow(AnalysisToolPolicyError);
   });
   it("combines configuration and paginated inventory without returning secret-bearing fields", () => {
     const result = buildUnverifiedAnalysisToolPolicy(config(), pages(), plugins());
     expect(result).toMatchObject({ verified: false, serverCount: 2, pluginCount: 2, disabledPluginIds: ['fixture@local', 'other@local'], config: { 'mcp_servers.alpha.enabled': false, 'mcp_servers.beta.enabled': false, 'features.shell_tool': false, 'features.plugins': false, 'features.hooks': false, 'web_search': 'disabled' } });
     expect(JSON.stringify(result)).not.toContain("synthetic-private-value"); expect(JSON.stringify(result)).not.toContain("synthetic.invalid");
+  });
+  it("includes interactive and extension tool restrictions in the unverified candidate", () => {
+    const result = buildUnverifiedAnalysisToolPolicy(config(), pages(), plugins());
+    expect(result.verified).toBe(false);
+    expect(result.config).toMatchObject({ 'tools.experimental_request_user_input.enabled': false, 'tools.update_plan.enabled': false, 'features.code_mode': false, 'features.multi_agent_v2': false, 'cloud.skills.enabled': false, 'skills.include_instructions': false });
   });
   it("rejects incomplete, reordered or cyclic pagination and discovery errors", () => {
     expect(() => buildUnverifiedAnalysisToolPolicy(config(), [pages()[0]], plugins())).toThrow(AnalysisToolPolicyError);
@@ -32,6 +69,10 @@ describe("unverified analysis tool restriction candidate", () => {
     const original = pages(); const broken = [{ ...original[0], response: { ...original[0].response, data: [{ ...original[0].response.data[0], toolsError: "synthetic failure" }] } }, original[1]];
     expect(() => buildUnverifiedAnalysisToolPolicy(config(), broken, plugins())).toThrow(AnalysisToolPolicyError);
     expect(() => buildUnverifiedAnalysisToolPolicy(config(), pages(), { marketplaces: [], marketplaceLoadErrors: [{ message: "private" }] })).toThrow(AnalysisToolPolicyError);
+  });
+  it("rejects duplicate server entries across inventory pages", () => {
+    const duplicate = pages(); duplicate[1].response.data.push({ name: "alpha", pluginId: null, toolsError: null });
+    expect(() => buildUnverifiedAnalysisToolPolicy(config(), duplicate, plugins())).toThrow(AnalysisToolPolicyError);
   });
   it("rejects untrusted names which could change dotted override paths", () => {
     for (const name of ["../other", "foo.bar", "escape\npath", "a".repeat(65)]) {

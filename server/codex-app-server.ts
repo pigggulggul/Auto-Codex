@@ -62,6 +62,7 @@ export class CodexAppServer extends EventEmitter {
   private nextId = 1;
   private startPromise: Promise<void> | null = null;
   private stoppingPromise: Promise<void> | null = null;
+  private stoppingIntentional = false;
 
   get ready(): boolean {
     return this.child !== null && !this.child.killed;
@@ -70,7 +71,12 @@ export class CodexAppServer extends EventEmitter {
   start(): Promise<void> {
     if (this.stoppingPromise) return Promise.reject(new Error("App Server termination is not confirmed. Restart the bridge if it does not stop."));
     if (this.startPromise) return this.startPromise;
-    const attempt = this.startInternal().catch((error) => {
+    const attempt = this.startInternal().catch(async (error) => {
+      // A failed initialize does not mean the spawned server has stopped.
+      if (this.startPromise === attempt && this.child) {
+        try { await this.stopAndWait(); }
+        catch { throw new Error("App Server termination was not confirmed. Restart the bridge."); }
+      }
       if (this.startPromise === attempt) this.startPromise = null;
       throw error;
     });
@@ -91,6 +97,9 @@ export class CodexAppServer extends EventEmitter {
       windowsHide: true,
     });
     this.child = child;
+    // A failed pipe is reported without exposing its contents or pretending the
+    // child has stopped; lifecycle confirmation remains a separate operation.
+    child.stdin.on("error", () => { if (this.child === child) this.emit("diagnostic", "App Server input stream failed."); });
 
     child.once("error", (error) => {
       if (this.child !== child) return;
@@ -141,7 +150,8 @@ export class CodexAppServer extends EventEmitter {
         reject,
         timer,
       });
-      this.write({ id, method, params });
+      try { this.write({ id, method, params }); }
+      catch (error) { clearTimeout(timer); this.pending.delete(id); reject(error instanceof Error ? error : new Error("App Server request failed.")); }
     });
   }
 
@@ -153,13 +163,37 @@ export class CodexAppServer extends EventEmitter {
     this.write({ id, result });
   }
 
+  /** Confirms only completion of the local stream write, not server processing. */
+  respondAndWait(id: RequestId, result: unknown): Promise<void> {
+    const child = this.child;
+    if (!child || child.killed || !child.stdin.writable) return Promise.reject(new Error("codex app-server stdin is unavailable"));
+    let line: string;
+    try { line = `${JSON.stringify({ id, result })}\n`; }
+    catch { return Promise.reject(new Error("App Server response serialization failed.")); }
+    return new Promise<void>((resolve, reject) => {
+      let done = false;
+      const finish = (error?: Error | null) => {
+        if (done) return;
+        done = true; clearTimeout(timer); child.removeListener("exit", onExit); child.stdin.removeListener("error", onError);
+        if (error || this.child !== child || child.killed) reject(new Error("App Server response delivery is unconfirmed."));
+        else resolve();
+      };
+      const onExit = () => finish(new Error("exit"));
+      const onError = () => finish(new Error("stream"));
+      const timer = setTimeout(() => finish(new Error("timeout")), 10_000);
+      child.once("exit", onExit); child.stdin.once("error", onError);
+      try { child.stdin.write(line, (error?: Error | null) => finish(error)); }
+      catch { finish(new Error("write")); }
+    });
+  }
+
   respondError(id: RequestId, code: number, message: string): void {
     this.write({ id, error: { code, message } });
   }
 
   stop(): void {
-    const termination = this.detachAndStop();
-    if (termination) void termination.catch(() => { /* Best effort on shutdown; exclusive callers use stopAndWait. */ });
+    // Share the confirmation latch with exclusive callers and future starts.
+    void this.stopAndWait(true).catch(() => { /* The failed confirmation remains latched. */ });
   }
 
   private detachAndStop(): Promise<void> | null {
@@ -198,10 +232,11 @@ export class CodexAppServer extends EventEmitter {
   }
 
   /** For exclusive proposal admission: do not release it while a timed-out child may still execute. */
-  stopAndWait(): Promise<void> {
-    if (this.stoppingPromise) return this.stoppingPromise;
+  stopAndWait(intentional = false): Promise<void> {
+    if (this.stoppingPromise) { if (!intentional) this.stoppingIntentional = false; return this.stoppingPromise; }
     const child = this.child;
     if (!child) return Promise.resolve();
+    this.stoppingIntentional = intentional;
     const exited = new Promise<void>(resolve => { child.once("exit", () => resolve()); });
     const termination = this.detachAndStop();
     const stopped = new Promise<void>((resolve, reject) => {
@@ -210,8 +245,9 @@ export class CodexAppServer extends EventEmitter {
     });
     const operation = stopped.then(() => {
       if (this.stoppingPromise === operation) this.stoppingPromise = null;
+      this.emit("terminationConfirmed");
       // stop() detaches the child; publish its exit only after it is confirmed.
-      this.emit("exit", new Error("Exclusive App Server runtime was stopped after failure."));
+      if (!this.stoppingIntentional) this.emit("exit", new Error("Exclusive App Server runtime was stopped after failure."));
     });
     // A timeout remains latched: an unconfirmed old process must not overlap a new one.
     this.stoppingPromise = operation;
@@ -229,9 +265,11 @@ export class CodexAppServer extends EventEmitter {
     if (!line.trim()) return;
     let message: JsonObject;
     try {
-      message = JSON.parse(line) as JsonObject;
+      const parsed: unknown = JSON.parse(line);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid protocol message");
+      message = parsed as JsonObject;
     } catch {
-      this.emit("diagnostic", `Ignored malformed app-server output: ${line}`);
+      this.emit("diagnostic", "Ignored malformed app-server output.");
       return;
     }
 
@@ -261,6 +299,12 @@ export class CodexAppServer extends EventEmitter {
 
   private handleExit(error: Error): void {
     if (!this.child && !this.startPromise) return;
+    // A wrapper exit does not establish that its descendants have stopped.
+    if (this.child?.pid) {
+      const uncertain = Promise.reject(new Error("App Server termination was not confirmed. Restart the bridge."));
+      void uncertain.catch(() => {});
+      this.stoppingPromise = uncertain;
+    }
     this.child = null;
     this.startPromise = null;
     this.rejectPending(error);

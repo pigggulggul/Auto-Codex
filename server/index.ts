@@ -61,7 +61,10 @@ import { readAnalysisSource } from "./issues/analysis-source.js";
 import { createIssueExport } from "./issues/export-file.js";
 import { IssueWriteAdmission } from "./issue-write-admission.js";
 import { AnalysisRouter } from "./issues/analysis-router.js";
+import { AnalysisApprovalOwners } from "./issues/analysis-approval-owners.js";
+import { ExecutionApprovalRouter } from "./issues/execution-approval-router.js";
 import { createAnalysisRuntimeFactory, type VerifiedAnalysisPolicy } from "./issues/analysis-runtime-factory.js";
+import { createIsolatedAnalysisFactory } from "./issues/analysis-isolated-factory.js";
 import {AtelierProposalRuntime} from "./atelier/proposal-runtime.js";
 import {AtelierExecutionRuntime} from "./atelier/execution-runtime.js";
 import {check as atelierCheck} from "./atelier/errors.js";
@@ -87,6 +90,7 @@ type PendingApproval = {
   legacy: boolean;
   approval: ApprovalRequest;
   requestedPermissions?: JsonObject;
+  analysisOwner?: AbortSignal;
 };
 
 type SkillsListResponse = {
@@ -126,8 +130,28 @@ type ModelListResponse = {
 
 const appServer = new CodexAppServer();
 const analysisRouter = new AnalysisRouter();
+appServer.on("terminationConfirmed", () => { analysisRouter.resetAfterConfirmedStop(); issueExecutionApprovalRouter.resetAfterConfirmedStop(); });
 const sockets = new Set<WebSocket>();
 const pendingApprovals = new Map<string, PendingApproval>();
+const analysisApprovalOwners = new AnalysisApprovalOwners();
+const analysisOwnerSockets = new WeakMap<AbortSignal, WebSocket>();
+const analysisSocketOwners = new WeakMap<WebSocket, AbortSignal>();
+const issueExecutionApprovalRouter = new ExecutionApprovalRouter({
+  show: (owner, approvalId, request) => {
+    const socket = analysisOwnerSockets.get(owner), pending = approvalFromRequest(request);
+    if (!socket || socket.readyState !== WebSocket.OPEN || owner.aborted || !pending) throw new Error("Issue approval owner unavailable");
+    pending.approval = { ...pending.approval, approvalId, runId: undefined, taskId: undefined, agentId: undefined, threadId: String(request.params?.threadId), turnId: String(request.params?.turnId), oneTimeOnly: true };
+    send(socket, { type: "approval.request", approval: pending.approval });
+  },
+  write: (request, decision) => {
+    const pending = approvalFromRequest(request);
+    if (!pending) throw new Error("Issue approval request unavailable");
+    const protocol: ApprovalProtocol = pending.method === "item/permissions/requestApproval" ? "permission" : pending.legacy ? "legacy" : "modern";
+    return appServer.respondAndWait(pending.requestId, approvalResponse(protocol, decision, pending.requestedPermissions));
+  },
+  deny: request => appServer.respondError(request.id, -32003, "Issue approval request unavailable."),
+  resolved: (owner, approvalId) => { const socket = analysisOwnerSockets.get(owner); if (socket?.readyState === WebSocket.OPEN) send(socket, { type: "approval.resolved", approvalId }); },
+});
 const runtimeRegistry = new RuntimeRegistry();
 const taskAssistantText = new Map<string, string>();
 
@@ -655,7 +679,7 @@ async function trustCurrentProject(): Promise<void> {
   petState = "connecting";
   broadcast({ type: "project.trust", path: projectPath, status: projectTrust });
   broadcastState();
-  appServer.stop();
+  await appServer.stopAndWait(true);
   await ensureAppServer();
   await loadModels();
 }
@@ -1206,6 +1230,7 @@ function approvalFromRequest(request: ProtocolServerRequest): PendingApproval | 
 }
 
 function handleServerRequest(request: ProtocolServerRequest): void {
+  if (issueExecutionApprovalRouter.serverRequest(request)) return;
   if (analysisRouter.serverRequest(request)) return;
   if(proposalRuntime.serverRequest(request))return;
   if(executionRuntime.busy&&!executionRuntime.accepts(request.params?.threadId,request.params?.turnId)){appServer.respondError(request.id,-32003,'Request does not belong to active generation.');return;}
@@ -1239,14 +1264,18 @@ function handleServerRequest(request: ProtocolServerRequest): void {
   ));
 }
 
-function resolveApproval(message: Extract<ClientMessage, { type: "approval.resolve" }>): void {
+function resolveApproval(socket: WebSocket, message: Extract<ClientMessage, { type: "approval.resolve" }>): void {
   const pending = pendingApprovals.get(message.approvalId);
   if (!pending) throw new Error("만료되었거나 존재하지 않는 승인 요청입니다.");
+  if (analysisApprovalOwners.has(message.approvalId) && !analysisApprovalOwners.owns(message.approvalId, analysisSocketOwners.get(socket))) throw new Error("이 연결의 승인 요청이 아닙니다.");
+  const isAnalysis = analysisApprovalOwners.has(message.approvalId);
   const protocol: ApprovalProtocol = pending.method === "item/permissions/requestApproval"
     ? "permission"
     : pending.legacy ? "legacy" : "modern";
-  appServer.respond(pending.requestId, approvalResponse(protocol, message.decision, pending.requestedPermissions));
+  appServer.respond(pending.requestId, approvalResponse(protocol, isAnalysis && message.decision === "acceptForSession" ? "accept" : message.decision, pending.requestedPermissions));
   pendingApprovals.delete(message.approvalId);
+  analysisApprovalOwners.remove(message.approvalId);
+  if (isAnalysis) { send(socket, { type: "approval.resolved", approvalId: message.approvalId }); return; }
   if (activeRun && pending.approval.runId === activeRun.id && pending.approval.taskId) {
     const task = activeRun.tasks.find((candidate) => candidate.id === pending.approval.taskId);
     if (task?.status === "waitingApproval") {
@@ -1269,9 +1298,14 @@ function resolveApproval(message: Extract<ClientMessage, { type: "approval.resol
   );
 }
 
-function cancelPendingApprovals(predicate: (pending: PendingApproval) => boolean): void {
+function cancelPendingApprovals(predicate: (pending: PendingApproval) => boolean, strict = false): void {
+  let cancelFailed = false;
   for (const [approvalId, pending] of pendingApprovals) {
     if (!predicate(pending)) continue;
+    const isAnalysis = analysisApprovalOwners.has(approvalId);
+    const analysisSocket = isAnalysis && pending.analysisOwner ? analysisOwnerSockets.get(pending.analysisOwner) : undefined;
+    analysisApprovalOwners.remove(approvalId);
+    pendingApprovals.delete(approvalId);
     const protocol: ApprovalProtocol = pending.method === "item/permissions/requestApproval"
       ? "permission"
       : pending.legacy ? "legacy" : "modern";
@@ -1279,12 +1313,14 @@ function cancelPendingApprovals(predicate: (pending: PendingApproval) => boolean
       try {
         appServer.respond(pending.requestId, approvalResponse(protocol, "cancel", pending.requestedPermissions));
       } catch {
+        if (strict && isAnalysis) cancelFailed = true;
         // The App Server may already be exiting; local state still must be cleared.
       }
-    }
-    pendingApprovals.delete(approvalId);
-    broadcast({ type: "approval.resolved", approvalId });
+    } else if (strict && isAnalysis) cancelFailed = true;
+    if (isAnalysis) { if (analysisSocket) send(analysisSocket, { type: "approval.resolved", approvalId }); }
+    else broadcast({ type: "approval.resolved", approvalId });
   }
+  if (cancelFailed) throw new Error("Analysis approval cancellation was not confirmed.");
 }
 
 async function handleClientMessage(socket: WebSocket, raw: string): Promise<void> {
@@ -1365,7 +1401,8 @@ async function handleClientMessage(socket: WebSocket, raw: string): Promise<void
       await interruptTurn();
       break;
     case "approval.resolve":
-      resolveApproval(message);
+      if (issueExecutionApprovalRouter.has(message.approvalId)) await issueExecutionApprovalRouter.resolve(message.approvalId, analysisSocketOwners.get(socket), message.decision === "acceptForSession" ? "accept" : message.decision);
+      else resolveApproval(socket, message);
       break;
   }
 }
@@ -1626,6 +1663,27 @@ const createIssueAnalysisExecution = createAnalysisRuntimeFactory({
   policyCurrent: policy => verifiedIssueAnalysisPolicy() === policy,
   selection: issueSelection, ready: () => appServerReady,
   model: () => defaultModel(models)?.model ?? null, validateProject,
+  commandApprovals: owner => ({
+    request: request => {
+      const socket = analysisOwnerSockets.get(owner);
+      if (owner.aborted || !socket || socket.readyState !== WebSocket.OPEN) return false;
+      if ([...pendingApprovals.values()].some(existing => existing.requestId === request.id)) return false;
+      const pending = approvalFromRequest(request);
+      const thread = request.params?.threadId;
+      if (!pending || typeof thread !== "string" || !analysisApprovalOwners.add(pending.approval.approvalId, owner, thread)) return false;
+      pending.approval = { ...pending.approval, runId: undefined, taskId: undefined, agentId: undefined, threadId: thread, turnId: typeof request.params?.turnId === "string" ? request.params.turnId : undefined, oneTimeOnly: true };
+      pending.analysisOwner = owner;
+      pendingApprovals.set(pending.approval.approvalId, pending);
+      try { send(socket, { type: "approval.request", approval: pending.approval }); return true; }
+      catch { pendingApprovals.delete(pending.approval.approvalId); analysisApprovalOwners.remove(pending.approval.approvalId); return false; }
+    },
+    cancel: thread => cancelPendingApprovals(pending => pending.analysisOwner === owner && pending.approval.threadId === thread, true),
+  }),
+  acquire: () => issueAnalysisAdmission.tryAcquire(() => issueWriteAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
+});
+const createIssueIsolatedExecution = createIsolatedAnalysisFactory({
+  root: ROOT, selection: issueSelection, ready: () => appServerReady,
+  model: () => defaultModel(models)?.model ?? null, validateProject,
   acquire: () => issueAnalysisAdmission.tryAcquire(() => issueWriteAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
 });
 const issueApi = new IssueBridgeApi({
@@ -1648,7 +1706,8 @@ const issueApi = new IssueBridgeApi({
   tryAcquireWrite: () => issueWriteAdmission.tryAcquire(() => issueAnalysisAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
   canonical: validateProject,
   busy: () => issueAnalysisAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0,
-  createAnalysisExecution: createIssueAnalysisExecution,
+  analysisAvailable: () => process.platform === "win32" && appServerReady && Boolean(defaultModel(models)) && workspaceMode === "project" && Boolean(projectPath),
+  createAnalysisExecution: (createBatch, owner) => createIssueAnalysisExecution(createBatch, owner) ?? createIssueIsolatedExecution(createBatch, owner),
 });
 clearIssueSources = () => issueApi.clearSources();
 httpServer.on("upgrade", (request, socket, head) => {
@@ -1668,6 +1727,8 @@ wsServer.on("connection", (socket, request) => {
   let priorityAt = Date.now();
   const issueUiOrigin = typeof request.headers.origin === "string" && isAllowedOrigin(request);
   const issueAbort = new AbortController();
+  analysisOwnerSockets.set(issueAbort.signal, socket);
+  analysisSocketOwners.set(socket, issueAbort.signal);
   let issueBusy = false, issueTokens = 16, issueAt = Date.now();
   sockets.add(socket);
   send(socket, { type: "bridge.state", snapshot: snapshot(true) });
@@ -1688,7 +1749,7 @@ wsServer.on("connection", (socket, request) => {
   }
   send(socket, { type: "skills.list", skills, errors: [] });
   send(socket, { type: "models.list", models, errors: [] });
-  for (const pending of pendingApprovals.values()) send(socket, { type: "approval.request", approval: pending.approval });
+  for (const pending of pendingApprovals.values()) if (!analysisApprovalOwners.has(pending.approval.approvalId) || analysisApprovalOwners.owns(pending.approval.approvalId, issueAbort.signal)) send(socket, { type: "approval.request", approval: pending.approval });
   socket.on("message", (data) => {
     const raw = data.toString();
     let type = "";

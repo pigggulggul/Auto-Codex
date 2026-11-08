@@ -1,18 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-<<<<<<< HEAD
-import { classifyProbeFailure, createProbeDeadline, describeProbeFailure, waitForProbeTurn } from './issue-probe-control.mjs';
-=======
-import { classifyProbeFailure, createProbeDeadline, waitForProbeTurn } from './issue-probe-control.mjs';
-
-test('failure classification returns only bounded diagnostic labels', () => {
-  assert.equal(classifyProbeFailure({ code: 'ERR_ASSERTION', message: 'private detail' }, false), 'assertion-failed');
-  assert.equal(classifyProbeFailure(new Error('Synthetic CLI exited.'), false), 'cli-exited');
-  assert.equal(classifyProbeFailure(new Error('Synthetic RPC failed: private detail'), false), 'rpc-failed');
-  assert.equal(classifyProbeFailure(new Error('private detail'), true), 'deadline');
-  assert.equal(classifyProbeFailure(new Error('private detail'), false), 'probe-error');
-});
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
+import { classifyProbeFailure, createProbeDeadline, describeProbeFailure, describeProbeObservations, ProbeTimeoutError, waitForProbeTurn } from './issue-probe-control.mjs';
 
 test('deadline cancels an unresolved turn wait instead of leaving a live polling loop', async () => {
   let cancelled = false;
@@ -21,6 +9,12 @@ test('deadline cancels an unresolved turn wait instead of leaving a live polling
   await assert.rejects(Promise.race([waiting, deadline.promise]), /synthetic timeout/);
   await assert.rejects(waiting, /cancelled/);
   deadline.clear();
+});
+
+test('reports a timeout and bounded aggregate observations without arbitrary values', () => {
+  assert.equal(classifyProbeFailure(new ProbeTimeoutError('synthetic private input')), 'timeout');
+  assert.match(describeProbeFailure({ phase: 'turn', primary: 'timeout', cleanup: null, termination: 'unconfirmed' }), /primary=timeout/);
+  assert.equal(describeProbeObservations({ providerRequests: 123456, turnCompletions: 'private', accessDenied: true, cliError: false }), 'providerRequests=9999; turnCompletions=0; accessDenied=true; cliError=false.');
 });
 
 test('a completed turn stops the deadline without triggering cancellation', async () => {

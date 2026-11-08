@@ -31,6 +31,18 @@ function document(suffix: string, options: { status?: string; criteria?: string[
 }
 
 describe("issue storage", () => {
+  it("reads only the selected project's journal at the requested revision", async () => {
+    const t = await setup();
+    const db = new DatabaseSync(path.join(t.root, ".local-data", "issues", "issues.sqlite"));
+    try {
+      const insert = db.prepare("INSERT INTO issue_dispatch_journal(attempt_id,project_id,idempotency_key,issue_id,project_revision,request_digest,phase) VALUES(?,?,?,?,?,?,?)");
+      insert.run("attempt-a", t.project.id, "key-a", "issue-a", 1, "a".repeat(64), "prepared");
+      insert.run("attempt-b", "project-other", "key-b", "issue-b", 1, "b".repeat(64), "prepared");
+    } finally { db.close(); }
+    expect(await t.store.executionHistory(t.project.id, 1)).toMatchObject({ items: [{ attemptId: "attempt-a", issueId: "issue-a", phase: "prepared" }], nextAfterId: null });
+    await expect(t.store.executionHistory(t.project.id, 2)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    await expect(t.store.executionHistory("project-other", 1)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
   it("reads a compact document imported exactly at the exchange byte limit", async () => {
     const t = await setup();
     const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-boundary", revision: 1, sources: [], categories: [], requirements: [], issues: Array.from({ length: 128 }, (_, index) => ({ id: `issue-${index}`, categoryId: null, requirementIds: [], version: "1.0.0", order: index, title: "x", description: index < 127 ? "x".repeat(32_768) : "", acceptanceCriteria: ["x"], dependencyIds: [], status: "ready" })) };
@@ -59,13 +71,50 @@ describe("issue storage", () => {
     const t = await setup(); await t.store.importDocument(t.project.id, 1, document("a"));
     t.store.close(); stores.splice(stores.indexOf(t.store), 1);
     const root = path.join(t.root, ".local-data", "issues"), filename = path.join(root, "issues.sqlite"), legacy = new DatabaseSync(filename);
-    try { legacy.exec("ALTER TABLE documents DROP COLUMN original_bytes; ALTER TABLE documents DROP COLUMN original_hash; PRAGMA user_version=1;"); } finally { legacy.close(); }
+    try { legacy.exec("DROP TABLE issue_approval_journal; DROP TABLE issue_dispatch_reconciliation; DROP TABLE issue_dispatch_journal; ALTER TABLE documents DROP COLUMN original_bytes; ALTER TABLE documents DROP COLUMN original_hash; PRAGMA user_version=1;"); } finally { legacy.close(); }
     const migrated = await IssueStore.open(t.root); stores.push(migrated);
     expect((await migrated.readDocument(t.project.id, "doc-a")).document.documentId).toBe("doc-a");
     expect((await migrated.readProject(t.project.id)).revision).toBe(2);
     const backups = (await readdir(root)).filter(name => /^issues-v1-backup-.*\.sqlite$/.test(name)); expect(backups).toHaveLength(1);
     const copy = new DatabaseSync(path.join(root, backups[0]), { readOnly: true });
     try { expect(copy.prepare("PRAGMA user_version").get()?.user_version).toBe(1); expect(copy.prepare("SELECT count(*) AS count FROM documents").get()?.count).toBe(1); } finally { copy.close(); }
+  });
+  it("backs up v2 and installs the journal without altering existing documents", async () => {
+    const t = await setup(); await t.store.importDocument(t.project.id, 1, document("a"));
+    t.store.close(); stores.splice(stores.indexOf(t.store), 1);
+    const root = path.join(t.root, ".local-data", "issues"), filename = path.join(root, "issues.sqlite"), legacy = new DatabaseSync(filename);
+    try { legacy.exec("DROP TABLE issue_approval_journal; DROP TABLE issue_dispatch_reconciliation; DROP TABLE issue_dispatch_journal; PRAGMA user_version=2;"); } finally { legacy.close(); }
+    const migrated = await IssueStore.open(t.root); stores.push(migrated);
+    expect((await migrated.readDocument(t.project.id, "doc-a")).document.documentId).toBe("doc-a");
+    const backups = (await readdir(root)).filter(name => /^issues-v2-backup-.*\.sqlite$/.test(name)); expect(backups).toHaveLength(1);
+    const copy = new DatabaseSync(path.join(root, backups[0]), { readOnly: true });
+    try { expect(copy.prepare("PRAGMA user_version").get()?.user_version).toBe(2); expect(copy.prepare("SELECT count(*) AS n FROM documents").get()?.n).toBe(1); } finally { copy.close(); }
+    const current = new DatabaseSync(filename, { readOnly: true });
+    try { expect(current.prepare("PRAGMA user_version").get()?.user_version).toBe(4); expect(current.prepare("SELECT count(*) AS n FROM issue_dispatch_journal").get()?.n).toBe(0); } finally { current.close(); }
+  });
+  it("rolls back a v2 migration if the journal schema collides", async () => {
+    const t = await setup(); t.store.close(); stores.splice(stores.indexOf(t.store), 1);
+    const root = path.join(t.root, ".local-data", "issues"), filename = path.join(root, "issues.sqlite"), legacy = new DatabaseSync(filename);
+    try { legacy.exec("DROP TABLE issue_dispatch_reconciliation; PRAGMA user_version=2;"); } finally { legacy.close(); }
+    await expect(IssueStore.open(t.root)).rejects.toThrow();
+    const db = new DatabaseSync(filename, { readOnly: true });
+    try { expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(2); expect(db.prepare("SELECT count(*) AS n FROM projects").get()?.n).toBe(1); } finally { db.close(); }
+    expect((await readdir(root)).filter(name => /^issues-v2-backup-.*\.sqlite$/.test(name))).toHaveLength(1);
+  });
+  it("backs up v3 and installs approval records while retaining dispatch history", async () => {
+    const t = await setup(); t.store.close(); stores.splice(stores.indexOf(t.store), 1);
+    const root = path.join(t.root, ".local-data", "issues"), filename = path.join(root, "issues.sqlite"), legacy = new DatabaseSync(filename);
+    try {
+      legacy.prepare("INSERT INTO issue_dispatch_journal(attempt_id,project_id,idempotency_key,issue_id,project_revision,request_digest,phase) VALUES(?,?,?,?,?,?,?)").run("attempt-a", t.project.id, "key-a", "issue-a", 1, "a".repeat(64), "prepared");
+      legacy.exec("DROP TABLE issue_approval_journal; PRAGMA user_version=3;");
+    } finally { legacy.close(); }
+    const migrated = await IssueStore.open(t.root); stores.push(migrated);
+    expect((await migrated.executionHistory(t.project.id, 1)).items).toMatchObject([{ attemptId: "attempt-a", phase: "prepared" }]);
+    const backups = (await readdir(root)).filter(name => /^issues-v3-backup-.*\.sqlite$/.test(name)); expect(backups).toHaveLength(1);
+    const backup = new DatabaseSync(path.join(root, backups[0]), { readOnly: true });
+    try { expect(backup.prepare("PRAGMA user_version").get()?.user_version).toBe(3); expect(backup.prepare("SELECT count(*) AS n FROM issue_dispatch_journal").get()?.n).toBe(1); } finally { backup.close(); }
+    const db = new DatabaseSync(filename, { readOnly: true });
+    try { expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(4); expect(db.prepare("SELECT count(*) AS n FROM issue_approval_journal").get()?.n).toBe(0); } finally { db.close(); }
   });
   it("preserves the old version and backup when a malformed v1 database cannot migrate", async () => {
     const t = await setup(); t.store.close(); stores.splice(stores.indexOf(t.store), 1);

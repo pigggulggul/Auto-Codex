@@ -1,9 +1,5 @@
 import { comparePlannedIssues, normalizeVersion } from "../../shared/issues/planning.js";
-<<<<<<< HEAD
-import type { IssueCategoryView, IssueDependencyView, IssueDetail, IssueDiagnosticReport, IssueFinding, IssueFilters, IssueRequirementView, IssueSummary, Page, ProjectIssueCursor, ProjectIssueFilters, ProjectIssuePage, RequirementDetail, SourceTrace } from "../../shared/issues/view.js";
-=======
-import { MAX_PREVIEW_DEPENDENCIES, validCandidateIds, validCandidateOptions, type IssueCandidateOptions, type IssueCandidatePreview, type IssueCategoryView, type IssueDependencyView, type IssueDetail, type IssueDiagnosticReport, type IssueFinding, type IssueFilters, type IssueRequirementView, type IssueSummary, type Page, type ProjectIssueCursor, type ProjectIssueFilters, type ProjectIssuePage, type RequirementDetail } from "../../shared/issues/view.js";
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
+import { MAX_PREVIEW_DEPENDENCIES, validCandidateIds, validCandidateOptions, type IssueCandidateOptions, type IssueCandidatePreview, type IssueCategoryView, type IssueDependencyView, type IssueDetail, type IssueDiagnosticReport, type IssueFinding, type IssueFilters, type IssueRequirementView, type IssueSummary, type Page, type ProjectIssueCursor, type ProjectIssueFilters, type ProjectIssuePage, type RequirementDetail, type SourceTrace } from "../../shared/issues/view.js";
 import { IssueStore, IssueStoreError } from "./store.js";
 import { selectExecutionCandidates } from "./execution-candidates.js";
 
@@ -143,11 +139,6 @@ export class IssueView {
       if (parentIds.has(category.id)) continue;
       const hasRequirements = requirementCategories.has(category.id), hasIssues = issueCategories.has(category.id);
       if (!hasRequirements || !hasIssues) findings.push({ code: !hasRequirements && !hasIssues ? "category-empty" : !hasRequirements ? "category-no-requirements" : "category-no-issues", entityId: category.id, title: category.title, provenance: null });
-    }
-    // A stored source ID reference is not evidence that its contents were analyzed.
-    const referencedSources = new Set(document.requirements.map(item => item.sourceId).filter((id): id is string => id !== undefined));
-    for (const source of [...document.sources].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)) {
-      if (!referencedSources.has(source.id)) findings.push({ code: "source-unreferenced", entityId: source.id, title: source.name, provenance: null });
     }
     return { documentRevision: document.revision, issueCount: document.issues.length, requirementCount: document.requirements.length, linkedRequirementCount: document.requirements.filter(item => linked.has(item.id)).length, totalFindings: findings.length, findings: boundedPage(findings, offset) };
   }

@@ -27,9 +27,9 @@ try {
       title: 'synthetic', description: '', acceptanceCriteria: ['synthetic test'], dependencyIds: [], status: 'completed' }],
   };
   const bytes = new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(json)}\n\`\`\`\n`);
-  const imported = await context.importDocument(bytes, () => true);
+  const imported = await context.importDocument(bytes, () => true, { id, revision: 1 });
   assert.deepEqual(imported, { alreadyImported: false, issueCount: 1 });
-  assert.deepEqual(await context.importDocument(bytes, () => true), { alreadyImported: true, issueCount: 1 });
+  assert.deepEqual(await context.importDocument(bytes, () => true, { id, revision: 2 }), { alreadyImported: true, issueCount: 1 });
   const saved = await client.request({ operation: 'document.read', projectId: id, documentId: 'doc-1' });
   assert.equal(saved.kind, 'document');
   assert.equal(saved.issues[0].importedStatus, 'completed');
@@ -47,12 +47,23 @@ try {
   assert.equal((await client.request({ operation: 'project.read', projectId: id })).revision, 2);
   await client.close();
   client = new IssueWorkerClient(root);
-  const queued = { ...json, documentId: 'doc-3', issues: [{ ...json.issues[0], id: 'issue-3' }] };
+  const queued = { ...json, documentId: 'doc-3', issues: [{ ...json.issues[0], id: 'issue-3', status: 'ready' }] };
   const queuedBytes = new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(queued)}\n\`\`\`\n`);
   const queuedRequest = { operation: 'document.import', projectId: id, expectedRevision: 2, bytes: queuedBytes };
   const queuedResult = client.request(queuedRequest);
   queuedBytes.fill(0); queuedRequest.expectedRevision = 999;
   assert.equal((await queuedResult).revision, 3);
+  // Synthetic internal worker flow only; no model or external service is started.
+  const prepared = await client.request({ operation: 'execution.prepare', projectId: id, documentId: 'doc-3', issueId: 'issue-3', expectedRevision: 3, idempotencyKey: 'synthetic-key', policy: { sandbox: 'workspace-write', networkAccess: false, approval: 'manual', revision: 1 } });
+  assert.equal(prepared.kind, 'execution.prepare'); assert.equal(prepared.record.phase, 'prepared');
+  const transition = { operation: 'execution.transition', projectId: id, expectedRevision: 3, attemptId: prepared.record.attemptId };
+  await client.request({ ...transition, action: { type: 'dispatch' } });
+  await client.request({ ...transition, action: { type: 'running', threadId: 'synthetic-thread', turnId: 'synthetic-turn' } });
+  const approvalBinding = { projectId: id, attemptId: prepared.record.attemptId, threadId: 'synthetic-thread', turnId: 'synthetic-turn', requestId: 1 };
+  await client.request({ operation: 'execution.approval', binding: approvalBinding, expectedRevision: 3, action: { type: 'request', kind: 'command' } });
+  await client.request({ ...transition, action: { type: 'unknown' } });
+  const history = await client.request({ operation: 'execution.history', projectId: id, expectedRevision: 3, afterId: null });
+  assert.equal(history.page.items[0].phase, 'outcome_unknown'); assert.equal(history.page.items[0].approvals.expired, 1);
   // Terminating during a real large import models a lost worker reply, not a failed import.
   const large = { ...json, documentId: 'doc-2', issues: Array.from({ length: 30 }, (_, index) => ({ ...json.issues[0], id: `issue-next-${index}`, status: 'ready', description: 'x'.repeat(32000) })) };
   const largeBytes = new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(large)}\n\`\`\`\n`);

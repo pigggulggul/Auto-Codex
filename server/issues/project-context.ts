@@ -1,6 +1,8 @@
 import { IssueWorkerClientError } from "./worker-client.js";
 import type { IssueWorkerRequest, IssueWorkerResult } from "./worker-contract.js";
 import type { IssueViewQuery, IssueViewResult } from "../../shared/issues/view.js";
+import { freezeExecutionPolicy, type ExecutionIntentInput, type FrozenExecutionIntent } from "./execution-intent.js";
+import type { JournalRecord } from "./execution-journal.js";
 
 /** Supplied by the bridge, never constructed from an individual renderer message. */
 export type IssueProjectSelection = {
@@ -29,13 +31,57 @@ export class IssueProjectContext {
     if (now.workspaceMode !== "project" || now.generation !== selection.generation || now.projectPath !== selection.projectPath) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 선택이 변경되었습니다. 이전 프로젝트에 저장된 상태를 확인하세요.");
   }
   private async request(selection: SelectedProject, message: IssueWorkerRequest, mayStart: () => boolean = () => true): Promise<IssueWorkerResult> {
+    const mutating = message.operation === "project.create" || message.operation === "document.import" || message.operation === "execution.prepare" || message.operation === "execution.transition" || message.operation === "execution.approval" || message.operation === "execution.invalidateApprovals";
     this.verify(selection);
-    try { const result = await this.worker.request(message, () => { const now = this.currentSelection(); return now.workspaceMode === "project" && now.projectPath === selection.projectPath && now.generation === selection.generation && mayStart(); }); this.verify(selection); return result; }
+    try {
+      const result = await this.worker.request(message, () => { const now = this.currentSelection(); return now.workspaceMode === "project" && now.projectPath === selection.projectPath && now.generation === selection.generation && mayStart(); });
+      try { this.verify(selection); }
+      catch (error) {
+        if (mutating) throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "요청이 이전 프로젝트에 적용되었을 수 있습니다. 상태를 확인한 뒤 다시 시도하세요.");
+        throw error;
+      }
+      return result;
+    }
     catch (error) {
       // Do not hide an uncertain mutation outcome when the selection changes concurrently.
-      if (message.operation !== "project.create" && message.operation !== "document.import") this.verify(selection);
+      if (!mutating) this.verify(selection);
       throw error;
     }
+  }
+
+  /** Trusted runtime only: a view grant does not itself authorize execution. */
+  async prepareExecution(input: { documentId: string; issueId: string; expectedRevision: number; idempotencyKey: string; policy: ExecutionIntentInput["policy"] }, expectedProjectId: string, mayStart: () => boolean): Promise<{ intent: FrozenExecutionIntent; record: JournalRecord; created: boolean }> {
+    const fixed = { documentId: input.documentId, issueId: input.issueId, expectedRevision: input.expectedRevision, idempotencyKey: input.idempotencyKey, policy: freezeExecutionPolicy(input.policy) };
+    const allowed = () => { try { return mayStart() === true; } catch { return false; } };
+    const selected = this.capture(), project = await this.lookup(selected);
+    if (!project || project.id !== expectedProjectId || project.revision !== fixed.expectedRevision || !allowed()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 실행 권한이 변경되었습니다.");
+    const result = await this.request(selected, { operation: "execution.prepare", projectId: project.id, ...fixed }, allowed);
+    if (!allowed()) throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "시도 준비 결과를 확인하지 못했습니다. 상태를 확인하세요.");
+    if (result.kind !== "execution.prepare") throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "시도 준비 결과를 확인하지 못했습니다. 상태를 확인하세요.");
+    return { intent: result.intent, record: result.record, created: result.created };
+  }
+
+  /** Only a runtime owning the actual event and admission may call this. */
+  async transitionExecution(input: Extract<IssueWorkerRequest, { operation: "execution.transition" }>, expectedProjectId: string, mayStart: () => boolean): Promise<JournalRecord> {
+    const fixed = { ...input, action: { ...input.action } };
+    const allowed = () => { try { return mayStart() === true; } catch { return false; } };
+    const selected = this.capture(), project = await this.lookup(selected);
+    if (!project || project.id !== expectedProjectId || fixed.projectId !== project.id || project.revision !== fixed.expectedRevision || !allowed()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 실행 권한이 변경되었습니다.");
+    const result = await this.request(selected, fixed, allowed);
+    if (!allowed()) throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "시도 기록 결과를 확인하지 못했습니다. 상태를 확인하세요.");
+    if (result.kind !== "execution.transition") throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "시도 기록 결과를 확인하지 못했습니다. 상태를 확인하세요.");
+    return result.record;
+  }
+
+  /** Correlation and the actual pending request must be checked by the owning runtime. */
+  async recordExecutionApproval(input: Extract<IssueWorkerRequest, { operation: "execution.approval" }>, expectedProjectId: string, mayStart: () => boolean): Promise<void> {
+    const fixed = { ...input, binding: { ...input.binding }, action: { ...input.action } };
+    const allowed = () => { try { return mayStart() === true; } catch { return false; } };
+    const selected = this.capture(), project = await this.lookup(selected);
+    if (!project || project.id !== expectedProjectId || fixed.binding.projectId !== project.id || project.revision !== fixed.expectedRevision || !allowed()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 승인 요청이 변경되었습니다.");
+    const result = await this.request(selected, fixed, allowed);
+    if (!allowed()) throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "승인 기록 결과를 확인하지 못했습니다. 자동 재전송하지 마세요.");
+    if (result.kind !== "execution.approval") throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "승인 기록 결과를 확인하지 못했습니다. 자동 재전송하지 마세요.");
   }
   private async lookup(selection: SelectedProject): Promise<{ id: string; revision: number } | null> {
     const result = await this.request(selection, { operation: "project.lookup", selectedPath: selection.projectPath });
@@ -68,10 +114,11 @@ export class IssueProjectContext {
   }
 
   /** Import is called only after the bridge has confirmed a native file selection. */
-  async importDocument(bytes: Uint8Array, mayStart: () => boolean): Promise<{ issueCount: number; alreadyImported: boolean }> {
+  async importDocument(bytes: Uint8Array, mayStart: () => boolean, expected: { id: string; revision: number }): Promise<{ issueCount: number; alreadyImported: boolean }> {
     const selected = this.capture();
     const project = await this.lookup(selected);
     if (!project) throw new IssueProjectContextError("PROJECT_UNBOUND", "먼저 현재 프로젝트의 이슈 저장소를 연결하세요.");
+    if (project.id !== expected.id || project.revision !== expected.revision) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트가 변경되어 가져오기를 중단했습니다.");
     if (!mayStart()) throw new IssueProjectContextError("STALE_SELECTION", "가져오기를 시작하기 전에 연결 또는 실행 상태가 변경되었습니다.");
     const result = await this.request(selected, { operation: "document.import", projectId: project.id, expectedRevision: project.revision, bytes }, mayStart);
     if (result.kind !== "import") throw new IssueProjectContextError("WORKER_UNAVAILABLE", "이슈 문서 응답을 확인할 수 없습니다.");
@@ -79,9 +126,10 @@ export class IssueProjectContext {
   }
 
   /** Serialize the currently bound project's fixed revision; this does not write a file. */
-  async exportDocument(documentId: string, expectedRevision: number, mayStart: () => boolean): Promise<Uint8Array> {
+  async exportDocument(documentId: string, expectedRevision: number, mayStart: () => boolean, expectedProjectId: string): Promise<Uint8Array> {
     const selected = this.capture(), project = await this.lookup(selected);
     if (!project) throw new IssueProjectContextError("PROJECT_UNBOUND", "먼저 현재 프로젝트의 이슈 저장소를 연결하세요.");
+    if (project.id !== expectedProjectId) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트가 변경되어 내보내기를 중단했습니다.");
     if (project.revision !== expectedRevision) throw new IssueWorkerClientError("VERSION_CONFLICT", "이슈 목록이 변경되었습니다. 다시 불러오세요.");
     if (!mayStart()) throw new IssueProjectContextError("STALE_SELECTION", "내보내기 전에 프로젝트 또는 연결 상태가 변경되었습니다.");
     const result = await this.request(selected, { operation: "document.export", projectId: project.id, documentId, expectedRevision }, mayStart);
@@ -91,15 +139,17 @@ export class IssueProjectContext {
   }
 
   /** The caller must verify a current, per-connection view grant before and after this call. */
-  async view(query: IssueViewQuery, mayStart: () => boolean): Promise<IssueViewResult> {
+  async view(query: IssueViewQuery, mayStart: () => boolean, expectedProjectId: string): Promise<IssueViewResult> {
     const selected = this.capture(), project = await this.lookup(selected);
     if (!project) throw new IssueProjectContextError("PROJECT_UNBOUND", "먼저 현재 프로젝트의 이슈 저장소를 연결하세요.");
+    if (project.id !== expectedProjectId) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트가 변경되어 이슈 조회를 중단했습니다.");
     if (query.expectedRevision !== undefined && query.expectedRevision !== project.revision) throw new IssueWorkerClientError("VERSION_CONFLICT", "이슈 목록이 변경되었습니다. 다시 불러오세요.");
     if (!mayStart()) throw new IssueProjectContextError("STALE_SELECTION", "이슈 보기 권한 또는 프로젝트 선택이 변경되었습니다.");
     const base = { projectId: project.id, expectedRevision: project.revision };
     let request: IssueWorkerRequest;
     switch (query.kind) {
       case "documents": request = { operation: "document.list", ...base, limit: 32, ...(query.afterId ? { afterId: query.afterId } : {}) }; break;
+      case "executionHistory": request = { operation: "execution.history", ...base, afterId: query.afterId }; break;
       case "issues": request = { operation: "issue.list", ...base, documentId: query.documentId, offset: query.offset, ...(query.filters ? { filters: query.filters } : {}) }; break;
       case "projectIssues": request = { operation: "issue.projectSearch", ...base, cursor: query.cursor, ...(query.filters ? { filters: query.filters } : {}) }; break;
       case "categories": request = { operation: "category.list", ...base, documentId: query.documentId, parentId: query.parentId, offset: query.offset }; break;
@@ -115,6 +165,7 @@ export class IssueProjectContext {
     const result = await this.request(selected, request, mayStart);
     if (!mayStart()) throw new IssueProjectContextError("STALE_SELECTION", "이슈 보기 권한 또는 프로젝트 선택이 변경되었습니다.");
     if (query.kind === "documents" && result.kind === "documents") return result;
+    if (query.kind === "executionHistory" && result.kind === "execution.history") return { kind: "executionHistory", revision: project.revision, page: result.page };
     if (query.kind === "issues" && result.kind === "issue.list") return { kind: "issues", revision: project.revision, page: result.page };
     if (query.kind === "projectIssues" && result.kind === "issue.projectSearch") return { kind: "projectIssues", revision: project.revision, page: result.page };
     if (query.kind === "categories" && result.kind === "category.list") return { kind: "categories", revision: project.revision, page: result.page };

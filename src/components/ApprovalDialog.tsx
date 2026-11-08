@@ -21,7 +21,7 @@ export function ApprovalDialog({ approval, onResolve }: Props) {
     };
   }, [approval.approvalId]);
   return (
-    <dialog className="approval-native" ref={modal} aria-labelledby="approval-title" aria-describedby="approval-security-note" onCancel={(event) => event.preventDefault()} onKeyDown={(event) => {
+    <dialog className="approval-native" ref={modal} aria-labelledby="approval-title" aria-describedby={approval.oneTimeOnly ? "approval-security-note approval-analysis-risk" : "approval-security-note"} onCancel={(event) => event.preventDefault()} onKeyDown={(event) => {
       if (event.key !== "Tab") return;
       const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
       const first = buttons[0];
@@ -53,9 +53,10 @@ export function ApprovalDialog({ approval, onResolve }: Props) {
           </div>
         )}
         <p className="security-note" id="approval-security-note">명시적으로 선택할 때까지 요청을 유지합니다. 브라우저는 승인 ID와 결정을 전달하며 실제 명령과 권한 검사는 로컬 Codex가 수행합니다.</p>
+        {approval.oneTimeOnly && <p className="security-note" id="approval-analysis-risk">이 명령을 승인하면 읽기 전용 또는 네트워크 제한을 벗어나 파일을 변경하거나 네트워크에 접근할 수 있습니다. 표시된 명령과 작업 위치를 확인한 뒤 결정하세요.</p>}
         <div className="approval-actions">
           <button className="button-secondary danger" type="button" onClick={() => onResolve("decline")}>거절</button>
-          <button className="button-secondary" type="button" onClick={() => onResolve("acceptForSession")}>이 세션에서 승인</button>
+          {!approval.oneTimeOnly && <button className="button-secondary" type="button" onClick={() => onResolve("acceptForSession")}>이 세션에서 승인</button>}
           <button className="button-primary" type="button" onClick={() => onResolve("accept")}>이번만 승인</button>
         </div>
       </section>

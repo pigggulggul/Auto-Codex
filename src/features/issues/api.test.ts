@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { IssueApi } from "./api";
 
 describe("issue project transport", () => {
+  it("validates execution history and correlates its cursor and revision", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw)));
+    const reply = (page: unknown, revision = 2) => api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "executionHistory", revision, page } });
+    const item = { attemptId: "attempt-b", issueId: "issue-a", projectRevision: 1, phase: "outcome_unknown", outcome: null, hasRuntimeReference: false, approvals: { pending: 0, responding: 0, sent: 0, outcome_unknown: 1, expired: 0 } };
+    const first = api.request("view", { kind: "executionHistory", expectedRevision: 2, afterId: "attempt-a" }); reply({ items: [item], nextAfterId: "attempt-b" }); expect((await first).view?.kind).toBe("executionHistory");
+    const stale = api.request("view", { kind: "executionHistory", expectedRevision: 2, afterId: "attempt-a" }); reply({ items: [item], nextAfterId: null }, 3); await expect(stale).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const backwards = api.request("view", { kind: "executionHistory", expectedRevision: 2, afterId: "attempt-b" }); reply({ items: [item], nextAfterId: null }); await expect(backwards).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const invalid = api.request("view", { kind: "executionHistory", expectedRevision: 2, afterId: null }); reply({ items: [{ ...item, approvals: { ...item.approvals, pending: 1025 } }], nextAfterId: null }); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    api.disconnect();
+  });
   it("allows a separately correlated interrupt while a result page is pending", async () => {
     const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
     const page = api.request("analysisSegment", { index: 0, offset: 0 });
@@ -227,7 +237,7 @@ describe("issue project transport", () => {
     const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw) as Record<string, unknown>));
     const query = { kind: "diagnostics" as const, documentId: "doc-1", expectedRevision: 2, offset: 0 };
     const reply = (finding: Record<string, unknown>) => ({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "diagnostics", revision: 2, report: { documentRevision: 1, issueCount: 0, requirementCount: 0, linkedRequirementCount: 0, totalFindings: 1, findings: { items: [finding], nextOffset: null } } } });
-    const finding = { code: "source-unreferenced", entityId: "source-1", title: "자료", provenance: null };
+    const finding = { code: "source-unlinked", entityId: "source-1", title: "자료", provenance: null };
     const pending = api.request("view", query); api.receive(reply(finding)); expect((await pending).view?.kind).toBe("diagnostics");
     for (const invalidFinding of [{ ...finding, relatedEntityId: "source-2" }, { ...finding, provenance: { origin: "source", sourceName: "자료", locator: null } }, { ...finding, entityId: "../outside" }]) {
       const invalid = api.request("view", query); api.receive(reply(invalidFinding)); await expect(invalid).rejects.toMatchObject({ code: "INVALID_RESPONSE" });

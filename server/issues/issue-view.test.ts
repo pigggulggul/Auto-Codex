@@ -22,7 +22,6 @@ async function setup() {
   return { root, store, project, view: new IssueView(store) };
 }
 describe("bounded issue views", () => {
-<<<<<<< HEAD
   it("flags cross-branch issue and requirement categories without flagging parent-child links", async () => {
     const t = await setup();
     const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-categories", revision: 1, sources: [], categories: [{ id: "root-a", parentId: null, title: "A", order: 0 }, { id: "child-a", parentId: "root-a", title: "A1", order: 0 }, { id: "root-b", parentId: null, title: "B", order: 1 }], requirements: [{ id: "req-a", categoryId: "root-a", text: "같은 가지", origin: "user" }, { id: "req-b", categoryId: "root-b", text: "다른 가지", origin: "user" }], issues: [{ id: "issue-a", categoryId: "child-a", requirementIds: ["req-a", "req-b"], version: "1.0.0", order: 0, title: "이슈", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }] };
@@ -52,7 +51,7 @@ describe("bounded issue views", () => {
     expect(report.findings.items.filter(item => item.code === "source-unlinked")).toEqual([{ code: "source-unlinked", entityId: "source-unused", title: "미연결 자료", provenance: null }]);
     expect((await t.store.readProject(t.project.id)).revision).toBe(3);
     await expect(t.view.diagnostics(t.project.id, "doc-sources", 2, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
-=======
+  });
   it("reports only document sources with no requirement reference, without reading the source files", async () => {
     const t = await setup();
     const sources = ["source-unused-z", "source-used-user", "source-used", "source-unused-a"].map(id => ({ id, name: id === "source-unused-a" ? "<script>unsafe</script>" : id, contentHash: `sha256:${"a".repeat(64)}` }));
@@ -61,7 +60,7 @@ describe("bounded issue views", () => {
     const data = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-source-review", revision: 1, sources, categories: [{ id: "cat-source", parentId: null, title: "분류", order: 0 }], requirements, issues };
     await t.store.importDocument(t.project.id, 2, new TextEncoder().encode(`\`\`\`auto-codex-issues-v1\n${JSON.stringify(data)}\n\`\`\``));
     const report = await t.view.diagnostics(t.project.id, "doc-source-review", 3, 0);
-    expect(report.findings.items).toEqual([{ code: "source-unreferenced", entityId: "source-unused-a", title: "<script>unsafe</script>", provenance: null }, { code: "source-unreferenced", entityId: "source-unused-z", title: "source-unused-z", provenance: null }]);
+    expect(report.findings.items).toEqual([{ code: "source-unlinked", entityId: "source-unused-a", title: "<script>unsafe</script>", provenance: null }, { code: "source-unlinked", entityId: "source-unused-z", title: "source-unused-z", provenance: null }]);
     expect((await t.store.readProject(t.project.id)).revision).toBe(3);
     await expect(t.view.diagnostics(t.project.id, "doc-source-review", 2, 0)).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
     await expect(t.view.diagnostics("project_00000000-0000-4000-8000-000000000000", "doc-source-review", 3, 0)).rejects.toMatchObject({ code: "NOT_FOUND" });
@@ -100,7 +99,6 @@ describe("bounded issue views", () => {
     const first = await t.view.diagnostics(t.project.id, "doc-leaf-pages", 3, 0), last = await t.view.diagnostics(t.project.id, "doc-leaf-pages", 3, 32);
     expect(first.totalFindings).toBe(40); expect(first.findings.nextOffset).toBe(32); expect(last.findings.nextOffset).toBeNull();
     expect([...first.findings.items, ...last.findings.items].map(item => item.entityId)).toEqual(Array.from({ length: 40 }, (_, i) => `cat-${String(i).padStart(2, "0")}`));
->>>>>>> 3819e49eb81bc37c76378b17f332ab2b116bc8d0
   });
   it("shows numeric version order and separates imported completion from local status", async () => {
     const t = await setup(), page = await t.view.list(t.project.id, "doc-1", 2, 0);

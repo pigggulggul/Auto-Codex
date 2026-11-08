@@ -3,6 +3,10 @@ import { lstat, mkdir, open, realpath, rename, stat } from "node:fs/promises";
 import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { MAX_DOCUMENT_BYTES, parseIssueDocument, type IssueDocument } from "./document.js";
+import { EXECUTION_JOURNAL_SCHEMA, ExecutionJournal, type JournalHistoryPage, type JournalRecord } from "./execution-journal.js";
+import { EXECUTION_APPROVAL_SCHEMA, ExecutionApprovalJournal, type ApprovalBinding, type ApprovalDecision, type ApprovalKind } from "./execution-approval-journal.js";
+import { prepareStoredIssueIntent } from "./execution-stored-intent.js";
+import type { ExecutionIntentInput, FrozenExecutionIntent } from "./execution-intent.js";
 
 export type IssueStoreCode = "STORAGE_FAILED" | "UNSUPPORTED_VERSION" | "PATH_INVALID" | "PROJECT_CHANGED" | "BINDING_EXISTS" | "NOT_FOUND" | "VERSION_CONFLICT" | "DOCUMENT_CONFLICT" | "ID_CONFLICT" | "LIMIT_EXCEEDED";
 export const MAX_STORED_DOCUMENT_BYTES = 256 * 1024 * 1024;
@@ -70,7 +74,7 @@ export class IssueStore {
     const db = new DatabaseSync(path.join(paths.root, "issues.sqlite"));
     try {
       const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
-      if (![0, 1, 2].includes(version)) fail("UNSUPPORTED_VERSION", "지원하지 않는 이슈 저장소는 변경하지 않습니다.");
+      if (![0, 1, 2, 3, 4].includes(version)) fail("UNSUPPORTED_VERSION", "지원하지 않는 이슈 저장소는 변경하지 않습니다.");
       if (version === 0) {
         if (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().length) fail("UNSUPPORTED_VERSION", "알 수 없는 이슈 저장소는 변경하지 않습니다.");
         db.exec(`BEGIN IMMEDIATE;
@@ -79,7 +83,8 @@ export class IssueStore {
           CREATE TABLE entity_ids(project_id TEXT NOT NULL, entity_id TEXT NOT NULL, document_id TEXT NOT NULL, PRIMARY KEY(project_id,entity_id), FOREIGN KEY(project_id,document_id) REFERENCES documents(project_id,id));
           CREATE TABLE imported_issues(project_id TEXT NOT NULL, issue_id TEXT NOT NULL, document_id TEXT NOT NULL, imported_status TEXT NOT NULL CHECK(imported_status IN ('ready','retryable','failed','needs_review','completed')), local_status TEXT NOT NULL CHECK(local_status IN ('ready','retryable','failed','needs_review')), PRIMARY KEY(project_id,issue_id), FOREIGN KEY(project_id,document_id) REFERENCES documents(project_id,id));
           CREATE INDEX imported_issues_document ON imported_issues(project_id,document_id);
-          PRAGMA user_version=2; COMMIT;`);
+          ${EXECUTION_JOURNAL_SCHEMA}
+          PRAGMA user_version=4; COMMIT;`);
       }
       if (version === 1) {
         // A consistent SQLite copy is kept before changing an existing database.
@@ -98,8 +103,29 @@ export class IssueStore {
         db.exec("BEGIN IMMEDIATE");
         try {
           const current = Number(db.prepare("PRAGMA user_version").get()?.user_version);
-          if (current === 1) db.exec("ALTER TABLE documents ADD COLUMN original_bytes BLOB; ALTER TABLE documents ADD COLUMN original_hash TEXT; PRAGMA user_version=2;");
-          else if (current !== 2) fail("UNSUPPORTED_VERSION", "이슈 저장소 버전이 변경되었습니다.");
+          if (current === 1) db.exec(`ALTER TABLE documents ADD COLUMN original_bytes BLOB; ALTER TABLE documents ADD COLUMN original_hash TEXT; ${EXECUTION_JOURNAL_SCHEMA} PRAGMA user_version=4;`);
+          else if (current !== 4) fail("UNSUPPORTED_VERSION", "이슈 저장소 버전이 변경되었습니다.");
+          db.exec("COMMIT");
+        } catch (error) { db.exec("ROLLBACK"); throw error; }
+      }
+      if (version === 2 || version === 3) {
+        await paths.verify();
+        const basename = `issues-v${version}-backup-${randomUUID()}`, pending = path.join(paths.root, `${basename}.pending`), backup = path.join(paths.root, `${basename}.sqlite`);
+        const handle = await open(pending, "wx", 0o600); await handle.close();
+        const before = await lstat(pending);
+        if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || !samePath(await realpath(pending), pending)) fail("STORAGE_FAILED", "백업 파일 경로가 안전하지 않습니다.");
+        db.prepare("VACUUM INTO ?").run(pending);
+        const after = await lstat(pending);
+        if (!after.isFile() || after.isSymbolicLink() || after.nlink !== 1 || !samePath(await realpath(pending), pending)) fail("STORAGE_FAILED", "백업 파일 경로가 변경되었습니다.");
+        await paths.verify();
+        try { await lstat(backup); fail("STORAGE_FAILED", "백업 파일 이름이 이미 존재합니다."); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+        await rename(pending, backup);
+        await paths.verify();
+        db.exec("BEGIN IMMEDIATE");
+        try {
+          const current = Number(db.prepare("PRAGMA user_version").get()?.user_version);
+          if (current === version) db.exec(`${version === 2 ? EXECUTION_JOURNAL_SCHEMA : EXECUTION_APPROVAL_SCHEMA} PRAGMA user_version=4;`);
+          else if (current !== 4) fail("UNSUPPORTED_VERSION", "이슈 저장소 버전이 변경되었습니다.");
           db.exec("COMMIT");
         } catch (error) { db.exec("ROLLBACK"); throw error; }
       }
@@ -142,6 +168,63 @@ export class IssueStore {
 
   async readProject(id: string): Promise<{ id: string; revision: number }> {
     const row = await this.checkedProject(id); return { id: row.id, revision: row.revision };
+  }
+
+  /** Internal read only; the bridge must separately verify the caller's grant. */
+  async executionHistory(projectId: string, expectedRevision: number, afterId: string | null = null): Promise<JournalHistoryPage> {
+    await this.checkedProject(projectId);
+    this.db.exec("BEGIN");
+    try {
+      if (!Number.isSafeInteger(expectedRevision) || this.project(projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 목록이 변경되었습니다. 다시 불러오세요.");
+      const result = new ExecutionJournal(this.db).history(projectId, afterId);
+      this.db.exec("COMMIT");
+      return result;
+    } catch (error) { this.db.exec("ROLLBACK"); throw error; }
+  }
+
+  /** Internal only: the bridge must own admission and verify authorization,
+   * actual runtime configuration and the selection again before dispatch. */
+  async prepareExecution(input: { projectId: string; documentId: string; issueId: string; expectedRevision: number; idempotencyKey: string; policy: ExecutionIntentInput["policy"] }): Promise<{ intent: FrozenExecutionIntent; record: JournalRecord; created: boolean }> {
+    await this.checkedProject(input.projectId);
+    const journal = this.executionJournal(input.projectId, input.expectedRevision);
+    return prepareStoredIssueIntent(this, journal, { ...input, mayPrepare: () => true });
+  }
+
+  private executionJournal(projectId: string, expectedRevision: number): ExecutionJournal {
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다.");
+    return new ExecutionJournal(this.db, () => { if (this.project(projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다."); });
+  }
+
+  /** Called by a trusted runtime, not an authorization or proof of events. */
+  async transitionExecution(projectId: string, expectedRevision: number, attemptId: string, action: { type: "dispatch" } | { type: "running"; threadId: string; turnId: string } | { type: "verifying" } | { type: "unknown" } | { type: "settle"; outcome: "interrupted" | "failed" | "verification_finished" }): Promise<JournalRecord> {
+    await this.checkedProject(projectId);
+    const journal = this.executionJournal(projectId, expectedRevision);
+    switch (action.type) {
+      case "dispatch": return journal.beginDispatch(projectId, attemptId);
+      case "running": return journal.markRunning(projectId, attemptId, action.threadId, action.turnId);
+      case "verifying": return journal.beginVerification(projectId, attemptId);
+      case "unknown": return journal.markOutcomeUnknown(projectId, attemptId);
+      case "settle": return journal.settle(projectId, attemptId, action.outcome);
+    }
+  }
+
+  /** Internal worker calls only; the runtime must own the actual request and
+   * admission. Browser input cannot establish that ownership. */
+  async executionApproval(binding: ApprovalBinding, expectedRevision: number, operation: { type: "request"; kind: ApprovalKind } | { type: "respond"; decision: ApprovalDecision } | { type: "finish"; result: "sent" | "outcome_unknown" }): Promise<void> {
+    await this.checkedProject(binding.projectId);
+    if (!Number.isSafeInteger(expectedRevision) || this.project(binding.projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다.");
+    const journal = new ExecutionApprovalJournal(this.db, () => { if (this.project(binding.projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다."); });
+    if (operation.type === "request") journal.recordRequest(binding, operation.kind);
+    else if (operation.type === "respond") journal.beginResponse(binding, operation.decision);
+    else journal.finishResponse(binding, operation.result);
+  }
+
+  /** This only invalidates stale approval records; it never releases an attempt. */
+  async invalidateUnknownApprovals(projectId: string, attemptId: string, expectedRevision: number): Promise<{ expired: number; unknown: number }> {
+    await this.checkedProject(projectId);
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다.");
+    const journal = new ExecutionApprovalJournal(this.db, () => { if (this.project(projectId).revision !== expectedRevision) fail("VERSION_CONFLICT", "이슈 프로젝트가 변경되었습니다."); });
+    return journal.invalidateUnknownAttempt(projectId, attemptId);
   }
 
   /** Lookup never creates or rebinds a project. selectedPath must come from the bridge's current selection. */

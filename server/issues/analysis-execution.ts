@@ -1,9 +1,9 @@
 import type { AnalysisBatch, AnalysisBatchOutcome } from "./analysis-batch.js";
-import type { AnalysisTransport } from "./analysis-transport.js";
+import type { SegmentEvidence } from "./analysis-output.js";
 
 export type AnalysisExecutionState = "preparing" | "running" | "complete" | "blocked" | "limit" | "interrupted" | "failed" | "termination-unconfirmed";
 type Session = { batch?: AnalysisBatch; state: AnalysisExecutionState; cancelled: boolean; release: () => void; admitted: boolean };
-type Options = { acquire: () => (() => void) | null; permitted: () => boolean; createBatch: (admitted: () => boolean) => Promise<AnalysisBatch>; transport: AnalysisTransport };
+type Options = { acquire: () => (() => void) | null; permitted: () => boolean; createBatch: (admitted: () => boolean) => Promise<AnalysisBatch>; transport: { readonly busy: boolean; run(input: SegmentEvidence & { instruction: string }, signal: AbortSignal): Promise<string> } };
 
 /** Trusted per-connection coordinator. Callers must enforce view grants and route runtime events. */
 export class AnalysisExecution {

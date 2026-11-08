@@ -19,4 +19,13 @@ describe("analysis event routing", () => {
     for (let i = 0; i < 128; i++) router.register({ notification: () => false, serverRequest: () => false } as unknown as AnalysisTransport);
     expect(() => router.register({ notification: () => false, serverRequest: () => false } as unknown as AnalysisTransport)).toThrow(/limit/);
   });
+  it("recovers capacity only when its owner reports confirmed stop", () => {
+    const router = new AnalysisRouter();
+    for (let i = 0; i < 128; i++) router.register({ notification: () => false, serverRequest: () => false } as unknown as AnalysisTransport);
+    router.resetAfterConfirmedStop();
+    const fresh = { notification: vi.fn(() => true), serverRequest: vi.fn(() => true) } as unknown as AnalysisTransport;
+    router.register(fresh); router.register(fresh);
+    expect(router.notification({ method: "item/completed", params: { threadId: "new" } })).toBe(true);
+    expect(fresh.notification).toHaveBeenCalledOnce();
+  });
 });

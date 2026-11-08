@@ -7,6 +7,53 @@ import { EXECUTION_JOURNAL_SCHEMA, ExecutionJournal } from "./execution-journal.
 const selection = { projectId: "project-a", issueId: "issue-a", idempotencyKey: "request-a", projectRevision: 2, requestDigest: "a".repeat(64) };
 
 describe("isolated issue dispatch journal", () => {
+  it("checks the trusted write guard inside the transaction before reserving", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(EXECUTION_JOURNAL_SCHEMA); let valid = false;
+      const journal = new ExecutionJournal(db, () => { if (!valid) throw new Error("stale project"); });
+      expect(() => journal.prepare(selection)).toThrow("stale project");
+      expect(db.prepare("SELECT count(*) AS n FROM issue_dispatch_journal").get()?.n).toBe(0);
+      valid = true; const attempt = journal.prepare(selection).record; valid = false;
+      expect(() => journal.beginDispatch(selection.projectId, attempt.attemptId)).toThrow("stale project");
+      expect(journal.get(selection.projectId, attempt.attemptId).phase).toBe("prepared");
+    } finally { db.close(); }
+  });
+  it("does not recover when ownership or prior termination cannot be confirmed", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(EXECUTION_JOURNAL_SCHEMA);
+      const journal = new ExecutionJournal(db), sent = journal.prepare(selection).record;
+      journal.beginDispatch(selection.projectId, sent.attemptId);
+      for (const check of [() => false, () => { throw new Error("unavailable"); }]) {
+        expect(() => journal.recoverAfterRestart(check)).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
+        expect(journal.get(selection.projectId, sent.attemptId).phase).toBe("dispatching");
+      }
+      let count = 0;
+      expect(() => journal.recoverAfterRestart(() => ++count < 3)).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
+      expect(journal.get(selection.projectId, sent.attemptId).phase).toBe("dispatching");
+      expect(journal.recoverAfterRestart(() => true)).toEqual({ interrupted: 0, unknown: 1 });
+    } finally { db.close(); }
+  });
+  it("reconciles uncertainty only after trusted checks and preserves its uncertain outcome", () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(EXECUTION_JOURNAL_SCHEMA); const journal = new ExecutionJournal(db), record = journal.prepare(selection).record;
+      journal.beginDispatch(selection.projectId, record.attemptId);
+      journal.markOutcomeUnknown(selection.projectId, record.attemptId);
+      expect(() => journal.reconcileUnknown(selection.projectId, record.attemptId, "확인함", () => false)).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
+      let checks = 0;
+      expect(() => journal.reconcileUnknown(selection.projectId, record.attemptId, "확인함", () => ++checks < 3)).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
+      expect(db.prepare("SELECT count(*) AS n FROM issue_dispatch_reconciliation").get()?.n).toBe(0);
+      expect(journal.get(selection.projectId, record.attemptId).phase).toBe("outcome_unknown");
+      expect(() => journal.reconcileUnknown("project-other", record.attemptId, "확인함", () => true)).toThrow(expect.objectContaining({ code: "NOT_FOUND" }));
+      expect(journal.reconcileUnknown(selection.projectId, record.attemptId, "변경과 종료를 확인함", () => true)).toMatchObject({ phase: "settled", outcome: "reconciled_unknown" });
+      expect(db.prepare("SELECT reason FROM issue_dispatch_reconciliation WHERE attempt_id=?").get(record.attemptId)?.reason).toBe("변경과 종료를 확인함");
+      expect(journal.prepare(selection)).toMatchObject({ created: false, record: { outcome: "reconciled_unknown" } });
+      expect(journal.prepare({ ...selection, idempotencyKey: "fresh" }).created).toBe(true);
+      expect(() => journal.reconcileUnknown(selection.projectId, record.attemptId, "다시", () => true)).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
+    } finally { db.close(); }
+  });
   it("lists bounded project-scoped history without exposing private correlation fields or releasing unknown attempts", () => {
     const db = new DatabaseSync(":memory:");
     try {
@@ -14,7 +61,13 @@ describe("isolated issue dispatch journal", () => {
       for (let index = 0; index < 40; index++) {
         const record = journal.prepare({ ...selection, issueId: `issue-${index}`, idempotencyKey: `request-${index}` }).record;
         expectedIds.push(record.attemptId);
-        journal.settle(selection.projectId, record.attemptId, index % 2 ? "failed" : "verification_required");
+        journal.beginDispatch(selection.projectId, record.attemptId);
+        if (index % 2) journal.settle(selection.projectId, record.attemptId, "failed");
+        else {
+          journal.markRunning(selection.projectId, record.attemptId, "synthetic-thread", "synthetic-turn");
+          journal.beginVerification(selection.projectId, record.attemptId);
+          journal.settle(selection.projectId, record.attemptId, "verification_finished");
+        }
       }
       const uncertain = journal.prepare({ ...selection, issueId: "uncertain", idempotencyKey: "request-uncertain" }).record;
       expectedIds.push(uncertain.attemptId); journal.beginDispatch(selection.projectId, uncertain.attemptId);
@@ -24,7 +77,7 @@ describe("isolated issue dispatch journal", () => {
       expect(first.items).toHaveLength(32); expect(first.nextAfterId).toBe(first.items.at(-1)?.attemptId); expect(second.items).toHaveLength(9); expect(second.nextAfterId).toBeNull();
       const items = [...first.items, ...second.items];
       expect(items.map(item => item.attemptId)).toEqual(expectedIds.sort());
-      expect(items.find(item => item.attemptId === uncertain.attemptId)).toEqual({ attemptId: uncertain.attemptId, issueId: "uncertain", projectRevision: 2, phase: "outcome_unknown", outcome: null, hasRuntimeReference: true });
+      expect(items.find(item => item.attemptId === uncertain.attemptId)).toEqual({ attemptId: uncertain.attemptId, issueId: "uncertain", projectRevision: 2, phase: "outcome_unknown", outcome: null, hasRuntimeReference: true, approvals: { pending: 0, responding: 0, sent: 0, outcome_unknown: 0, expired: 0 } });
       expect(items.some(item => item.attemptId === other.attemptId || item.issueId === "other-project")).toBe(false);
       expect(JSON.stringify(items)).not.toContain("synthetic-thread"); expect(JSON.stringify(items)).not.toContain("synthetic-turn"); expect(JSON.stringify(items)).not.toContain(selection.requestDigest); expect(JSON.stringify(items)).not.toContain("request-");
       expect(journal.history("project-b").items).toMatchObject([{ attemptId: other.attemptId, issueId: "other-project", phase: "prepared", hasRuntimeReference: false }]);
@@ -117,7 +170,7 @@ describe("isolated issue dispatch journal", () => {
       journal.beginVerification("project-d", verifying.attemptId);
       db.close();
       db = new DatabaseSync(filename); db.exec("PRAGMA synchronous=FULL"); journal = new ExecutionJournal(db);
-      expect(journal.recoverAfterRestart()).toEqual({ interrupted: 1, unknown: 3 });
+      expect(journal.recoverAfterRestart(() => true)).toEqual({ interrupted: 1, unknown: 3 });
       expect(journal.get("project-b", unsent.attemptId)).toMatchObject({ phase: "settled", outcome: "interrupted" });
       expect(journal.get("project-c", running.attemptId)).toMatchObject({ phase: "outcome_unknown", threadId: "thread", turnId: "turn" });
       expect(journal.get("project-d", verifying.attemptId)).toMatchObject({ phase: "outcome_unknown", threadId: "thread-d", turnId: "turn-d" });
@@ -126,7 +179,7 @@ describe("isolated issue dispatch journal", () => {
       expect(journal.prepare(selection)).toMatchObject({ created: false, record: { attemptId: sent.attemptId, phase: "outcome_unknown" } });
       expect(() => journal.prepare({ ...selection, idempotencyKey: "request-b" })).toThrow(expect.objectContaining({ code: "PROJECT_BUSY" }));
       expect(() => journal.settle(selection.projectId, sent.attemptId, "failed")).toThrow(expect.objectContaining({ code: "INVALID_TRANSITION" }));
-      expect(journal.recoverAfterRestart()).toEqual({ interrupted: 0, unknown: 0 });
+      expect(journal.recoverAfterRestart(() => true)).toEqual({ interrupted: 0, unknown: 0 });
     } finally {
       db?.close();
       expect(path.dirname(await realpath(root))).toBe(await realpath(base));
@@ -174,9 +227,10 @@ describe("isolated issue dispatch journal", () => {
       db.exec("PRAGMA ignore_check_constraints=ON");
       db.prepare("UPDATE issue_dispatch_journal SET phase='running',thread_id=NULL,turn_id=NULL WHERE attempt_id=?").run(record.attemptId);
       expect(() => journal.get(selection.projectId, record.attemptId)).toThrow(expect.objectContaining({ code: "CORRUPT_RECORD" }));
+      expect(() => journal.history(selection.projectId)).toThrow(expect.objectContaining({ code: "CORRUPT_RECORD" }));
       expect(() => journal.prepare(selection)).toThrow(expect.objectContaining({ code: "CORRUPT_RECORD" }));
       const other = journal.prepare({ ...selection, projectId: "project-b" }).record;
-      expect(() => journal.recoverAfterRestart()).toThrow(expect.objectContaining({ code: "CORRUPT_RECORD" }));
+      expect(() => journal.recoverAfterRestart(() => true)).toThrow(expect.objectContaining({ code: "CORRUPT_RECORD" }));
       expect(journal.get("project-b", other.attemptId).phase).toBe("prepared");
     } finally { db.close(); }
   });

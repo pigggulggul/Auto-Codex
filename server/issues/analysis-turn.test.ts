@@ -31,4 +31,26 @@ describe("analysis turn capture", () => {
       const capture = new AnalysisTurnCapture("thread"); capture.bind("turn"); capture.receive(item("thread", "turn", "partial")); capture.receive(done("thread", "turn", status)); expect(capture.result()).toEqual({ status });
     }
   });
+  it("rejects an unknown explicit message phase instead of accepting it as final", () => {
+    for (const phase of ["analysis", "unknown", "", "FINAL_ANSWER"]) {
+      const capture = new AnalysisTurnCapture("thread"); capture.bind("turn");
+      capture.receive(item("thread", "turn", '{"requirements":[]}', phase)); capture.receive(done("thread", "turn"));
+      expect(capture.result()).toEqual({ status: "invalid" });
+    }
+  });
+  it("retains compatibility with a final message whose phase is absent or null", () => {
+    for (const phase of [undefined, null]) {
+      const capture = new AnalysisTurnCapture("thread"); capture.bind("turn");
+      capture.receive({ method: "item/completed", params: { threadId: "thread", turnId: "turn", item: { type: "agentMessage", phase, text: "{}" } } });
+      capture.receive(done("thread", "turn")); expect(capture.result()).toEqual({ status: "completed", text: "{}" });
+    }
+  });
+  it("rejects observed tool items and unknown item types even if a final message follows", () => {
+    for (const method of ["item/started", "item/completed"]) for (const type of ["commandExecution", "mcpToolCall", "dynamicToolCall", "webSearch", "fileChange", "hookPrompt", "futureTool"]) {
+      const capture = new AnalysisTurnCapture("thread"); capture.bind("turn");
+      capture.receive({ method, params: { threadId: "thread", turnId: "turn", item: { type } } });
+      capture.receive(item("thread", "turn", '{"requirements":[]}')); capture.receive(done("thread", "turn"));
+      expect(capture.result()).toEqual({ status: "invalid" });
+    }
+  });
 });

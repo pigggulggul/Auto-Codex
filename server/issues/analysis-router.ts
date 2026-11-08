@@ -9,6 +9,8 @@ export class AnalysisRouter {
     if (this.transports.length >= 128) throw new Error("Analysis router limit reached");
     this.transports.push(transport);
   }
+  /** Only the owning App Server may call this after confirmed termination. */
+  resetAfterConfirmedStop(): void { this.transports.length = 0; }
   notification(event: ProtocolNotification): boolean {
     for (let i = this.transports.length - 1; i >= 0; i--) if (this.transports[i].notification(event)) return true;
     return false;
