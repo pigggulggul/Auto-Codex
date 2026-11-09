@@ -1,0 +1,103 @@
+- generic [ref=f3e3]:
+  - complementary [ref=f3e4]:
+    - button "Auto Codex 나의 작업실" [ref=f3e5] [cursor=pointer]: auto codex.
+    - paragraph [ref=f3e6]: 작업 공간
+    - navigation "작업실 탐색" [ref=f3e7]:
+      - button "Codex 대화" [ref=f3e8] [cursor=pointer]
+      - button "아뜰리에 디자인" [ref=f3e10] [cursor=pointer]
+      - button "이슈 처리" [ref=f3e12] [cursor=pointer]
+      - button "대화 결과 · 픽셀 화면" [ref=f3e14] [cursor=pointer]
+      - button "실행 활동" [ref=f3e16] [cursor=pointer]
+    - region "대화와 프로젝트" [ref=f3e18]:
+      - button "✎ 새 채팅 조사 모드" [ref=f3e19] [cursor=pointer]:
+        - text: ✎ 새 채팅
+        - generic [ref=f3e20]: 조사 모드
+      - generic [ref=f3e21]:
+        - strong [ref=f3e22]: 프로젝트
+        - button "프로젝트 폴더 추가" [ref=f3e23] [cursor=pointer]: + 폴더
+      - generic [ref=f3e24]:
+        - generic [ref=f3e25]: 대화와 프로젝트 검색
+        - textbox "대화와 프로젝트 검색" [ref=f3e26]:
+          - /placeholder: 프로젝트 또는 대화 검색
+      - group [ref=f3e91]:
+        - generic "폴더 미연결 1 ▾" [ref=f3e92] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f3e93]: ▱
+          - strong [ref=f3e94]: 폴더 미연결
+          - generic [ref=f3e95]: "1"
+          - text: ▾
+        - generic [ref=f3e97]:
+          - button "새 대화" [ref=f3e98] [cursor=pointer]
+          - button "새 대화 대화 삭제" [ref=f3e99] [cursor=pointer]: ×
+    - generic [ref=f3e29]:
+      - paragraph [ref=f3e30]: LOCAL WORKSPACE저장과 실행 연결은 로컬 브리지가 관리합니다.
+      - link "Free icons from Streamline ↗" [ref=f3e31] [cursor=pointer]:
+        - /url: https://streamlinehq.com
+  - main [ref=f3e32]:
+    - link "작업 내용으로 건너뛰기" [ref=f3e33] [cursor=pointer]:
+      - /url: "#workspace-heading"
+    - generic [ref=f3e34]:
+      - link "Auto Codex 홈" [ref=f3e35] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f3e36]:
+          - strong [ref=f3e37]: 나의 작업실
+          - generic [ref=f3e38]: 픽셀 화면
+      - generic [ref=f3e39]:
+        - generic [ref=f3e40]: GPT-6.1-Sol
+        - generic "로컬에서 집계한 토큰 사용량" [ref=f3e41]:
+          - generic [ref=f3e42]:
+            - generic [ref=f3e43]: 오늘 토큰
+            - strong [ref=f3e44]: "0"
+          - generic [ref=f3e45]:
+            - generic [ref=f3e46]: 7일 토큰
+            - strong [ref=f3e47]: "0"
+        - generic [ref=f3e48]: app-server ready
+    - generic [ref=f3e50]:
+      - generic [ref=f3e51]:
+        - paragraph [ref=f3e52]: AUTO CODEX / LOCAL WORKSPACE
+        - heading "픽셀 화면" [active] [level=1] [ref=f3e125]
+        - paragraph [ref=f3e54]: 역할별 캐릭터와 픽셀 공간에서 실제 작업 흐름을 살펴보세요.
+      - status [ref=f3e55]: 진행 작업 없음
+    - generic [ref=f3e109]:
+      - group "화면 선택" [ref=f3e110]:
+        - button "▤ 대화 결과" [ref=f3e111] [cursor=pointer]
+        - button "▦ 픽셀 화면" [pressed] [ref=f3e112] [cursor=pointer]
+      - generic [ref=f3e127]:
+        - generic [ref=f3e128]:
+          - generic [ref=f3e129]:
+            - strong [ref=f3e130]: PIXEL AGENT OFFICE
+            - generic [ref=f3e131]: LIVE RUNTIME · GPT-6.1-Sol
+          - generic [ref=f3e132]:
+            - button "결과 화면" [ref=f3e133] [cursor=pointer]
+            - button "애니 ON" [pressed] [ref=f3e134] [cursor=pointer]
+            - button "맵 편집" [ref=f3e135] [cursor=pointer]
+        - status [ref=f3e136]: 캐릭터를 선택해 외형과 실제 상태를 확인하세요. 드래그하여 맵을 이동합니다.
+        - region "픽셀 사무실 맵. 드래그 또는 스크롤로 이동" [ref=f3e137]:
+          - generic "사무실 맵. 방향키로 위치 선택 후 Enter로 적용" [ref=f3e138]
+        - generic [ref=f3e139]:
+          - button "Researcher 대기 중" [ref=f3e140] [cursor=pointer]:
+            - strong [ref=f3e141]: Researcher
+            - generic [ref=f3e142]: 대기 중
+          - button "Builder 대기 중" [ref=f3e143] [cursor=pointer]:
+            - strong [ref=f3e144]: Builder
+            - generic [ref=f3e145]: 대기 중
+          - button "Documenter 대기 중" [ref=f3e146] [cursor=pointer]:
+            - strong [ref=f3e147]: Documenter
+            - generic [ref=f3e148]: 대기 중
+          - button "Visual Designer 대기 중" [ref=f3e149] [cursor=pointer]:
+            - strong [ref=f3e150]: Visual Designer
+            - generic [ref=f3e151]: 대기 중
+          - button "Integrator 대기 중" [ref=f3e152] [cursor=pointer]:
+            - strong [ref=f3e153]: Integrator
+            - generic [ref=f3e154]: 대기 중
+          - button "Coordinator 대기 중" [ref=f3e155] [cursor=pointer]:
+            - strong [ref=f3e156]: Coordinator
+            - generic [ref=f3e157]: 대기 중
+          - button "QA Inspector 대기 중" [ref=f3e158] [cursor=pointer]:
+            - strong [ref=f3e159]: QA Inspector
+            - generic [ref=f3e160]: 대기 중
+          - button "Generalist 대기 중" [ref=f3e161] [cursor=pointer]:
+            - strong [ref=f3e162]: Generalist
+            - generic [ref=f3e163]: 대기 중
+    - generic [ref=f3e88]:
+      - generic [ref=f3e89]: Auto Codex · local-first
+      - generic [ref=f3e90]: 애니메이션은 시스템 설정과 애니메이션 토글을 따르며, 상태·이동은 실제 App Server 이벤트를 반영합니다.

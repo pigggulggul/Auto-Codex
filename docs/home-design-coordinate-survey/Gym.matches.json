@@ -1,0 +1,375 @@
+{
+  "method": "동일한 불투명 픽셀의 후보 일치. 일부 투명 픽셀, 가림, 중복 일치는 검증되지 않았으며, 원본의 전체 요소 목록이 아님.",
+  "theme": 8,
+  "matches": [
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_121.png",
+      "x": 496,
+      "y": 208,
+      "width": 64,
+      "height": 80,
+      "opaquePixels": 2385
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_123.png",
+      "x": 301,
+      "y": 64,
+      "width": 64,
+      "height": 80,
+      "opaquePixels": 2385
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_124.png",
+      "x": 48,
+      "y": 240,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1818
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_128.png",
+      "x": 144,
+      "y": 16,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 3105
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_129.png",
+      "x": 192,
+      "y": 16,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 3312
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_129.png",
+      "x": 240,
+      "y": 16,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 3312
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_135.png",
+      "x": 48,
+      "y": 336,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 801
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_136.png",
+      "x": 765,
+      "y": 300,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 918
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_142.png",
+      "x": 627,
+      "y": 531,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 621
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_144.png",
+      "x": 144,
+      "y": 84,
+      "width": 96,
+      "height": 48,
+      "opaquePixels": 1242
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_146.png",
+      "x": 528,
+      "y": 256,
+      "width": 48,
+      "height": 32,
+      "opaquePixels": 450
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_146.png",
+      "x": 48,
+      "y": 544,
+      "width": 48,
+      "height": 32,
+      "opaquePixels": 450
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_149.png",
+      "x": 816,
+      "y": 160,
+      "width": 48,
+      "height": 32,
+      "opaquePixels": 450
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_149.png",
+      "x": 96,
+      "y": 256,
+      "width": 48,
+      "height": 32,
+      "opaquePixels": 450
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_150.png",
+      "x": 813,
+      "y": 589,
+      "width": 48,
+      "height": 32,
+      "opaquePixels": 450
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_153.png",
+      "x": 144,
+      "y": 84,
+      "width": 96,
+      "height": 48,
+      "opaquePixels": 1242
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_158.png",
+      "x": 432,
+      "y": 213,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1044
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_161.png",
+      "x": 237,
+      "y": 336,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1044
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_163.png",
+      "x": 144,
+      "y": 336,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1314
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_164.png",
+      "x": 288,
+      "y": 307,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 2448
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_165.png",
+      "x": 432,
+      "y": 288,
+      "width": 96,
+      "height": 96,
+      "opaquePixels": 5382
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_167.png",
+      "x": 48,
+      "y": 48,
+      "width": 96,
+      "height": 96,
+      "opaquePixels": 6237
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_167.png",
+      "x": 48,
+      "y": 144,
+      "width": 96,
+      "height": 96,
+      "opaquePixels": 6237
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_169.png",
+      "x": 384,
+      "y": 144,
+      "width": 96,
+      "height": 96,
+      "opaquePixels": 5571
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_172.png",
+      "x": 384,
+      "y": 48,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 3042
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_173.png",
+      "x": 432,
+      "y": 48,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 3042
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_174.png",
+      "x": 573,
+      "y": 192,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 3042
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_176.png",
+      "x": 624,
+      "y": 16,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 3816
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_182.png",
+      "x": 816,
+      "y": 16,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 3816
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_183.png",
+      "x": 672,
+      "y": 144,
+      "width": 48,
+      "height": 144,
+      "opaquePixels": 4329
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_183.png",
+      "x": 768,
+      "y": 144,
+      "width": 48,
+      "height": 144,
+      "opaquePixels": 4329
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_184.png",
+      "x": 624,
+      "y": 144,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1260
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_185.png",
+      "x": 816,
+      "y": 282,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1035
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_185.png",
+      "x": 408,
+      "y": 453,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1035
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_186.png",
+      "x": 240,
+      "y": 432,
+      "width": 96,
+      "height": 144,
+      "opaquePixels": 6840
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_187.png",
+      "x": 144,
+      "y": 432,
+      "width": 96,
+      "height": 144,
+      "opaquePixels": 6840
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_190.png",
+      "x": 816,
+      "y": 480,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 3996
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_199.png",
+      "x": 624,
+      "y": 192,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 4464
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_199.png",
+      "x": 816,
+      "y": 192,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 4464
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_200.png",
+      "x": 96,
+      "y": 288,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 4464
+    },
+    {
+      "layer": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/8_Gym_Singles_48x48/Gym_Singles_48x48_200.png",
+      "x": 384,
+      "y": 288,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 4464
+    }
+  ]
+}

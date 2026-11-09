@@ -1,0 +1,150 @@
+{
+  "method": "동일한 불투명 픽셀의 후보 일치. 일부 투명 픽셀, 가림, 중복 일치는 검증되지 않았으며, 원본의 전체 요소 목록이 아님.",
+  "theme": 24,
+  "matches": [
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_101.png",
+      "x": 432,
+      "y": 144,
+      "width": 96,
+      "height": 96,
+      "opaquePixels": 5283
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_102.png",
+      "x": 48,
+      "y": 144,
+      "width": 96,
+      "height": 96,
+      "opaquePixels": 5868
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_12.png",
+      "x": 240,
+      "y": 16,
+      "width": 96,
+      "height": 128,
+      "opaquePixels": 6588
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_16.png",
+      "x": 48,
+      "y": 16,
+      "width": 96,
+      "height": 80,
+      "opaquePixels": 4122
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_16.png",
+      "x": 432,
+      "y": 16,
+      "width": 96,
+      "height": 80,
+      "opaquePixels": 4122
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_6.png",
+      "x": 48,
+      "y": 94,
+      "width": 96,
+      "height": 32,
+      "opaquePixels": 1962
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_75.png",
+      "x": 96,
+      "y": 288,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 3348
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_75.png",
+      "x": 432,
+      "y": 288,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 3348
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_76.png",
+      "x": 135,
+      "y": 316,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 1323
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_76.png",
+      "x": 474,
+      "y": 316,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 1323
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_77.png",
+      "x": 57,
+      "y": 316,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 1323
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_77.png",
+      "x": 393,
+      "y": 316,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 1323
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_78.png",
+      "x": 48,
+      "y": 272,
+      "width": 48,
+      "height": 112,
+      "opaquePixels": 2538
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_78.png",
+      "x": 384,
+      "y": 272,
+      "width": 48,
+      "height": 112,
+      "opaquePixels": 2538
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_79.png",
+      "x": 144,
+      "y": 272,
+      "width": 48,
+      "height": 112,
+      "opaquePixels": 2538
+    },
+    {
+      "layer": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/24_Ice_Cream_Shop_Singles_48x48/Ice_Cream_Shop_Singles_48x48_9.png",
+      "x": 432,
+      "y": 94,
+      "width": 96,
+      "height": 32,
+      "opaquePixels": 1962
+    }
+  ]
+}

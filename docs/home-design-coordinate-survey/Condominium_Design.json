@@ -1,0 +1,98 @@
+{
+  "name": "Condominium_Design",
+  "width": 672,
+  "height": 528,
+  "layers": [
+    {
+      "file": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_layer_1_48x48.png",
+      "width": 672,
+      "height": 528,
+      "regions": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 672,
+          "height": 528,
+          "pixels": 315288
+        }
+      ]
+    },
+    {
+      "file": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_layer_2_48x48.png",
+      "width": 672,
+      "height": 528,
+      "regions": [
+        {
+          "x": 96,
+          "y": 12,
+          "width": 96,
+          "height": 180,
+          "pixels": 16776
+        },
+        {
+          "x": 480,
+          "y": 12,
+          "width": 96,
+          "height": 180,
+          "pixels": 16776
+        },
+        {
+          "x": 354,
+          "y": 162,
+          "width": 111,
+          "height": 93,
+          "pixels": 8730
+        },
+        {
+          "x": 243,
+          "y": 171,
+          "width": 93,
+          "height": 63,
+          "pixels": 5634
+        },
+        {
+          "x": 102,
+          "y": 195,
+          "width": 87,
+          "height": 45,
+          "pixels": 3915
+        },
+        {
+          "x": 486,
+          "y": 195,
+          "width": 87,
+          "height": 45,
+          "pixels": 3915
+        },
+        {
+          "x": 294,
+          "y": 339,
+          "width": 87,
+          "height": 45,
+          "pixels": 3915
+        },
+        {
+          "x": 288,
+          "y": 387,
+          "width": 96,
+          "height": 93,
+          "pixels": 7992
+        },
+        {
+          "x": 102,
+          "y": 480,
+          "width": 87,
+          "height": 45,
+          "pixels": 3915
+        },
+        {
+          "x": 486,
+          "y": 480,
+          "width": 87,
+          "height": 45,
+          "pixels": 3915
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { MAX_PREVIEW_SELECTION, type IssueCandidateOptions, type IssueCandidatePreview, type IssueCandidateReason, type IssueCategoryView, type IssueDependencyView, type IssueDetail, type IssueDiagnosticReport, type IssueDocumentSummary, type IssueFindingCode, type IssueFilters, type IssueRequirementView, type IssueSummary, type IssueViewQuery, type IssueViewResult, type IssueViewStatus, type Page, type ProjectIssueCursor, type ProjectIssueFilters, type ProjectIssuePage, type RequirementDetail, type SourceTrace } from "../../../shared/issues/view";
 import { IssueApiError, type IssueApi } from "./api";
 import { AnalysisSources } from "./AnalysisSources";
+import { PlanningEditor } from "./PlanningEditor";
+import type { AnalysisCandidate } from "../../../shared/issues/sources";
 import { ExecutionHistory } from "./ExecutionHistory";
 import { validDetailPage } from "./detail-page";
 import { orderCandidatePreviews, previewCandidateSelection } from "./candidate-preview";
@@ -87,6 +89,7 @@ export function RequirementDetailPanel({ requirement, page, offset, history, loa
 
 export function IssueBrowser({ api, active, importRevision }: Props) {
   const [authorized, setAuthorized] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState("");
+  const [planningCandidate, setPlanningCandidate] = useState<AnalysisCandidate | null>(null);
   const [documents, setDocuments] = useState<IssueDocumentSummary[]>([]), [revision, setRevision] = useState<number | null>(null);
   const [docNext, setDocNext] = useState<string | null>(null), [docAfter, setDocAfter] = useState(""), [docHistory, setDocHistory] = useState<string[]>([]);
   const [documentId, setDocumentId] = useState<string | null>(null), [issues, setIssues] = useState<IssueSummary[]>([]), [issueNext, setIssueNext] = useState<number | null>(null), [issueOffset, setIssueOffset] = useState(0), [issueHistory, setIssueHistory] = useState<number[]>([]);
@@ -113,12 +116,14 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
   const dependencyReturn = useRef<HTMLButtonElement | null>(null);
   const expiry = useRef<{ timer: ReturnType<typeof setTimeout>; wall: number; monotonic: number } | null>(null);
   const forgetView = (message: string) => {
+    setPlanningCandidate(null);
     setSourceTrace(null);
     setSelection(null); setSelectionResults(null);
     sequence.current++; loadedImportRevision.current = null; if (expiry.current) clearTimeout(expiry.current.timer); expiry.current = null; diagnosticReturn.current = null; requirementReturn.current = null; dependencyReturn.current = null; detailFallback.current = null; setDetailReturnKind(null); setDetailTrail([]); setRequirementDetail(null); setRequirementPage(null); setRequirementOffset(0); setRequirementHistory([]);
     setAuthorized(false); setDocuments([]); setRevision(null); setDocNext(null); setDocAfter(""); setDocHistory([]); setDocumentId(null); setIssues([]); setIssueNext(null); setIssueOffset(0); setIssueHistory([]); setDetail(null); setDetailDocumentId(null); setCriteria([]); setCriteriaNext(null); setRequirements([]); setRequirementsNext(null); setDependencies([]); setDependenciesNext(null); setSearch(""); setStatus(""); setVersion(""); setAppliedFilters({}); setExportNotice(""); setDiagnostics(null); setDiagnosticOffset(0); setDiagnosticHistory([]); setCategoryPage(null); setCategoryPath([]); setCategoryOffset(0); setCategoryHistory([]); setProjectPage(null); setProjectCursor({ issueOffset: 0 }); setProjectHistory([]); setProjectFilters({}); setLoading(false); setError(message);
   };
   useEffect(() => { setSelection(null); setSelectionResults(null); setCandidateOptions({ includeRetryable: false, includeFailed: false }); }, [documentId, revision, authorized]);
+  useEffect(() => { setPlanningCandidate(null); }, [revision]);
   useEffect(() => {
     alive.current = true;
     const checkExpiry = () => { const deadline = expiry.current; if (deadline && (Date.now() >= deadline.wall || performance.now() >= deadline.monotonic)) forgetView("이슈 보기 시간이 만료되었습니다. 다시 확인해 주세요."); };
@@ -343,7 +348,8 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
     {!authorized && <div className="issues-empty"><p>저장된 이슈에는 선택한 문서의 내용이 포함됩니다. 현재 프로젝트 폴더를 확인한 뒤 이 창에서 볼 수 있습니다.</p><button type="button" onClick={() => void authorize()} disabled={loading}>{loading ? "폴더 선택을 기다리는 중…" : "이슈 목록 열기"}</button></div>}
     {authorized && <>
       <p className="issues-view-note">보기 권한은 이 연결에서 최대 15분 동안 유지됩니다. 목록을 새로고침하면 선택한 문서와 상세 화면이 닫힙니다. 가져온 완료 표시는 로컬 검증 결과가 아닙니다.</p>
-      {revision !== null && <AnalysisSources api={api} revision={revision} loading={loading} setLoading={setLoading} onViewExpired={forgetView} />}
+      {revision !== null && <AnalysisSources api={api} revision={revision} loading={loading} setLoading={setLoading} onViewExpired={forgetView} onSelectCandidate={setPlanningCandidate} />}
+      {revision !== null && <PlanningEditor key={revision} api={api} revision={revision} loading={loading} setLoading={setLoading} onRegistered={() => void loadDocuments()} onError={failure} candidate={planningCandidate} onCandidateConsumed={() => setPlanningCandidate(null)} />}
       {revision !== null && <ExecutionHistory key={revision} api={api} revision={revision} loading={loading} setLoading={setLoading} onError={failure} />}
       {loading && <p role="status">이슈 내용을 불러오는 중…</p>}
       {revision && <ProjectIssueSearch page={projectPage} filters={projectFilters} history={projectHistory} loading={loading} headingRef={projectHeading} onSearch={filters => void loadProjectIssues({ issueOffset: 0 }, [], filters)} onPrevious={() => void loadProjectIssues(projectHistory.at(-1)!, projectHistory.slice(0, -1), projectFilters)} onNext={() => { if (projectPage?.nextCursor) void loadProjectIssues(projectPage.nextCursor, [...projectHistory, projectCursor], projectFilters); }} onOpen={(doc, issue, button) => void openDetail(issue, doc, button, false, "project")} />}

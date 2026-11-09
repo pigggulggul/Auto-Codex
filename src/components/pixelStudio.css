@@ -1,4 +1,11 @@
 .pixel-studio { position: relative; overflow: visible; }
+.studio-presets { margin: 10px 16px; padding: 10px; border: 1px solid #c9bbd4; border-radius: 8px; background: #f9f6ff; }
+.studio-presets summary { cursor: pointer; font-weight: 700; }
+.studio-preset-content { display: flex; flex-wrap: wrap; align-items: start; gap: 12px; margin-top: 10px; }
+.studio-preset-content img { width: 150px; height: 110px; object-fit: contain; background: #e8e6ec; image-rendering: pixelated; }
+.studio-preset-content > div { flex: 1 1 220px; }
+.studio-preset-content label { display: grid; gap: 4px; }
+.studio-preset-content p { margin: 8px 0; font-size: 12px; }
 .pixel-studio-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 16px; background: #f8f5e9; }
 .pixel-studio-bar strong, .pixel-studio-bar small { display: block; }
 .pixel-studio-bar small { margin-top: 4px; color: #626b67; }

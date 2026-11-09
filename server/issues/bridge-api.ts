@@ -8,18 +8,19 @@ import { IssueSourceSessions, SourceSessionError } from "./source-session.js";
 import { AnalysisDraft } from "./analysis-draft.js";
 import { AnalysisBatch } from "./analysis-batch.js";
 import { AnalysisExecution } from "./analysis-execution.js";
+import { PlanningDraft, PlanningDraftError } from "./planning-draft.js";
 import { validCandidateIds, validCandidateOptions, validIssueFilters, validProjectIssueCursor, validProjectIssueFilters, type IssueViewQuery, type IssueViewResult } from "../../shared/issues/view.js";
 import type { AnalysisFreshness, AnalysisSegmentPage, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../shared/issues/sources.js";
 import { performance } from "node:perf_hooks";
 import path from "node:path";
 
-type Action = "status" | "bind" | "import" | "export" | "authorizeView" | "view" | "releaseView" | "sourceAdd" | "sourceList" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck" | "analysisStatus" | "analysisStart" | "analysisInterrupt" | "analysisClear" | "analysisSegment" | "analysisRetry";
-export type IssueProjectReply = { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: true; bound: boolean; cancelled?: true; issueCount?: number; alreadyImported?: boolean; cleanupWarning?: boolean; view?: IssueViewResult; authorized?: boolean; authorizedForMs?: number; sources?: AnalysisSourceList; chunk?: AnalysisSourceChunk; snapshot?: AnalysisSnapshotSummary; freshness?: AnalysisFreshness; analysisStatus?: "unavailable" | ReturnType<AnalysisExecution["status"]>; analysisSegment?: AnalysisSegmentPage } | { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: false; error: { code: string; message: string } };
+type Action = "status" | "bind" | "import" | "export" | "authorizeView" | "view" | "releaseView" | "sourceAdd" | "sourceList" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck" | "analysisStatus" | "analysisStart" | "analysisInterrupt" | "analysisClear" | "analysisSegment" | "analysisRetry" | "draftCreate" | "draftRead" | "draftReplace" | "draftReview" | "draftRegister";
+export type IssueProjectReply = { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: true; bound: boolean; cancelled?: true; issueCount?: number; alreadyImported?: boolean; cleanupWarning?: boolean; view?: IssueViewResult; authorized?: boolean; authorizedForMs?: number; sources?: AnalysisSourceList; chunk?: AnalysisSourceChunk; snapshot?: AnalysisSnapshotSummary; freshness?: AnalysisFreshness; analysisStatus?: "unavailable" | ReturnType<AnalysisExecution["status"]>; analysisSegment?: AnalysisSegmentPage; draft?: ReturnType<PlanningDraft["read"]> } | { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: false; error: { code: string; message: string } };
 type Context = { status(): Promise<{ project: { id: string; revision: number } | null }>; bind(): Promise<{ project: { id: string; revision: number }; alreadyBound: boolean }>; importDocument(bytes: Uint8Array, mayStart: () => boolean, expected: { id: string; revision: number }): Promise<{ issueCount: number; alreadyImported: boolean }>; exportDocument(documentId: string, revision: number, mayStart: () => boolean, expectedProjectId: string): Promise<Uint8Array>; view(query: IssueViewQuery, mayStart: () => boolean, expectedProjectId: string): Promise<IssueViewResult> };
 type Options = { selection(): IssueProjectSelection; context(): Context; pick(signal?: AbortSignal): Promise<string | null>; pickView(signal?: AbortSignal): Promise<string | null>; pickDocument(signal?: AbortSignal): Promise<string | null>; pickExport(projectPath: string, signal?: AbortSignal): Promise<string | null>; pickSource(projectPath: string, signal?: AbortSignal): Promise<string | null>; readSource(projectPath: string, target: string, signal?: AbortSignal): Promise<{ relativePath: string; bytes: number; sha256: string; text: string }>; readDocument(path: string, signal?: AbortSignal): Promise<Uint8Array>; writeExport(projectPath: string, target: string, bytes: Uint8Array, beforeCommit: () => Promise<void>, signal?: AbortSignal): Promise<{ cleanupWarning: boolean }>; tryAcquireWrite(): (() => void) | null; canonical(path: string): Promise<string>; busy(): boolean; now?(): number; analysisAvailable?(): boolean; createAnalysisExecution?: (createBatch: (admitted: () => boolean) => Promise<AnalysisBatch>, owner: AbortSignal) => AnalysisExecution | null };
 type AnalysisLease = { invalidated: boolean; batch?: AnalysisBatch; timer: ReturnType<typeof setTimeout>; onAbort: () => void };
 const equalPath = (a: string, b: string) => process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
-const safeError = (error: unknown) => error instanceof IssueProjectContextError || error instanceof IssueWorkerClientError || error instanceof SelectedDocumentError || error instanceof IssueExportError || error instanceof AnalysisSourceError || error instanceof SourceSessionError
+const safeError = (error: unknown) => error instanceof PlanningDraftError ? { code: error.code, message: "초안 또는 버전을 확인하세요." } : error instanceof IssueProjectContextError || error instanceof IssueWorkerClientError || error instanceof SelectedDocumentError || error instanceof IssueExportError || error instanceof AnalysisSourceError || error instanceof SourceSessionError
   ? { code: error.code, message: error.message }
   : { code: "STORAGE_FAILED", message: "이슈 프로젝트를 확인하지 못했습니다. 폴더와 저장소 상태를 확인하세요." };
 const id = (value: unknown): value is string => typeof value === "string" && value.length <= 128 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value);
@@ -66,6 +67,8 @@ export class IssueBridgeApi {
   private readonly analysisRevisions = new Map<AbortSignal, number>();
   private readonly analysisProjectIds = new Map<AbortSignal, string>();
   private readonly analysisSnapshotIds = new Map<AbortSignal, string>();
+  private readonly drafts = new WeakMap<AbortSignal, { projectId: string; draft: PlanningDraft }>();
+  private readonly registeringDrafts = new WeakSet<AbortSignal>();
   private readonly snapshotProjects = new WeakMap<AbortSignal, { snapshotId: string; projectId: string }>();
   constructor(private readonly options: Options) {}
   private now(): number { return this.options.now?.() ?? performance.now(); }
@@ -83,7 +86,7 @@ export class IssueBridgeApi {
     lease.batch?.dispose();
   }
   private revokeView(signal: AbortSignal): void {
-    this.views.delete(signal); this.revokeAnalysis(signal); this.sources.clear(signal); this.snapshotProjects.delete(signal);
+    this.views.delete(signal); this.drafts.delete(signal); this.revokeAnalysis(signal); this.sources.clear(signal); this.snapshotProjects.delete(signal);
   }
   private activeView(signal: AbortSignal | undefined, connected: () => boolean) {
     if (!signal || signal.aborted || !connected()) { if (signal) this.revokeView(signal); return null; }
@@ -153,8 +156,13 @@ export class IssueBridgeApi {
       if (message.type === "issues.analysis.clear") action = "analysisClear";
       if (message.type === "issues.analysis.segment") action = "analysisSegment";
       if (message.type === "issues.analysis.retry") action = "analysisRetry";
+      if (message.type === "issues.draft.create") action = "draftCreate";
+      if (message.type === "issues.draft.read") action = "draftRead";
+      if (message.type === "issues.draft.replace") action = "draftReplace";
+      if (message.type === "issues.draft.review") action = "draftReview";
+      if (message.type === "issues.draft.register") action = "draftRegister";
       if (typeof message.clientRequestId === "string" && /^[0-9a-f-]{36}$/i.test(message.clientRequestId)) clientRequestId = message.clientRequestId;
-      if (!uiOrigin || !clientRequestId || message.v !== 1 || !["issues.project.status", "issues.project.bind", "issues.document.import", "issues.document.export", "issues.view.authorize", "issues.view.query", "issues.view.release", "issues.sources.add", "issues.sources.list", "issues.sources.read", "issues.sources.remove", "issues.analysis.prepare", "issues.analysis.check", "issues.analysis.status", "issues.analysis.start", "issues.analysis.interrupt", "issues.analysis.clear", "issues.analysis.segment", "issues.analysis.retry"].includes(String(message.type)) || Object.keys(message).some(key => !["type", "v", "clientRequestId", ...(action === "view" ? ["query"] : []), ...(action === "export" ? ["documentId", "expectedRevision"] : []), ...(["sourceRead", "sourceRemove"].includes(action) ? ["sourceId"] : []), ...(action === "sourceRead" || action === "analysisSegment" ? ["offset"] : []), ...(["analysisSegment", "analysisRetry"].includes(action) ? ["index"] : []), ...(action === "snapshotPrepare" ? ["expectedRevision", "expectedSources", "instruction"] : []), ...(["snapshotCheck", "analysisStart"].includes(action) ? ["snapshotId", "expectedRevision"] : [])].includes(key))) throw new Error("invalid");
+      if (!uiOrigin || !clientRequestId || message.v !== 1 || !["issues.project.status", "issues.project.bind", "issues.document.import", "issues.document.export", "issues.view.authorize", "issues.view.query", "issues.view.release", "issues.sources.add", "issues.sources.list", "issues.sources.read", "issues.sources.remove", "issues.analysis.prepare", "issues.analysis.check", "issues.analysis.status", "issues.analysis.start", "issues.analysis.interrupt", "issues.analysis.clear", "issues.analysis.segment", "issues.analysis.retry", "issues.draft.create", "issues.draft.read", "issues.draft.replace", "issues.draft.review", "issues.draft.register"].includes(String(message.type)) || Object.keys(message).some(key => !["type", "v", "clientRequestId", ...(action === "view" ? ["query"] : []), ...(["draftCreate", "draftReplace"].includes(action) ? ["document"] : []), ...(action === "draftReview" ? ["review"] : []), ...(["draftReplace", "draftReview", "draftRegister"].includes(action) ? ["draftRevision"] : []), ...(action === "draftCreate" ? ["expectedRevision"] : []), ...(action === "export" ? ["documentId", "expectedRevision"] : []), ...(["sourceRead", "sourceRemove"].includes(action) ? ["sourceId"] : []), ...(action === "sourceRead" || action === "analysisSegment" ? ["offset"] : []), ...(["analysisSegment", "analysisRetry"].includes(action) ? ["index"] : []), ...(action === "snapshotPrepare" ? ["expectedRevision", "expectedSources", "instruction"] : []), ...(["snapshotCheck", "analysisStart"].includes(action) ? ["snapshotId", "expectedRevision"] : [])].includes(key))) throw new Error("invalid");
       if (action === "export" && (!id(message.documentId) || !Number.isSafeInteger(message.expectedRevision) || Number(message.expectedRevision) < 1)) throw new Error("invalid");
       if ((action === "sourceRead" || action === "sourceRemove") && (!id(message.sourceId) || !String(message.sourceId).startsWith("source_") || action === "sourceRead" && (!Number.isSafeInteger(message.offset) || Number(message.offset) < 0))) throw new Error("invalid");
       if ((action === "snapshotCheck" || action === "analysisStart") && (typeof message.snapshotId !== "string" || !/^snapshot_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(message.snapshotId) || !Number.isSafeInteger(message.expectedRevision) || Number(message.expectedRevision) < 1)) throw new Error("invalid");
@@ -219,6 +227,54 @@ export class IssueBridgeApi {
           this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisProjectIds.delete(signal); this.analysisSnapshotIds.delete(signal); execution = undefined;
         }
         return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, analysisStatus: execution?.status() ?? (this.options.analysisAvailable?.() ? { state: "idle", progress: null } : "unavailable") };
+      }
+      if (["draftCreate", "draftRead", "draftReplace", "draftReview", "draftRegister"].includes(action)) {
+        const grant = this.activeView(signal, connected);
+        if (!signal || !grant) throw new IssueExportError("VIEW_AUTH_REQUIRED", "초안을 보려면 프로젝트를 다시 확인하세요.");
+        const context = this.options.context(), project = await context.status();
+        if (this.activeView(signal, connected) !== grant || !project.project || project.project.id !== grant.projectId) {
+          this.revokeView(signal); throw new IssueExportError("VIEW_AUTH_REQUIRED", "프로젝트 또는 보기 권한이 변경되었습니다.");
+        }
+        const allowed = () => this.activeView(signal, connected) === grant && !this.options.busy();
+        if (this.registeringDrafts.has(signal)) throw new AnalysisSourceError("BUSY", "초안 등록이 끝날 때까지 기다리세요.");
+        if (["draftReplace", "draftReview", "draftRegister"].includes(action) && (!Number.isSafeInteger(message.draftRevision) || Number(message.draftRevision) < 1)) throw new PlanningDraftError("INVALID_INPUT");
+        let entry = this.drafts.get(signal);
+        if (entry && (entry.projectId !== project.project.id || entry.draft.projectRevision !== project.project.revision)) {
+          this.drafts.delete(signal); throw new PlanningDraftError("VERSION_CONFLICT");
+        }
+        if (action === "draftCreate") {
+          if (entry) throw new AnalysisSourceError("BUSY", "기존 초안이 있습니다. 보기 권한을 종료하면 삭제됩니다.");
+          if (message.expectedRevision !== project.project.revision) throw new PlanningDraftError("VERSION_CONFLICT");
+          entry = { projectId: project.project.id, draft: new PlanningDraft(message.document, project.project.revision) };
+          this.drafts.set(signal, entry);
+        } else {
+          if (!entry) throw new PlanningDraftError("NOT_FOUND");
+          if (action === "draftReplace") entry.draft.replace(Number(message.draftRevision), message.document);
+          if (action === "draftReview") entry.draft.review(Number(message.draftRevision), message.review);
+          if (action === "draftRegister") {
+            if (!allowed()) throw new AnalysisSourceError("BUSY", "다른 작업이 끝난 뒤 등록하세요.");
+            if (this.pickerOpen) throw new AnalysisSourceError("BUSY", "다른 선택이 끝난 뒤 등록하세요.");
+            this.pickerOpen = true;
+            try {
+              const selectedPath = await this.options.pickView(signal);
+              if (!selectedPath) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, cancelled: true };
+              const actual = await this.options.canonical(selectedPath), expected = await this.options.canonical(grant.path);
+              const current = await context.status();
+              if (!allowed() || !equalPath(actual, expected) || !current.project || current.project.id !== entry.projectId || current.project.revision !== project.project.revision || this.drafts.get(signal) !== entry) throw new IssueExportError("STALE_SELECTION", "프로젝트 또는 초안이 변경되어 등록하지 않았습니다.");
+            } finally { this.pickerOpen = false; }
+            const bytes = entry.draft.exportForRegistration(Number(message.draftRevision), project.project.revision);
+            const release = this.options.tryAcquireWrite();
+            if (!release) throw new AnalysisSourceError("BUSY", "다른 작업이 끝난 뒤 등록하세요.");
+            this.registeringDrafts.add(signal);
+            try {
+              const result = await context.importDocument(bytes, allowed, { id: entry.projectId, revision: project.project.revision });
+              if (!allowed()) throw new IssueExportError("OUTCOME_UNKNOWN", "등록 결과를 확인하세요.");
+              this.drafts.delete(signal);
+              return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, issueCount: result.issueCount, alreadyImported: result.alreadyImported };
+            } finally { this.registeringDrafts.delete(signal); release(); }
+          }
+        }
+        return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, draft: entry.draft.read() };
       }
       if (action === "releaseView") { if (signal) this.revokeView(signal); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, authorized: false }; }
       if (signal && this.analysisLeases.has(signal) && (action === "sourceAdd" || action === "sourceRemove" || action === "snapshotPrepare")) {

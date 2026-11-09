@@ -1,4 +1,8 @@
 import rawTiles from './roomBuilderTiles.json';
+import lobbyTiles from './condoLobbyTiles.json';
+import hallTiles from './condoHallTiles.json';
+import gymSmallTiles from './gymSmallTiles.json';
+import iceCreamTiles from './iceCreamTiles.json';
 
 export const TILE = 48;
 export const CHARACTER_HEIGHT = 96;
@@ -6,7 +10,7 @@ export const CHARACTER_FRONT_COLUMN = 18;
 export const CHARACTER_IDLE_ROW = 96;
 const ROOT = '/assets/Interiors/Room_Builder_subfiles_48x48/';
 export type ArtKind = 'floor' | 'wall' | 'door' | 'path';
-export type TileArt = { label: string; group: string; sheet: string; x: number; y: number; width: number; height: number; hidden?: boolean; parts?: number[] };
+export type TileArt = { label: string; group: string; sheet: string; x: number; y: number; width: number; height: number; hidden?: boolean; parts?: number[]; replaceBase?: boolean };
 type Source = { file: keyof typeof rawTiles; label: string; kind: ArtKind };
 export const ROOM_SOURCES: Source[] = [
   {file:'Room_Builder_Floors_48x48.png', label:'바닥', kind:'floor'},
@@ -54,6 +58,27 @@ for (const source of ROOM_SOURCES) {
     target.push(art(source.file,x,y,`${source.label} · ${Math.floor(x/48)+1}열 ${Math.floor(y/48)+1}행`,source.label,width,height));
   }
 }
+// Each source cell is separately editable; matched cells use the Room Builder
+// atlas, while composite corners retain their exact 48px source crop.
+export const condoLobbyStyles = lobbyTiles.map(tile => {
+  const entry: TileArt = {sheet:tile.src,x:tile.sx,y:tile.sy,width:TILE,height:TILE,label:'로비 원본 조각',group:'프리셋',hidden:true,replaceBase:true};
+  return {col:tile.x/TILE,row:tile.y/TILE,wall:tile.wall || tile.kind === 'transparent' || (tile.kind === 'unresolved' && (tile.y === 0 || tile.y === 480)),floorStyle:FLOOR_ART.push(entry)-1,wallStyle:WALL_ART.push(entry)-1};
+});
+export const condoHallStyles = hallTiles.map(tile => {
+  const entry: TileArt = {sheet:tile.src,x:tile.sx,y:tile.sy,width:TILE,height:TILE,label:'복도 원본 조각',group:'프리셋',hidden:true,replaceBase:true};
+  return {col:tile.x/TILE,row:tile.y/TILE,wall:tile.wall || tile.y < 96 || (tile.kind === 'unresolved' && tile.y === 240),floorStyle:FLOOR_ART.push(entry)-1,wallStyle:WALL_ART.push(entry)-1};
+});
+export const gymSmallStyles = gymSmallTiles.map(tile => {
+  const entry: TileArt = {sheet:tile.src,x:tile.sx,y:tile.sy,width:TILE,height:TILE,label:'소형 체육관 원본 조각',group:'프리셋',hidden:true,replaceBase:true};
+  return {col:tile.x/TILE,row:tile.y/TILE,wall:tile.wall || tile.y < 96 || tile.y === 288,floorStyle:FLOOR_ART.push(entry)-1,wallStyle:WALL_ART.push(entry)-1};
+});
+export const iceCreamStyles = iceCreamTiles.map(tile => {
+  const entry: TileArt = {sheet:tile.src,x:tile.sx,y:tile.sy,width:TILE,height:TILE,label:'아이스크림 가게 원본 조각',group:'프리셋',hidden:true,replaceBase:true};
+  const col=tile.x/TILE, row=tile.y/TILE;
+  return {col,row,wall:row < 3 || col === 0 || col === 11 || (row === 9 && col !== 5 && col !== 6),floorStyle:FLOOR_ART.push(entry)-1,wallStyle:WALL_ART.push(entry)-1};
+});
+const emptyLobbyTile = lobbyTiles.find(tile => tile.kind === 'transparent')!;
+export const condoInvisibleDoorStyle = DOOR_ART.push({sheet:emptyLobbyTile.src,x:emptyLobbyTile.sx,y:emptyLobbyTile.sy,width:TILE,height:TILE,label:'로비 출입구',group:'프리셋',hidden:true,replaceBase:true}) - 1;
 export const artList = (kind: ArtKind) => lists[kind];
 export const artFor = (kind: ArtKind, style: number): TileArt => lists[kind][style] ?? lists[kind][0];
 export function placementFor(kind: ArtKind, style: number): { col: number; row: number; style: number }[] {

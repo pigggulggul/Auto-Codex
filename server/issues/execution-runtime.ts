@@ -53,6 +53,10 @@ export class IssueExecutionRuntime {
     const requirePermit = () => { if (!permitted()) throw new IssueExecutionRuntimeError("STALE", "프로젝트 또는 실행 권한이 변경되었습니다."); };
     const stop = () => stopped ??= Promise.resolve().then(() => this.options.transport.stopAndWait());
     const stopUnsafe = () => { unsafe = true; void stop().catch(() => {}); };
+    // A disconnected owner must not leave an active turn waiting indefinitely.
+    // Before dispatch there is no owned process to stop; requirePermit will reject.
+    const onOwnerAbort = () => { if (dispatchAttempted) stopUnsafe(); };
+    fixed.owner.addEventListener("abort", onOwnerAbort, { once: true });
     const transition = (action: Parameters<IssueProjectContext["transitionExecution"]>[0]["action"]) => this.options.context.transitionExecution({ operation: "execution.transition", projectId: fixed.projectId, expectedRevision: fixed.expectedRevision, attemptId: record!.attemptId, action }, fixed.projectId, mayRecord);
     try {
       requirePermit();
@@ -85,6 +89,7 @@ export class IssueExecutionRuntime {
       } catch { /* Retain admission when termination or durable state is unconfirmed. */ }
       throw new IssueExecutionRuntimeError("OUTCOME_UNKNOWN", "실행 또는 저장 결과를 확인해야 합니다. 자동으로 재실행하지 않습니다.");
     } finally {
+      fixed.owner.removeEventListener("abort", onOwnerAbort);
       session?.close();
       if (!session && !dispatchAttempted && canRelease) this.options.transport.disposeUnused?.();
       if (canRelease) { this.held = false; release(); }

@@ -1,0 +1,98 @@
+{
+  "name": "Museum_room_4",
+  "width": 768,
+  "height": 480,
+  "layers": [
+    {
+      "file": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_4_layer_1_48x48.png",
+      "width": 768,
+      "height": 480,
+      "regions": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 450,
+          "pixels": 331776
+        }
+      ]
+    },
+    {
+      "file": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_4_layer_2_48x48.png",
+      "width": 768,
+      "height": 480,
+      "regions": [
+        {
+          "x": 96,
+          "y": 21,
+          "width": 576,
+          "height": 162,
+          "pixels": 79425
+        },
+        {
+          "x": 543,
+          "y": 24,
+          "width": 111,
+          "height": 33,
+          "pixels": 3663
+        },
+        {
+          "x": 723,
+          "y": 183,
+          "width": 42,
+          "height": 27,
+          "pixels": 1134
+        },
+        {
+          "x": 96,
+          "y": 204,
+          "width": 144,
+          "height": 75,
+          "pixels": 10143
+        },
+        {
+          "x": 528,
+          "y": 204,
+          "width": 144,
+          "height": 75,
+          "pixels": 10143
+        },
+        {
+          "x": 0,
+          "y": 249,
+          "width": 96,
+          "height": 78,
+          "pixels": 6660
+        },
+        {
+          "x": 672,
+          "y": 249,
+          "width": 96,
+          "height": 78,
+          "pixels": 6660
+        },
+        {
+          "x": 288,
+          "y": 288,
+          "width": 192,
+          "height": 87,
+          "pixels": 13788
+        },
+        {
+          "x": 99,
+          "y": 390,
+          "width": 138,
+          "height": 42,
+          "pixels": 5292
+        },
+        {
+          "x": 531,
+          "y": 390,
+          "width": 138,
+          "height": 42,
+          "pixels": 5292
+        }
+      ]
+    }
+  ]
+}

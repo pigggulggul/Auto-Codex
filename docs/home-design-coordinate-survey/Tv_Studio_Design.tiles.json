@@ -1,0 +1,1753 @@
+{
+  "name": "Tv_Studio_Design",
+  "source": "public/assets/Home_Designs/TV_Studio_Designs/48x48/Tv_Studio_Design_layer_1_48x48.png",
+  "tileSize": 48,
+  "width": 528,
+  "height": 480,
+  "partialRight": 0,
+  "partialBottom": 0,
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2112
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2208
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1104,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 192,
+          "y": 480
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 240,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1104,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 192,
+          "y": 480
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 240,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "x": 144,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1104,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 192,
+          "y": 480
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 240,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "x": 192,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1104,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 192,
+          "y": 480
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 240,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "x": 240,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1104,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 192,
+          "y": 480
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 240,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "x": 288,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1104,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 192,
+          "y": 480
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 240,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "x": 336,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1104,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 192,
+          "y": 480
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 240,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "x": 384,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1104,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 192,
+          "y": 480
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 240,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "x": 432,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1104,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2256
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 192,
+          "y": 480
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Arched_Entryways_48x48.png",
+          "x": 240,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "x": 480,
+      "y": 0,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2112
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2208
+        }
+      ]
+    },
+    {
+      "x": 0,
+      "y": 48,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2256
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 48,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1296,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2352
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 48,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1296,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2352
+        }
+      ]
+    },
+    {
+      "x": 144,
+      "y": 48,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 192,
+      "y": 48,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 240,
+      "y": 48,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 288,
+      "y": 48,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 336,
+      "y": 48,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 384,
+      "y": 48,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1296,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2352
+        }
+      ]
+    },
+    {
+      "x": 432,
+      "y": 48,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Walls_48x48.png",
+          "x": 1296,
+          "y": 288
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2352
+        }
+      ]
+    },
+    {
+      "x": 480,
+      "y": 48,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2256
+        }
+      ]
+    },
+    {
+      "x": 0,
+      "y": 96,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2304
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 96,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2304
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2304
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 96,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2304
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2304
+        }
+      ]
+    },
+    {
+      "x": 144,
+      "y": 96,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 192,
+      "y": 96,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 240,
+      "y": 96,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 288,
+      "y": 96,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 336,
+      "y": 96,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 384,
+      "y": 96,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2304
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2304
+        }
+      ]
+    },
+    {
+      "x": 432,
+      "y": 96,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2304
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2304
+        }
+      ]
+    },
+    {
+      "x": 480,
+      "y": 96,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2304
+        }
+      ]
+    },
+    {
+      "x": 0,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 576,
+          "y": 672
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1440
+        }
+      ]
+    },
+    {
+      "x": 144,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1440
+        }
+      ]
+    },
+    {
+      "x": 192,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1440
+        }
+      ]
+    },
+    {
+      "x": 240,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1440
+        }
+      ]
+    },
+    {
+      "x": 288,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1440
+        }
+      ]
+    },
+    {
+      "x": 336,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1440
+        }
+      ]
+    },
+    {
+      "x": 384,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1440
+        }
+      ]
+    },
+    {
+      "x": 432,
+      "y": 144,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 480,
+      "y": 144,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 0,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 576,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 144,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 192,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 240,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 288,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 336,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 384,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 432,
+      "y": 192,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 480,
+      "y": 192,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 0,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 576,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 144,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 192,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 240,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 288,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 336,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 384,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 240,
+          "y": 1488
+        }
+      ]
+    },
+    {
+      "x": 432,
+      "y": 240,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 480,
+      "y": 240,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 0,
+      "y": 288,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 288,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 576,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 288,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 144,
+      "y": 288,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 192,
+      "y": 288,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 240,
+      "y": 288,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 288,
+      "y": 288,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 336,
+      "y": 288,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 384,
+      "y": 288,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 432,
+      "y": 288,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 480,
+      "y": 288,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 0,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 576,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 144,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 192,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 240,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 288,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 336,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 384,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 432,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 480,
+      "y": 336,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 0,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 48,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 576,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 144,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 192,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 240,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 288,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 336,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 384,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 432,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 480,
+      "y": 384,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 288,
+          "y": 2400
+        }
+      ]
+    },
+    {
+      "x": 0,
+      "y": 432,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 96,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 96,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 864,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 480,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 864,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 96,
+          "y": 2400
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 96,
+          "y": 2736
+        }
+      ]
+    },
+    {
+      "x": 48,
+      "y": 432,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 528,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 576,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2736
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2736
+        }
+      ]
+    },
+    {
+      "x": 96,
+      "y": 432,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 528,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 576,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2736
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2736
+        }
+      ]
+    },
+    {
+      "x": 144,
+      "y": 432,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 528,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 576,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2736
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2736
+        }
+      ]
+    },
+    {
+      "x": 192,
+      "y": 432,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 528,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 576,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2736
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2736
+        }
+      ]
+    },
+    {
+      "x": 240,
+      "y": 432,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 528,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 576,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 912,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 960,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 144,
+          "y": 2736
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 192,
+          "y": 2736
+        }
+      ]
+    },
+    {
+      "x": 288,
+      "y": 432,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 336,
+      "y": 432,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 576,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 384,
+      "y": 432,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_Floors_48x48.png",
+          "x": 624,
+          "y": 720
+        }
+      ]
+    },
+    {
+      "x": 432,
+      "y": 432,
+      "kind": "unresolved",
+      "matches": []
+    },
+    {
+      "x": 480,
+      "y": 432,
+      "kind": "exact",
+      "matches": [
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 240,
+          "y": 240
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 240,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 1008,
+          "y": 576
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 624,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 1008,
+          "y": 1968
+        },
+        {
+          "src": "/assets/Interiors/Room_Builder_subfiles_48x48/Room_Builder_3d_walls_48x48.png",
+          "x": 240,
+          "y": 2736
+        }
+      ]
+    }
+  ]
+}

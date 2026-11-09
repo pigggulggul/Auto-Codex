@@ -1,0 +1,78 @@
+{
+  "method": "동일한 불투명 픽셀의 후보 일치. 일부 투명 픽셀, 가림, 중복 일치는 검증되지 않았으며, 원본의 전체 요소 목록이 아님.",
+  "theme": 26,
+  "matches": [
+    {
+      "layer": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/26_Condominium_Singles_48x48/Condominium_Singles_48x48_69.png",
+      "x": 240,
+      "y": 96,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1152
+    },
+    {
+      "layer": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/26_Condominium_Singles_48x48/Condominium_Singles_48x48_69.png",
+      "x": 384,
+      "y": 96,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1152
+    },
+    {
+      "layer": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/26_Condominium_Singles_48x48/Condominium_Singles_48x48_70.png",
+      "x": 96,
+      "y": 96,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1152
+    },
+    {
+      "layer": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/26_Condominium_Singles_48x48/Condominium_Singles_48x48_70.png",
+      "x": 528,
+      "y": 96,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1152
+    },
+    {
+      "layer": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/26_Condominium_Singles_48x48/Condominium_Singles_48x48_71.png",
+      "x": 576,
+      "y": 48,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 1890
+    },
+    {
+      "layer": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/26_Condominium_Singles_48x48/Condominium_Singles_48x48_72.png",
+      "x": 576,
+      "y": 62,
+      "width": 48,
+      "height": 64,
+      "opaquePixels": 900
+    },
+    {
+      "layer": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/26_Condominium_Singles_48x48/Condominium_Singles_48x48_72.png",
+      "x": 192,
+      "y": 80,
+      "width": 48,
+      "height": 64,
+      "opaquePixels": 900
+    },
+    {
+      "layer": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/26_Condominium_Singles_48x48/Condominium_Singles_48x48_85.png",
+      "x": 224,
+      "y": 0,
+      "width": 80,
+      "height": 96,
+      "opaquePixels": 6336
+    }
+  ]
+}

@@ -2,8 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { OperationsPanel } from "./OperationsPanel";
 
-describe("OperationsPanel character identity", () => {
-  it("renders the same assigned world character for activity events", () => {
+describe("OperationsPanel activity", () => {
+  it("renders activity and status without legacy images", () => {
     const html = renderToStaticMarkup(<OperationsPanel
       activities={[{
         id: "activity-1",
@@ -15,13 +15,11 @@ describe("OperationsPanel character identity", () => {
       run={null}
       assistantText=""
       taskOutputs={{}}
-      characterAssignments={{ general: 3 }}
       streaming
     />);
-    expect(html).toContain("/generated-pixel-assets/characters/char_3.png");
-    expect(html).toContain("width:64px;height:64px");
-    expect(html).toContain("background-size:128px 256px");
-    expect(html).toContain("background-position:0 -128px");
+    expect(html).toContain("파일 수정 중");
+    expect(html).toContain("Generalist");
+    expect(html).not.toContain("/generated-pixel-assets/");
     expect(html).toContain('role="tablist"');
     expect(html).toContain('role="tabpanel"');
     expect(html).toContain('aria-selected="true"');

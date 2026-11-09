@@ -39,6 +39,60 @@ function setup() {
 }
 
 describe("issue binding bridge boundary", () => {
+  it("keeps drafts scoped to a view and refuses stale registration", async () => {
+    const t = setup(), owner = new AbortController(), other = new AbortController();
+    const ask = (type: string, extra: Record<string, unknown> = {}, signal = owner.signal) => t.api.handle(wire(type, extra), true, t.connected, signal);
+    const document = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-1", revision: 1, sources: [], categories: [], requirements: [{ id: "req-1", categoryId: null, text: "요구사항", origin: "user" }], issues: [{ id: "issue-1", categoryId: null, requirementIds: ["req-1"], version: "1.0.0", order: 0, title: "작업", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }] };
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    expect(await ask("issues.draft.create", { expectedRevision: 1, document })).toMatchObject({ ok: true, draft: { revision: 1 } });
+    expect(await ask("issues.draft.read", {}, other.signal)).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    expect(await ask("issues.draft.replace", { draftRevision: 1, document })).toMatchObject({ ok: true, draft: { revision: 2 } });
+    expect(await ask("issues.draft.register", { draftRevision: 1 })).toMatchObject({ ok: false, error: { code: "VERSION_CONFLICT" } });
+    expect(await ask("issues.draft.register", { draftRevision: 2 })).toMatchObject({ ok: true, issueCount: 1 });
+    expect(await ask("issues.draft.read")).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+    owner.abort(); other.abort();
+  });
+  it("rejects another connection and invalid fields, and removes drafts on view release", async () => {
+    const t = setup(), owner = new AbortController(), other = new AbortController();
+    const ask = (signal: AbortSignal, type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, signal);
+    const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-1", revision: 1, sources: [], categories: [], requirements: [], issues: [] };
+    await ask(owner.signal, "issues.project.bind"); await ask(owner.signal, "issues.view.authorize"); await ask(other.signal, "issues.view.authorize");
+    expect(await ask(owner.signal, "issues.draft.create", { document: doc, expectedRevision: 1 })).toMatchObject({ ok: true });
+    expect(await ask(other.signal, "issues.draft.read")).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+    expect(await ask(owner.signal, "issues.draft.replace", { document: doc, draftRevision: "1" })).toMatchObject({ ok: false, error: { code: "INVALID_INPUT" } });
+    expect(await ask(owner.signal, "issues.draft.register", { draftRevision: 1, permission: "all" })).toMatchObject({ ok: false });
+    await ask(owner.signal, "issues.view.release"); await ask(owner.signal, "issues.view.authorize");
+    expect(await ask(owner.signal, "issues.draft.read")).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+    owner.abort(); other.abort();
+  });
+  it("round trips a manual draft through the client and bridge", async () => {
+    const t = setup(), socket = new AbortController(), client = new IssueApi();
+    client.connect(raw => { void t.api.handle(raw, true, t.connected, socket.signal).then(reply => client.receive(reply)); });
+    await client.request("bind"); await client.request("authorizeView");
+    const document = { format: "auto-codex-issues" as const, formatVersion: 1 as const, documentId: "doc-1", revision: 1, sources: [], categories: [], requirements: [], issues: [] };
+    const created = await client.request("draftCreate", { document, expectedRevision: 1 });
+    expect(created.draft).toMatchObject({ revision: 1, projectRevision: 1 });
+    expect(await client.request("draftRead")).toMatchObject({ draft: { revision: 1 } });
+    expect(await client.request("draftRegister", { draftRevision: 1 })).toMatchObject({ issueCount: 1 });
+    client.disconnect(); socket.abort();
+  });
+  it("requires a fresh native project confirmation before registering a draft", async () => {
+    const t = setup(), owner = new AbortController(); let imports = 0;
+    const base = t.options.context;
+    t.options.context = () => ({ ...base(), importDocument: async () => { imports++; return { issueCount: 0, alreadyImported: false }; } });
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, owner.signal);
+    const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-1", revision: 1, sources: [], categories: [], requirements: [], issues: [] };
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    await ask("issues.draft.create", { expectedRevision: 1, document: doc });
+    t.options.pickView = async () => null;
+    expect(await ask("issues.draft.register", { draftRevision: 1 })).toMatchObject({ ok: true, cancelled: true });
+    expect(imports).toBe(0);
+    t.options.pickView = async () => "C:/synthetic/other";
+    expect(await ask("issues.draft.register", { draftRevision: 1 })).toMatchObject({ ok: false, error: { code: "STALE_SELECTION" } });
+    expect(imports).toBe(0);
+    expect(await ask("issues.draft.read")).toMatchObject({ ok: true, draft: { revision: 1 } });
+    owner.abort();
+  });
   it("requires a current project view grant for execution history", async () => {
     const t = setup(), socket = new AbortController(); let calls = 0;
     const base = t.options.context;

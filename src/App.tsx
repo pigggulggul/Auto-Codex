@@ -8,26 +8,14 @@ import type {Entry} from '../shared/atelier/types';
 import { ApprovalDialog } from "./components/ApprovalDialog";
 import { ModelPicker } from "./components/ModelPicker";
 import { OperationsPanel } from "./components/OperationsPanel";
-import { PixelOffice } from "./components/PixelOffice";
+import { PixelStudio } from "./components/PixelStudio";
 import { ProjectPanel } from "./components/ProjectPanel";
 import { ConversationPicker } from "./components/ConversationPicker";
 import { ResultView } from "./components/ResultView";
 import { SkillPicker } from "./components/SkillPicker";
 import { useBridge } from "./hooks/useBridge";
-import type { AgentRole, ExecutionMode, ReasoningEffort } from "../shared/protocol";
+import type { ExecutionMode, ReasoningEffort } from "../shared/protocol";
 import {defaultModel,preferredModelCatalog} from '../shared/model-selection';
-import {
-  loadPetAssignments,
-  loadPetCatalog,
-  savePetAssignments,
-  type LoadedPet,
-  type PetAssignments,
-} from "./lib/petCatalog";
-import {
-  loadWorldCharacterAssignments,
-  saveWorldCharacterAssignments,
-  type WorldCharacterAssignments,
-} from "./lib/worldCharacters";
 
 const MODEL_KEY = "auto-codex.model";
 const EFFORT_KEY = "auto-codex.reasoning-effort";
@@ -59,10 +47,6 @@ export default function App() {
   const [skillPath, setSkillPath] = useState("");
   const [executionMode, setExecutionMode] = useState<ExecutionMode>("team");
   const [readOnly, setReadOnly] = useState(false);
-  const [pets, setPets] = useState<LoadedPet[]>([]);
-  const [petErrors, setPetErrors] = useState<string[]>([]);
-  const [petAssignments, setPetAssignments] = useState<PetAssignments>({});
-  const [worldCharacterAssignments, setWorldCharacterAssignments] = useState<WorldCharacterAssignments>(loadWorldCharacterAssignments);
   const [promptExpanded, setPromptExpanded] = useState(true);
   const [selectedModel, setSelectedModel] = useState(() => window.localStorage.getItem(MODEL_KEY) || "");
   const [selectedEffort, setSelectedEffort] = useState<ReasoningEffort | "">(
@@ -111,22 +95,6 @@ export default function App() {
   useEffect(() => { if (atelier) pageHeading.current?.focus({ preventScroll: true }); }, [page, atelier]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    void loadPetCatalog(controller.signal).then((catalog) => {
-      setPets(catalog.pets);
-      setPetErrors(catalog.errors);
-    }).catch((error: unknown) => {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      setPetErrors([error instanceof Error ? error.message : String(error)]);
-    });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    setPetAssignments(loadPetAssignments(projectPath));
-  }, [projectPath]);
-
-  useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setSystemReducedMotion(query.matches);
     query.addEventListener("change", update);
@@ -157,22 +125,6 @@ export default function App() {
     () => bridge.models.find((model) => model.model === selectedModel),
     [bridge.models, selectedModel],
   );
-
-  const assignPet = (role: AgentRole, petId: string) => {
-    setPetAssignments((current) => {
-      const next = { ...current, [role]: petId };
-      savePetAssignments(projectPath, next);
-      return next;
-    });
-  };
-
-  const assignWorldCharacter = (role: AgentRole, index: number) => {
-    setWorldCharacterAssignments((current) => {
-      const next = { ...current, [role]: index };
-      saveWorldCharacterAssignments(next);
-      return next;
-    });
-  };
 
   const changeModel = (model: string) => {
     setSelectedModel(model);
@@ -249,7 +201,6 @@ export default function App() {
                   </div>
                   {atelier && page === "work" && bridge.modelErrors.length > 0 && <p className="inline-warning">{bridge.modelErrors[0]}</p>}
                   {bridge.skillErrors.length > 0 && <p className="inline-warning">스킬 {bridge.skillErrors.length}개를 불러오지 못했습니다.</p>}
-                  {petErrors.length > 0 && <p className="inline-warning">펫 {petErrors.length}개를 불러오지 못했습니다.</p>}
                 </div>
               </details>
   );
@@ -417,8 +368,6 @@ export default function App() {
               run={activeRun}
               assistantText={bridge.assistantText}
               taskOutputs={bridge.taskOutputs}
-              characterAssignments={worldCharacterAssignments}
-              animationEnabled={animationEnabled}
               streaming={busy}
               onOpenResults={openResults}
             />
@@ -431,18 +380,13 @@ export default function App() {
             <button type="button" aria-pressed={mainView === "pixel"} className={mainView === "pixel" ? "active" : ""} onClick={() => atelier ? navigate("pixel") : setMainView("pixel")}>▦ 픽셀 화면</button>
           </div>
           <div hidden={mainView !== "pixel"}>
-            <PixelOffice
+            <PixelStudio
               run={activeRun}
               bridgeConnected={bridge.snapshot.connected}
               appServerReady={bridge.snapshot.appServerReady}
-              pets={pets}
-              petAssignments={petAssignments}
               soloState={bridge.snapshot.petState}
               activeRole={bridge.snapshot.activeRole}
               modelLabel={selectedModelInfo?.displayName || selectedModel || "App Server default"}
-              onAssignPet={assignPet}
-              characterAssignments={worldCharacterAssignments}
-              onAssignCharacter={assignWorldCharacter}
               animationEnabled={animationEnabled}
               onToggleAnimation={toggleAnimation}
               onOpenResults={openResults}

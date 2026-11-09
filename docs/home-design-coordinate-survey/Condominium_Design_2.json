@@ -1,0 +1,133 @@
+{
+  "name": "Condominium_Design_2",
+  "width": 672,
+  "height": 288,
+  "layers": [
+    {
+      "file": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_1_48x48.png",
+      "width": 672,
+      "height": 288,
+      "regions": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 672,
+          "height": 288,
+          "pixels": 181656
+        }
+      ]
+    },
+    {
+      "file": "public/assets/Home_Designs/Condominium_Designs/48x48/Condominium_Design_2_layer_2_48x48.png",
+      "width": 672,
+      "height": 288,
+      "regions": [
+        {
+          "x": 87,
+          "y": 0,
+          "width": 102,
+          "height": 123,
+          "pixels": 8946
+        },
+        {
+          "x": 231,
+          "y": 0,
+          "width": 210,
+          "height": 114,
+          "pixels": 15660
+        },
+        {
+          "x": 483,
+          "y": 0,
+          "width": 138,
+          "height": 123,
+          "pixels": 11754
+        },
+        {
+          "x": 69,
+          "y": 48,
+          "width": 15,
+          "height": 12,
+          "pixels": 180
+        },
+        {
+          "x": 213,
+          "y": 48,
+          "width": 15,
+          "height": 12,
+          "pixels": 180
+        },
+        {
+          "x": 444,
+          "y": 48,
+          "width": 15,
+          "height": 12,
+          "pixels": 180
+        },
+        {
+          "x": 588,
+          "y": 48,
+          "width": 15,
+          "height": 12,
+          "pixels": 180
+        },
+        {
+          "x": 198,
+          "y": 81,
+          "width": 30,
+          "height": 30,
+          "pixels": 900
+        },
+        {
+          "x": 96,
+          "y": 99,
+          "width": 48,
+          "height": 24,
+          "pixels": 1152
+        },
+        {
+          "x": 240,
+          "y": 99,
+          "width": 48,
+          "height": 24,
+          "pixels": 1152
+        },
+        {
+          "x": 384,
+          "y": 99,
+          "width": 48,
+          "height": 24,
+          "pixels": 1152
+        },
+        {
+          "x": 51,
+          "y": 198,
+          "width": 42,
+          "height": 42,
+          "pixels": 1323
+        },
+        {
+          "x": 579,
+          "y": 198,
+          "width": 42,
+          "height": 42,
+          "pixels": 1323
+        },
+        {
+          "x": 96,
+          "y": 243,
+          "width": 96,
+          "height": 45,
+          "pixels": 4032
+        },
+        {
+          "x": 480,
+          "y": 243,
+          "width": 96,
+          "height": 45,
+          "pixels": 4032
+        }
+      ]
+    }
+  ]
+}

@@ -1,8 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import type { ActivityEvent, AgentRole, RunSnapshot } from "../../shared/protocol";
 import { PET_PRESENTATIONS } from "../lib/petCatalog";
-import { characterIndexForRole, type WorldCharacterAssignments } from "../lib/worldCharacters";
-import { WorldCharacter } from "./WorldCharacter";
 import { taskSkillLabel } from "../lib/taskSkill";
 import { ReuiTabs } from "./ui/ReuiTabs";
 
@@ -13,8 +11,6 @@ type Props = {
   run: RunSnapshot | null;
   assistantText: string;
   taskOutputs: Record<string, string>;
-  characterAssignments: WorldCharacterAssignments;
-  animationEnabled?: boolean;
   streaming: boolean;
   onOpenResults?: () => void;
 };
@@ -43,7 +39,7 @@ function timeLabel(timestamp: string): string {
     : parsed.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-export function OperationsPanel({ activities, run, assistantText, taskOutputs, characterAssignments, animationEnabled = true, streaming, onOpenResults }: Props) {
+export function OperationsPanel({ activities, run, assistantText, taskOutputs, streaming, onOpenResults }: Props) {
   const [tab, setTab] = useState<PanelTab>("activity");
   const panelId = useId();
   const outputs = useMemo(() => run?.tasks.map((task) => ({
@@ -72,10 +68,9 @@ export function OperationsPanel({ activities, run, assistantText, taskOutputs, c
               <div className="panel-empty"><span>☕</span><strong>모두 쉬는 중이에요</strong><small>실제 App Server 이벤트가 오면 이곳에 표시됩니다.</small></div>
             ) : activities.map((activity) => {
               const role = roleForActivity(activity, run);
-              const spriteIndex = characterIndexForRole(role, characterAssignments);
               return (
                 <article className={`activity-card state-${activity.state}`} key={activity.id}>
-                  <div className="activity-face"><WorldCharacter spriteIndex={spriteIndex} state={activity.state} size={64} animated={animationEnabled} /></div>
+                  <div className="activity-face" aria-hidden="true">{ROLE_LABELS[role].charAt(0)}</div>
                   <div className="activity-copy">
                     <div><strong>{ROLE_LABELS[role]}</strong><time>{timeLabel(activity.timestamp)}</time></div>
                     <h3>{activity.title}</h3>

@@ -55,7 +55,7 @@ export function IssueWorkspace({ hidden, projectPath, workspaceMode, selectionGe
     } catch (error) {
       if (selection.current !== version) return;
       setImportState("error");
-      setImportMessage(error instanceof IssueApiError && error.code === "UNSUPPORTED_FORMAT" ? `${error.message} 일반 문서 분석은 아직 준비 중입니다.` : error instanceof Error ? error.message : "이슈 문서를 가져오지 못했습니다.");
+      setImportMessage(error instanceof IssueApiError && error.code === "UNSUPPORTED_FORMAT" ? `${error.message} 일반 문서는 이슈 목록의 자료 분석에서 선택할 수 있습니다.` : error instanceof Error ? error.message : "이슈 문서를 가져오지 못했습니다.");
     }
   };
   return <section className="issues-workspace" hidden={hidden} aria-label="이슈 처리 작업실">
@@ -87,6 +87,6 @@ export function IssueWorkspace({ hidden, projectPath, workspaceMode, selectionGe
       <div><span>03</span><h3>이슈 목록</h3><p>이슈의 상태와 버전, 선행 관계를 확인합니다.</p></div>
       <div><span>04</span><h3>실행 기록</h3><p>실제 작업과 테스트, 승인 및 확인 결과를 기록합니다.</p></div>
     </div>
-    <p className="issues-footnote">규격 Markdown 문서는 선택 후 로컬 저장소에 보관됩니다. 일반 문서 분석과 이슈 실행은 준비 중입니다. 화면 전환으로 작업이 시작되지는 않습니다.</p>
+    <p className="issues-footnote">규격 Markdown 문서는 선택 후 로컬 저장소에 보관됩니다. 일반 문서 분석은 이슈 목록에서 시작할 수 있으며 이슈 실행은 준비 중입니다. 화면 전환으로 작업이 시작되지는 않습니다.</p>
   </section>;
 }

@@ -2,14 +2,50 @@ import { useMemo, useState } from 'react';
 import type { AgentRole } from '../../shared/protocol';
 import { ROLE_LABELS } from '../world/pixelWorld';
 import manifest from '../world/assetManifest.json';
+import { EXTRA_INTERIOR_ASSETS } from '../world/extraAssets';
 import { objectSize, type Cell } from '../world/officeMap';
 import { artList, CHARACTER_FRONT_COLUMN, CHARACTER_IDLE_ROW, TILE, type ArtKind, type TileArt } from '../world/officeArt';
 import type { Appearance } from '../world/officeAppearance';
 
 export type StudioTool = Cell | 'object' | 'erase';
-export const assetName = (path: string) => path.split('/').at(-1)?.replace(/\.(png|gif)$/i, '') || '없음';
+const themeNames: Record<string, string> = {
+  '2':'거실', '3':'욕실', '4':'침실', '5':'교실·도서관', '6':'음악·스포츠', '7':'미술', '8':'체육관', '9':'낚시',
+  '10':'생일 파티', '11':'핼러윈', '12':'주방', '13':'회의장', '14':'지하실', '15':'크리스마스', '16':'식료품점',
+  '18':'감옥', '19':'병원', '20':'일본식 인테리어', '21':'의류점', '22':'박물관', '23':'방송·촬영 스튜디오',
+  '24':'아이스크림 가게', '25':'사격장', '26':'공동주택',
+};
+export function themeName(category: string): string {
+  return themeNames[category.match(/^\d+/)?.[0] ?? ''] ?? '기타';
+}
+export function assetName(path: string): string {
+  if (!path) return '없음';
+  const filename = path.split('/').at(-1) ?? '';
+  if (path.includes('/Interiors/')) {
+    const category = path.split('/').at(-2) ?? '';
+    const number = filename.match(/_(\d+)\.png$/i)?.[1];
+    return `${themeName(category)} 오브젝트 ${number ?? ''}`.trim();
+  }
+  if (path.includes('/Animated_Objects/')) {
+    const index = manifest.animated.indexOf(path);
+    return `움직이는 오브젝트 ${index >= 0 ? index + 1 : ''}`.trim();
+  }
+  if (path.includes('/Character_Generator/')) {
+    const group = path.split('/').at(-3) ?? '';
+    const labels: Record<string, string> = { Bodies:'몸', Bodies_kids:'어린이 몸', Eyes:'눈', Eyes_kids:'어린이 눈', Hairstyles:'머리', Hairstyles_kids:'어린이 머리', Outfits:'의상', Outfits_kids:'어린이 의상', Accessories:'소품' };
+    const entries = groups[group as keyof typeof groups] ?? [];
+    const index = entries.indexOf(path);
+    return `${labels[group] ?? '캐릭터'} ${index >= 0 ? index + 1 : ''}`.trim();
+  }
+  return '이미지';
+}
 const pageSize = 18;
 const groups = manifest.parts;
+// File paths and their Korean labels do not change during a session.
+const objectIndex = {
+  interior: [...manifest.interiors, ...EXTRA_INTERIOR_ASSETS].map(path => ({ path, category: path.split('/').at(-2) ?? '', original: path.toLowerCase(), label: assetName(path).toLowerCase() })),
+  animated: manifest.animated.map(path => ({ path, category: '', original: path.toLowerCase(), label: assetName(path).toLowerCase() })),
+};
+const interiorCategories = [...new Set(objectIndex.interior.map(item => item.category))];
 type PaletteProps = {
   tool: StudioTool; setTool: (tool: StudioTool) => void;
   style: number; setStyle: (style: number) => void;
@@ -32,9 +68,12 @@ export function StudioPalette(props: PaletteProps) {
   const [page, setPage] = useState(0);
   const [tileGroup, setTileGroup] = useState('');
   const [tilePage, setTilePage] = useState(0);
-  const catalog = props.kind === 'interior' ? manifest.interiors : manifest.animated;
-  const categories = useMemo(() => [...new Set(manifest.interiors.map(path => path.split('/').at(-2) ?? ''))], []);
-  const filtered = useMemo(() => catalog.filter(path => (!category || path.includes(`/${category}/`)) && path.toLowerCase().includes(query.toLowerCase())), [catalog, category, query]);
+  const categories = interiorCategories;
+  const filtered = useMemo(() => {
+    if (props.tool !== 'object') return [];
+    const search = query.toLowerCase();
+    return objectIndex[props.kind].filter(item => (!category || item.category === category) && (!search || item.original.includes(search) || item.label.includes(search))).map(item => item.path);
+  }, [props.kind, props.tool, category, query]);
   const pages = Math.ceil(filtered.length / pageSize);
   const items = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const art = props.tool === 'floor' || props.tool === 'wall' || props.tool === 'door' || props.tool === 'path' ? artList(props.tool as ArtKind) : null;
@@ -45,8 +84,8 @@ export function StudioPalette(props: PaletteProps) {
   return <div className="studio-palette">
     <div className="studio-tool-tabs" role="group" aria-label="맵 편집 도구">{tools.map(([value,label]) => <button type="button" key={value} aria-pressed={props.tool === value} onClick={() => chooseTool(value)}>{label}</button>)}</div>
     {art && <><div className="studio-palette-heading"><strong>{tools.find(([t]) => t === props.tool)?.[1]} 선택</strong><span>원본 조각을 선택해 맵에 배치하세요. 완성된 아치는 2×3칸입니다.</span></div><label className="studio-art-group">종류<select value={tileGroup} onChange={e => { const group=e.target.value; setTileGroup(group); setTilePage(0); const first=art.findIndex(item => !item.hidden && (!group || item.group === group)); if(first >= 0) props.setStyle(first); }}><option value="">전체</option>{artGroups.map(group => <option key={group} value={group}>{group}</option>)}</select></label><div className="studio-tile-list" aria-label="타일 미리보기">{visibleArt.slice(tilePage*24,(tilePage+1)*24).map(({item,index}) => <button type="button" key={`${item.group}-${index}`} title={item.label} aria-label={item.label} aria-pressed={props.style === index} onClick={() => props.setStyle(index)}><TileThumb art={item}/><span>{item.label}</span></button>)}</div><div className="studio-palette-footer"><span>{visibleArt.length}개 · 선택: {art[props.style]?.label}</span><Pager page={tilePage} pages={artPages} setPage={setTilePage}/></div></>}
-    {props.tool === 'object' && <><div className="studio-palette-heading"><strong>오브젝트 선택</strong><span>이미지 크기대로 48px 격자에 배치</span></div><div className="studio-filters"><label>종류<select value={props.kind} onChange={e => { props.setKind(e.target.value as 'interior' | 'animated'); setCategory(''); setPage(0); }}><option value="interior">인테리어 Singles</option><option value="animated">움직이는 오브젝트</option></select></label>{props.kind === 'interior' && <label>테마<select value={category} onChange={e => { setCategory(e.target.value); setPage(0); }}><option value="">모든 테마</option>{categories.map(name => <option key={name} value={name}>{name.replace(/_Singles_48x48/i,'').replaceAll('_',' ')}</option>)}</select></label>}<label>검색<input value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} placeholder="이름 또는 번호" /></label><label className="studio-check"><input type="checkbox" checked={props.blocks} onChange={e => props.setBlocks(e.target.checked)} /> 이동을 막는 가구</label></div>
-      <div className="studio-object-list" aria-label="오브젝트 미리보기">{items.map(path => { const size = objectSize({asset:path}); const still = props.kind === 'animated' && !props.motion; const source = still ? path.replace('/gif/', '/spritesheets/').replace(/\.gif$/, '.png') : path; return <button type="button" key={path} title={`${assetName(path)} · ${size.width}×${size.height}px`} aria-label={`${assetName(path)}, ${size.cols} × ${size.rows}칸`} aria-pressed={props.objectPath === path} onClick={() => props.setObjectPath(path)}><span className="studio-object-image">{still ? <span className="studio-still-frame" style={{backgroundImage:`url("${source}")`, width:size.width, height:size.height}}/> : <img src={source} loading="lazy" alt="" />}</span><small>{size.cols}×{size.rows}칸</small></button>; })}</div>
+    {props.tool === 'object' && <><div className="studio-palette-heading"><strong>오브젝트 선택</strong><span>이미지 크기대로 48px 격자에 배치</span></div><div className="studio-filters"><label>종류<select value={props.kind} onChange={e => { props.setKind(e.target.value as 'interior' | 'animated'); setCategory(''); setPage(0); }}><option value="interior">인테리어 Singles</option><option value="animated">움직이는 오브젝트</option></select></label>{props.kind === 'interior' && <label>테마<select value={category} onChange={e => { setCategory(e.target.value); setPage(0); }}><option value="">모든 테마</option>{categories.map(name => <option key={name} value={name}>{themeName(name)}</option>)}</select></label>}<label>검색<input value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} placeholder="이름 또는 번호" /></label><label className="studio-check"><input type="checkbox" checked={props.blocks} onChange={e => props.setBlocks(e.target.checked)} /> 이동을 막는 가구</label></div>
+      <div className="studio-object-list" aria-label="오브젝트 미리보기">{items.map(path => { const size = objectSize({asset:path}); const still = props.kind === 'animated' && !props.motion; const source = still ? path.replace('/gif/', '/spritesheets/').replace(/\.gif$/, '.png') : path; return <button type="button" key={path} title={`${assetName(path)} · ${size.width}×${size.height}px`} aria-label={`${assetName(path)}, ${size.cols} × ${size.rows}칸`} aria-pressed={props.objectPath === path} onClick={() => props.setObjectPath(path)}><span className="studio-object-image">{still ? <span className="studio-still-frame" style={{backgroundImage:`url("${source}")`, width:size.width, height:size.height}}/> : <img src={source} loading="lazy" alt="" />}</span><small>{assetName(path)} · {size.cols}×{size.rows}칸</small></button>; })}</div>
       {!items.length && <p>검색 결과가 없습니다.</p>}<div className="studio-palette-footer"><span>선택: {assetName(props.objectPath)} · {objectSize({asset:props.objectPath}).cols}×{objectSize({asset:props.objectPath}).rows}칸</span><Pager page={page} pages={pages} setPage={setPage}/></div></>}
     <p>초록: 배치 가능 · 빨강: 배치 불가. 외벽과 실내 바닥, 연결된 통로가 필요합니다.</p>
   </div>;

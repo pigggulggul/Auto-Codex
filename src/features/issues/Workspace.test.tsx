@@ -11,7 +11,7 @@ describe("issue workspace", () => {
     expect(html).toContain("프로젝트를 선택하세요");
     expect(html).toContain("프로젝트 폴더 선택");
     expect(html).toMatch(/<button type="button" disabled="">이슈 후보 만들기/);
-    expect(html).toContain("일반 문서 분석과 이슈 실행은 준비 중입니다");
+    expect(html).toContain("일반 문서 분석은 이슈 목록에서 시작할 수 있으며 이슈 실행은 준비 중입니다");
   });
   it("shows the real project and disables project switching during a run", () => {
     const html = renderToStaticMarkup(<IssueWorkspace {...base} projectPath="C:/synthetic/project" busy />);

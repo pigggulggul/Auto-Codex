@@ -1,0 +1,69 @@
+{
+  "method": "동일한 불투명 픽셀의 후보 일치. 일부 투명 픽셀, 가림, 중복 일치는 검증되지 않았으며, 원본의 전체 요소 목록이 아님.",
+  "theme": 2,
+  "matches": [
+    {
+      "layer": "public/assets/Home_Designs/Generic_Home_Designs/48x48/Generic_Home_1_Layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/2_Living_Room_Singles_48x48/Living_Room_Singles_48x48_114.png",
+      "x": 192,
+      "y": 0,
+      "width": 96,
+      "height": 144,
+      "opaquePixels": 8154
+    },
+    {
+      "layer": "public/assets/Home_Designs/Generic_Home_Designs/48x48/Generic_Home_1_Layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/2_Living_Room_Singles_48x48/Living_Room_Singles_48x48_120.png",
+      "x": 144,
+      "y": 48,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 2511
+    },
+    {
+      "layer": "public/assets/Home_Designs/Generic_Home_Designs/48x48/Generic_Home_1_Layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/2_Living_Room_Singles_48x48/Living_Room_Singles_48x48_120.png",
+      "x": 288,
+      "y": 48,
+      "width": 48,
+      "height": 96,
+      "opaquePixels": 2511
+    },
+    {
+      "layer": "public/assets/Home_Designs/Generic_Home_Designs/48x48/Generic_Home_1_Layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/2_Living_Room_Singles_48x48/Living_Room_Singles_48x48_17.png",
+      "x": 96,
+      "y": 128,
+      "width": 48,
+      "height": 112,
+      "opaquePixels": 2763
+    },
+    {
+      "layer": "public/assets/Home_Designs/Generic_Home_Designs/48x48/Generic_Home_1_Layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/2_Living_Room_Singles_48x48/Living_Room_Singles_48x48_17.png",
+      "x": 576,
+      "y": 176,
+      "width": 48,
+      "height": 112,
+      "opaquePixels": 2763
+    },
+    {
+      "layer": "public/assets/Home_Designs/Generic_Home_Designs/48x48/Generic_Home_1_Layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/2_Living_Room_Singles_48x48/Living_Room_Singles_48x48_27.png",
+      "x": 483,
+      "y": 324,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 1026
+    },
+    {
+      "layer": "public/assets/Home_Designs/Generic_Home_Designs/48x48/Generic_Home_1_Layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/2_Living_Room_Singles_48x48/Living_Room_Singles_48x48_60.png",
+      "x": 480,
+      "y": 312,
+      "width": 96,
+      "height": 48,
+      "opaquePixels": 1818
+    }
+  ]
+}

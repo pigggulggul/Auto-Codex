@@ -1,0 +1,98 @@
+{
+  "name": "Shooting_Range_Design",
+  "width": 480,
+  "height": 498,
+  "layers": [
+    {
+      "file": "public/assets/Home_Designs/Shooting_Range_Designs/48x48/Shooting_Range_Design_layer_1_48x48.png",
+      "width": 480,
+      "height": 498,
+      "regions": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 480,
+          "height": 498,
+          "pixels": 225216
+        }
+      ]
+    },
+    {
+      "file": "public/assets/Home_Designs/Shooting_Range_Designs/48x48/Shooting_Range_Design_layer_2_48x48.png",
+      "width": 480,
+      "height": 498,
+      "regions": [
+        {
+          "x": 144,
+          "y": 6,
+          "width": 48,
+          "height": 111,
+          "pixels": 2718
+        },
+        {
+          "x": 240,
+          "y": 6,
+          "width": 48,
+          "height": 111,
+          "pixels": 2718
+        },
+        {
+          "x": 336,
+          "y": 6,
+          "width": 48,
+          "height": 111,
+          "pixels": 2718
+        },
+        {
+          "x": 96,
+          "y": 21,
+          "width": 336,
+          "height": 315,
+          "pixels": 38907
+        },
+        {
+          "x": 150,
+          "y": 129,
+          "width": 36,
+          "height": 12,
+          "pixels": 378
+        },
+        {
+          "x": 246,
+          "y": 129,
+          "width": 36,
+          "height": 12,
+          "pixels": 378
+        },
+        {
+          "x": 342,
+          "y": 129,
+          "width": 36,
+          "height": 12,
+          "pixels": 378
+        },
+        {
+          "x": 102,
+          "y": 345,
+          "width": 36,
+          "height": 39,
+          "pixels": 1314
+        },
+        {
+          "x": 342,
+          "y": 345,
+          "width": 36,
+          "height": 39,
+          "pixels": 1314
+        },
+        {
+          "x": 390,
+          "y": 393,
+          "width": 36,
+          "height": 39,
+          "pixels": 1314
+        }
+      ]
+    }
+  ]
+}

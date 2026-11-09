@@ -1,0 +1,98 @@
+{
+  "name": "Tv_Studio_Design",
+  "width": 528,
+  "height": 480,
+  "layers": [
+    {
+      "file": "public/assets/Home_Designs/TV_Studio_Designs/48x48/Tv_Studio_Design_layer_1_48x48.png",
+      "width": 528,
+      "height": 480,
+      "regions": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 528,
+          "height": 480,
+          "pixels": 241740
+        }
+      ]
+    },
+    {
+      "file": "public/assets/Home_Designs/TV_Studio_Designs/48x48/Tv_Studio_Design_layer_2_48x48.png",
+      "width": 528,
+      "height": 480,
+      "regions": [
+        {
+          "x": 21,
+          "y": 24,
+          "width": 486,
+          "height": 72,
+          "pixels": 9036
+        },
+        {
+          "x": 48,
+          "y": 96,
+          "width": 93,
+          "height": 120,
+          "pixels": 4698
+        },
+        {
+          "x": 387,
+          "y": 96,
+          "width": 93,
+          "height": 120,
+          "pixels": 4698
+        },
+        {
+          "x": 159,
+          "y": 117,
+          "width": 66,
+          "height": 69,
+          "pixels": 4050
+        },
+        {
+          "x": 303,
+          "y": 117,
+          "width": 66,
+          "height": 69,
+          "pixels": 4050
+        },
+        {
+          "x": 48,
+          "y": 288,
+          "width": 90,
+          "height": 141,
+          "pixels": 6111
+        },
+        {
+          "x": 147,
+          "y": 291,
+          "width": 42,
+          "height": 93,
+          "pixels": 3051
+        },
+        {
+          "x": 243,
+          "y": 291,
+          "width": 42,
+          "height": 93,
+          "pixels": 3051
+        },
+        {
+          "x": 339,
+          "y": 291,
+          "width": 42,
+          "height": 93,
+          "pixels": 3051
+        },
+        {
+          "x": 438,
+          "y": 357,
+          "width": 39,
+          "height": 72,
+          "pixels": 1872
+        }
+      ]
+    }
+  ]
+}

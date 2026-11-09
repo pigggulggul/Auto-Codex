@@ -1,0 +1,105 @@
+{
+  "name": "Gym_2",
+  "width": 576,
+  "height": 336,
+  "layers": [
+    {
+      "file": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_2_layer_1_48x48.png",
+      "width": 576,
+      "height": 336,
+      "regions": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 576,
+          "height": 306,
+          "pixels": 176256
+        }
+      ]
+    },
+    {
+      "file": "public/assets/Home_Designs/Gym_Designs/48x48/Gym_2_layer_2_48x48.png",
+      "width": 576,
+      "height": 336,
+      "regions": [
+        {
+          "x": 54,
+          "y": 21,
+          "width": 84,
+          "height": 69,
+          "pixels": 5796
+        },
+        {
+          "x": 291,
+          "y": 48,
+          "width": 45,
+          "height": 84,
+          "pixels": 3042
+        },
+        {
+          "x": 351,
+          "y": 48,
+          "width": 66,
+          "height": 123,
+          "pixels": 6840
+        },
+        {
+          "x": 195,
+          "y": 54,
+          "width": 93,
+          "height": 63,
+          "pixels": 5571
+        },
+        {
+          "x": 147,
+          "y": 81,
+          "width": 42,
+          "height": 36,
+          "pixels": 1260
+        },
+        {
+          "x": 489,
+          "y": 84,
+          "width": 33,
+          "height": 36,
+          "pixels": 1026
+        },
+        {
+          "x": 195,
+          "y": 123,
+          "width": 42,
+          "height": 39,
+          "pixels": 1314
+        },
+        {
+          "x": 51,
+          "y": 138,
+          "width": 90,
+          "height": 99,
+          "pixels": 8523
+        },
+        {
+          "x": 453,
+          "y": 192,
+          "width": 54,
+          "height": 96,
+          "pixels": 3654
+        },
+        {
+          "x": 102,
+          "y": 240,
+          "width": 69,
+          "height": 27,
+          "pixels": 1152
+        },
+        {
+          "x": 240,
+          "y": 243,
+          "width": 48,
+          "height": 45,
+          "pixels": 1800
+        }
+      ]
+    }
+  ]
+}

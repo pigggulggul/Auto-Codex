@@ -122,7 +122,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .pixel-signal.bridge { background: #f2c66d; }
 .pixel-room {
   position: relative; min-height: 570px; flex: 1; overflow: hidden;
-  background: #efdba9 url("./assets/pixel-classroom-bg.png") center / cover no-repeat;
+  background: #efdba9;
 }
 .pixel-wall-grid {
   position: absolute; inset: 0 0 42%; opacity: .45;

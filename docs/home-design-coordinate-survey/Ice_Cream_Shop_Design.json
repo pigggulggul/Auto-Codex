@@ -1,0 +1,154 @@
+{
+  "name": "Ice_Cream_Shop_Design",
+  "width": 576,
+  "height": 480,
+  "layers": [
+    {
+      "file": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_1_48x48.png",
+      "width": 576,
+      "height": 480,
+      "regions": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 576,
+          "height": 480,
+          "pixels": 263340
+        }
+      ]
+    },
+    {
+      "file": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_2_48x48.png",
+      "width": 576,
+      "height": 480,
+      "regions": [
+        {
+          "x": 54,
+          "y": 21,
+          "width": 84,
+          "height": 75,
+          "pixels": 4122
+        },
+        {
+          "x": 438,
+          "y": 21,
+          "width": 84,
+          "height": 75,
+          "pixels": 4122
+        },
+        {
+          "x": 246,
+          "y": 27,
+          "width": 84,
+          "height": 84,
+          "pixels": 6588
+        },
+        {
+          "x": 147,
+          "y": 30,
+          "width": 90,
+          "height": 102,
+          "pixels": 8712
+        },
+        {
+          "x": 339,
+          "y": 30,
+          "width": 90,
+          "height": 102,
+          "pixels": 8712
+        },
+        {
+          "x": 48,
+          "y": 96,
+          "width": 96,
+          "height": 30,
+          "pixels": 1962
+        },
+        {
+          "x": 432,
+          "y": 96,
+          "width": 96,
+          "height": 30,
+          "pixels": 1962
+        },
+        {
+          "x": 57,
+          "y": 144,
+          "width": 81,
+          "height": 96,
+          "pixels": 5868
+        },
+        {
+          "x": 438,
+          "y": 159,
+          "width": 81,
+          "height": 81,
+          "pixels": 5283
+        },
+        {
+          "x": 54,
+          "y": 276,
+          "width": 42,
+          "height": 108,
+          "pixels": 2538
+        },
+        {
+          "x": 144,
+          "y": 276,
+          "width": 39,
+          "height": 108,
+          "pixels": 2538
+        },
+        {
+          "x": 390,
+          "y": 276,
+          "width": 42,
+          "height": 108,
+          "pixels": 2538
+        },
+        {
+          "x": 480,
+          "y": 276,
+          "width": 36,
+          "height": 108,
+          "pixels": 2574
+        },
+        {
+          "x": 102,
+          "y": 291,
+          "width": 36,
+          "height": 93,
+          "pixels": 3348
+        },
+        {
+          "x": 438,
+          "y": 291,
+          "width": 36,
+          "height": 93,
+          "pixels": 3348
+        },
+        {
+          "x": 243,
+          "y": 453,
+          "width": 90,
+          "height": 24,
+          "pixels": 2160
+        }
+      ]
+    },
+    {
+      "file": "public/assets/Home_Designs/Ice-Cream_Shop_Designs/48x48/Ice_Cream_Shop_Design_layer_3_48x48.png",
+      "width": 576,
+      "height": 480,
+      "regions": [
+        {
+          "x": 147,
+          "y": 150,
+          "width": 282,
+          "height": 114,
+          "pixels": 23211
+        }
+      ]
+    }
+  ]
+}

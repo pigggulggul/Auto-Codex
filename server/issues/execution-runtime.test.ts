@@ -65,7 +65,10 @@ describe("issue execution coordinator", () => {
   });
   it("stops after owner disconnect and never reports completion", async () => {
     const t = setup(), run = t.runtime.run(t.input); await vi.waitFor(() => expect(t.events).toContain("running"));
-    t.owner.abort(); t.completed.reject(new Error("stopped"));
+    t.owner.abort();
+    // Stopping must not depend on the completion promise resolving first.
+    await vi.waitFor(() => expect(t.events).toContain("stop"));
+    t.completed.reject(new Error("stopped"));
     await expect(run).rejects.toMatchObject({ code: "OUTCOME_UNKNOWN" });
     expect(t.events.filter(event => event === "stop")).toHaveLength(1); expect(t.phase()).toBe("outcome_unknown");
   });

@@ -1,0 +1,456 @@
+{
+  "method": "동일한 불투명 픽셀의 후보 일치. 일부 투명 픽셀, 가림, 중복 일치는 검증되지 않았으며, 원본의 전체 요소 목록이 아님.",
+  "theme": 22,
+  "matches": [
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_103.png",
+      "x": 576,
+      "y": 433,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 2520
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_116.png",
+      "x": 96,
+      "y": 45,
+      "width": 96,
+      "height": 96,
+      "opaquePixels": 6237
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_119.png",
+      "x": 240,
+      "y": 427,
+      "width": 96,
+      "height": 80,
+      "opaquePixels": 5940
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_124.png",
+      "x": 240,
+      "y": 43,
+      "width": 96,
+      "height": 80,
+      "opaquePixels": 576
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_128.png",
+      "x": 336,
+      "y": 176,
+      "width": 96,
+      "height": 64,
+      "opaquePixels": 3654
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_130.png",
+      "x": 336,
+      "y": 240,
+      "width": 96,
+      "height": 144,
+      "opaquePixels": 7632
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_132.png",
+      "x": 192,
+      "y": 688,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 3132
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_132.png",
+      "x": 816,
+      "y": 688,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 3132
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_133.png",
+      "x": 528,
+      "y": 688,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 3132
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_137.png",
+      "x": 96,
+      "y": 624,
+      "width": 96,
+      "height": 144,
+      "opaquePixels": 10143
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_138.png",
+      "x": 720,
+      "y": 624,
+      "width": 96,
+      "height": 144,
+      "opaquePixels": 10161
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_140.png",
+      "x": 336,
+      "y": 624,
+      "width": 96,
+      "height": 144,
+      "opaquePixels": 11349
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_142.png",
+      "x": 432,
+      "y": 624,
+      "width": 96,
+      "height": 144,
+      "opaquePixels": 11007
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_149.png",
+      "x": 48,
+      "y": 400,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 4968
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_149.png",
+      "x": 192,
+      "y": 400,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 4968
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_149.png",
+      "x": 336,
+      "y": 400,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 4968
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_149.png",
+      "x": 480,
+      "y": 400,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 4968
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_149.png",
+      "x": 672,
+      "y": 400,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 4968
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_149.png",
+      "x": 816,
+      "y": 400,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 4968
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_149.png",
+      "x": 0,
+      "y": 640,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 4968
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_149.png",
+      "x": 864,
+      "y": 640,
+      "width": 48,
+      "height": 128,
+      "opaquePixels": 4968
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_151.png",
+      "x": 48,
+      "y": 528,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 2250
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_151.png",
+      "x": 192,
+      "y": 528,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 2250
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_151.png",
+      "x": 336,
+      "y": 528,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 2250
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_151.png",
+      "x": 480,
+      "y": 528,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 2250
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_151.png",
+      "x": 672,
+      "y": 528,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 2250
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_151.png",
+      "x": 816,
+      "y": 528,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 2250
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_151.png",
+      "x": 0,
+      "y": 768,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 2250
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_151.png",
+      "x": 864,
+      "y": 768,
+      "width": 48,
+      "height": 48,
+      "opaquePixels": 2250
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_42.png",
+      "x": 336,
+      "y": 173,
+      "width": 96,
+      "height": 64,
+      "opaquePixels": 3636
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_76.png",
+      "x": 112,
+      "y": 127,
+      "width": 32,
+      "height": 80,
+      "opaquePixels": 666
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_76.png",
+      "x": 160,
+      "y": 127,
+      "width": 32,
+      "height": 80,
+      "opaquePixels": 666
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_76.png",
+      "x": 208,
+      "y": 127,
+      "width": 32,
+      "height": 80,
+      "opaquePixels": 666
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_76.png",
+      "x": 256,
+      "y": 127,
+      "width": 32,
+      "height": 80,
+      "opaquePixels": 666
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_76.png",
+      "x": 304,
+      "y": 127,
+      "width": 32,
+      "height": 80,
+      "opaquePixels": 666
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_76.png",
+      "x": 109,
+      "y": 496,
+      "width": 32,
+      "height": 80,
+      "opaquePixels": 666
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_77.png",
+      "x": 144,
+      "y": 127,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 729
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_77.png",
+      "x": 192,
+      "y": 127,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 729
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_77.png",
+      "x": 240,
+      "y": 127,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 729
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_77.png",
+      "x": 288,
+      "y": 127,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 729
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_78.png",
+      "x": 144,
+      "y": 127,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 675
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_78.png",
+      "x": 192,
+      "y": 127,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 675
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_78.png",
+      "x": 240,
+      "y": 127,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 675
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_78.png",
+      "x": 288,
+      "y": 127,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 675
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_78.png",
+      "x": 432,
+      "y": 127,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 675
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_78.png",
+      "x": 144,
+      "y": 496,
+      "width": 48,
+      "height": 80,
+      "opaquePixels": 675
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_88.png",
+      "x": 624,
+      "y": 50,
+      "width": 48,
+      "height": 64,
+      "opaquePixels": 1134
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_88.png",
+      "x": 864,
+      "y": 50,
+      "width": 48,
+      "height": 64,
+      "opaquePixels": 1134
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_88.png",
+      "x": 192,
+      "y": 65,
+      "width": 48,
+      "height": 64,
+      "opaquePixels": 1134
+    },
+    {
+      "layer": "public/assets/Home_Designs/Museum_Designs/48x48/Museum_room_1_layer_2_48x48.png",
+      "asset": "/assets/Interiors/Theme_Sorter_Singles_48x48/22_Museum_Singles_48x48/Museum_Singles_48x48_88.png",
+      "x": 333,
+      "y": 65,
+      "width": 48,
+      "height": 64,
+      "opaquePixels": 1134
+    }
+  ]
+}

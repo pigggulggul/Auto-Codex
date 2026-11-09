@@ -1,13 +1,29 @@
 import type { AgentRole } from '../../shared/protocol';
 import { ROLE_ORDER } from './pixelWorld';
 import dimensions from './assetDimensions.json';
+import { EXTRA_INTERIOR_DIMENSIONS } from './extraAssets';
 import { placementFor, type ArtKind } from './officeArt';
 
 export type Cell = 'floor' | 'wall' | 'door' | 'path' | 'empty';
-export type OfficeObject = { id: string; asset: string; col: number; row: number; blocks: boolean; animated?: boolean };
-export type OfficeMap = { width: number; height: number; cells: Cell[]; objects: OfficeObject[]; styles?: number[] };
+export type OfficeObject = { id: string; asset: string; col: number; row: number; blocks: boolean; animated?: boolean; offsetX?: number; offsetY?: number; overlay?: boolean; clipHeight?: number };
+export type StationLayout = Record<AgentRole, { col: number; row: number }>;
+export type OfficeMap = { width: number; height: number; cells: Cell[]; objects: OfficeObject[]; styles?: number[]; stationLayout?: StationLayout };
 export const DESK = '/assets/Interiors/Theme_Sorter_Singles_48x48/5_Classroom_and_Library_Singles_48x48/Classroom_and_Library_Singles_48x48_25.png';
 export const stations: Record<AgentRole, { col: number; row: number }> = Object.fromEntries(ROLE_ORDER.map((role, i) => [role, { col: 3 + (i % 4) * 4, row: i < 4 ? 4 : 9 }])) as Record<AgentRole, { col: number; row: number }>;
+export function validStationLayout(value: unknown, width: number, height: number): value is StationLayout {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  if (Object.keys(record).length !== ROLE_ORDER.length) return false;
+  const seen = new Set<string>();
+  return ROLE_ORDER.every(role => {
+    const point = record[role] as {col?: unknown; row?: unknown} | undefined;
+    if (!point || typeof point !== 'object' || !Number.isInteger(point.col) || !Number.isInteger(point.row)) return false;
+    const col = point.col as number, row = point.row as number;
+    if (col < 1 || col >= width - 1 || row < 2 || row >= height - 1) return false;
+    const key = `${col},${row}`; if (seen.has(key)) return false; seen.add(key); return true;
+  });
+}
+export const stationsForMap = (map: OfficeMap): StationLayout => map.stationLayout ?? stations;
 export const indexAt = (map: OfficeMap, col: number, row: number) => row * map.width + col;
 export function placeArt(map: OfficeMap, kind: ArtKind, style: number, col: number, row: number): OfficeMap | null {
   const parts = placementFor(kind, style);
@@ -17,13 +33,23 @@ export function placeArt(map: OfficeMap, kind: ArtKind, style: number, col: numb
   return {...map, cells, styles};
 }
 const imageDimensions: Record<string, number[]> = dimensions;
-export function objectSize(object: Pick<OfficeObject, 'asset'>): { width: number; height: number; cols: number; rows: number } {
-  const [width, height] = imageDimensions[object.asset] ?? [48, 48];
+export function objectSize(object: Pick<OfficeObject, 'asset' | 'clipHeight'>): { width: number; height: number; cols: number; rows: number } {
+  const [width, fullHeight] = imageDimensions[object.asset] ?? EXTRA_INTERIOR_DIMENSIONS[object.asset] ?? [48, 48];
+  const height = object.clipHeight ?? fullHeight;
   return { width, height, cols: Math.ceil(width / 48), rows: Math.ceil(height / 48) };
 }
 export function objectCovers(object: OfficeObject, col: number, row: number): boolean {
-  const { cols, rows } = objectSize(object);
+  const { width, height } = objectSize(object);
+  const cols = Math.ceil(((object.offsetX ?? 0) + width) / 48);
+  const rows = Math.ceil(((object.offsetY ?? 0) + height) / 48);
   return col >= object.col && col < object.col + cols && row >= object.row && row < object.row + rows;
+}
+/** Erase the topmost drawn object only, leaving other objects in the cell intact. */
+export function eraseTopObject(map: OfficeMap, col: number, row: number): OfficeMap {
+  let index = map.objects.length - 1;
+  while (index >= 0 && !objectCovers(map.objects[index], col, row)) index--;
+  if (index < 0) return map;
+  return {...map, objects: map.objects.filter((_, i) => i !== index)};
 }
 export function defaultOffice(): OfficeMap {
   const width = 18, height = 13;
@@ -39,13 +65,20 @@ export function defaultOffice(): OfficeMap {
 export function validateOffice(map: OfficeMap): string | null {
   if (!Number.isInteger(map.width) || !Number.isInteger(map.height) || map.width < 18 || map.height < 13 || map.width > 40 || map.height > 30 || map.cells.length !== map.width * map.height) return '맵 크기가 올바르지 않습니다.';
   if (map.styles && (map.styles.length !== map.cells.length || map.styles.some(style => !Number.isInteger(style) || style < 0 || style > 10000))) return '타일 스타일이 올바르지 않습니다.';
+  if (map.stationLayout !== undefined && !validStationLayout(map.stationLayout, map.width, map.height)) return '작업석 위치가 올바르지 않습니다.';
+  const activeStations = stationsForMap(map);
   const blocked = new Set<number>();
   for (const object of map.objects) {
-    const { cols, rows } = objectSize(object);
+    if (object.overlay && object.blocks) return '벽 장식은 이동을 막을 수 없습니다.';
+    if (object.clipHeight !== undefined && (!Number.isInteger(object.clipHeight) || object.clipHeight < 1 || object.clipHeight > objectSize({asset:object.asset}).height || object.animated)) return '오브젝트 크기가 올바르지 않습니다.';
+    const offsetX = object.offsetX ?? 0, offsetY = object.offsetY ?? 0;
+    if (!Number.isInteger(offsetX) || offsetX < 0 || offsetX >= 48 || !Number.isInteger(offsetY) || offsetY < 0 || offsetY >= 48) return '오브젝트 위치 보정값이 올바르지 않습니다.';
+    const { width, height } = objectSize(object);
+    const cols = Math.ceil((offsetX + width) / 48), rows = Math.ceil((offsetY + height) / 48);
     if (!Number.isInteger(object.col) || !Number.isInteger(object.row) || object.col < 0 || object.row < 0 || object.col + cols > map.width || object.row + rows > map.height) return '맵 밖에 오브젝트가 있습니다.';
     for (let row = object.row; row < object.row + rows; row++) for (let col = object.col; col < object.col + cols; col++) {
       const i = indexAt(map, col, row);
-      if (map.cells[i] !== 'floor' && map.cells[i] !== 'path') return '오브젝트는 바닥 위에 놓아야 합니다.';
+      if (!object.overlay && map.cells[i] !== 'floor' && map.cells[i] !== 'path') return '오브젝트는 바닥 위에 놓아야 합니다.';
       if (object.blocks && blocked.has(i)) return '가구가 서로 겹칩니다.';
       if (object.blocks) blocked.add(i);
     }
@@ -58,7 +91,7 @@ export function validateOffice(map: OfficeMap): string | null {
     if (!edge && cell === 'empty') return '벽 안의 빈 곳에 바닥을 깔아 주세요.';
   }
   const traversable = (i: number) => (map.cells[i] === 'floor' || map.cells[i] === 'path' || map.cells[i] === 'door') && !blocked.has(i);
-  const start = indexAt(map, stations.researcher.col, stations.researcher.row);
+  const start = indexAt(map, activeStations.researcher.col, activeStations.researcher.row);
   if (!traversable(start)) return '작업석 앞을 비워 주세요.';
   const visited = new Set([start]), queue = [start];
   for (let p = 0; p < queue.length; p++) {
@@ -70,7 +103,7 @@ export function validateOffice(map: OfficeMap): string | null {
     }
   }
   if (map.cells.some((_, i) => traversable(i) && !visited.has(i))) return '벽이나 가구가 통로를 막고 있습니다.';
-  if (Object.values(stations).some(({col, row}) => !visited.has(indexAt(map, col, row)))) return '모든 작업석 앞까지 통로가 이어져야 합니다.';
+  if (Object.values(activeStations).some(({col, row}) => !visited.has(indexAt(map, col, row)))) return '모든 작업석 앞까지 통로가 이어져야 합니다.';
   return null;
 }
 
