@@ -1,0 +1,212 @@
+- generic [ref=f3e3]:
+  - complementary [ref=f3e4]:
+    - button "Auto Codex 나의 작업실" [ref=f3e5] [cursor=pointer]: auto codex.
+    - paragraph [ref=f3e6]: 작업 공간
+    - navigation "작업실 탐색" [ref=f3e7]:
+      - button "Codex 대화" [ref=f3e8] [cursor=pointer]
+      - button "아뜰리에 디자인" [ref=f3e10] [cursor=pointer]
+      - button "이슈 처리" [ref=f3e12] [cursor=pointer]
+      - button "대화 결과 · 픽셀 화면" [ref=f3e14] [cursor=pointer]
+      - button "실행 활동" [ref=f3e16] [cursor=pointer]
+    - region "대화와 프로젝트" [ref=f3e18]:
+      - button "✎ 새 채팅 조사 모드" [ref=f3e19] [cursor=pointer]:
+        - text: ✎ 새 채팅
+        - generic [ref=f3e20]: 조사 모드
+      - generic [ref=f3e21]:
+        - strong [ref=f3e22]: 프로젝트
+        - button "프로젝트 폴더 추가" [ref=f3e23] [cursor=pointer]: + 폴더
+      - generic [ref=f3e24]:
+        - generic [ref=f3e25]: 대화와 프로젝트 검색
+        - textbox "대화와 프로젝트 검색" [ref=f3e26]:
+          - /placeholder: 프로젝트 또는 대화 검색
+      - paragraph [ref=f3e28]: 저장된 대화가 없습니다.
+    - generic [ref=f3e29]:
+      - paragraph [ref=f3e30]: LOCAL WORKSPACE저장과 실행 연결은 로컬 브리지가 관리합니다.
+      - link "Free icons from Streamline ↗" [ref=f3e31] [cursor=pointer]:
+        - /url: https://streamlinehq.com
+  - main [ref=f3e32]:
+    - link "작업 내용으로 건너뛰기" [ref=f3e33] [cursor=pointer]:
+      - /url: "#workspace-heading"
+    - generic [ref=f3e34]:
+      - link "Auto Codex 홈" [ref=f3e35] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f3e36]:
+          - strong [ref=f3e37]: 나의 작업실
+          - generic [ref=f3e38]: 이슈 처리
+      - generic [ref=f3e39]:
+        - generic [ref=f3e40]: gpt-6.1-sol
+        - generic "로컬에서 집계한 토큰 사용량" [ref=f3e41]:
+          - generic [ref=f3e42]:
+            - generic [ref=f3e43]: 오늘 토큰
+            - strong [ref=f3e44]: "0"
+          - generic [ref=f3e45]:
+            - generic [ref=f3e46]: 7일 토큰
+            - strong [ref=f3e47]: "0"
+        - generic [ref=f3e48]: app-server ready
+    - generic [ref=f3e50]:
+      - generic [ref=f3e51]:
+        - paragraph [ref=f3e52]: AUTO CODEX / LOCAL WORKSPACE
+        - heading "이슈 처리" [level=1] [ref=f3e91]
+        - paragraph [ref=f3e54]: 프로젝트의 요구사항과 이슈를 살펴보고 순서에 따라 처리합니다.
+      - status [ref=f3e55]: 진행 작업 없음
+    - region "이슈 처리 작업실" [ref=f3e92]:
+      - generic [ref=f3e93]:
+        - generic [ref=f3e94]:
+          - paragraph [ref=f3e95]: ISSUE WORKSPACE
+          - heading "요구사항에서 검증까지" [level=2] [ref=f3e96]
+          - paragraph [ref=f3e97]: 선택한 프로젝트를 기준으로 이슈를 계획하고, 작업과 확인 과정을 살펴볼 수 있는 공간입니다.
+        - generic [ref=f3e98]: 준비 중
+      - status [ref=f3e99]:
+        - generic [ref=f3e100]:
+          - strong [ref=f3e101]: 현재 프로젝트
+          - paragraph [ref=f3e102]: C:\Synthetic\Project
+        - button "프로젝트 변경" [ref=f3e103] [cursor=pointer]
+      - status [ref=f3e104]:
+        - generic [ref=f3e105]:
+          - strong [ref=f3e106]: 이슈 저장소
+          - paragraph [ref=f3e107]: 현재 프로젝트에 연결되었습니다.
+      - generic "이슈 작업" [ref=f3e108]:
+        - button "이슈 후보 만들기 준비 중" [disabled] [ref=f3e109]
+        - button "이슈 문서 불러오기" [ref=f3e110] [cursor=pointer]
+        - button "완료 상태 갱신 준비 중" [disabled] [ref=f3e111]
+      - region "등록된 이슈" [ref=f3e112]:
+        - generic [ref=f3e113]:
+          - generic [ref=f3e114]:
+            - paragraph [ref=f3e115]: REGISTERED ISSUES
+            - heading "등록된 이슈" [level=2] [ref=f3e116]
+          - generic [ref=f3e134]:
+            - button "목록 새로고침" [ref=f3e135] [cursor=pointer]
+            - button "목록 닫기" [ref=f3e136] [cursor=pointer]
+        - paragraph [ref=f3e137]: 보기 권한은 이 연결에서 최대 15분 동안 유지됩니다. 목록을 새로고침하면 선택한 문서와 상세 화면이 닫힙니다. 가져온 완료 표시는 로컬 검증 결과가 아닙니다.
+        - region "분석할 자료 미리보기" [ref=f3e138]:
+          - heading "분석할 자료 미리보기" [level=3] [ref=f3e139]
+          - paragraph [ref=f3e140]: 프로젝트 안의 Markdown 또는 텍스트 파일을 한 번에 하나씩 선택합니다. 파일당 1 MiB, 최대 16개 및 총 4 MiB까지 선택할 수 있습니다.
+          - paragraph [ref=f3e141]: 선택본은 이 연결의 메모리에만 보관하며, 보기 권한 종료나 프로젝트 변경 시 지워집니다. 원본이 나중에 바뀌어도 선택본은 자동 갱신되지 않습니다. 파일 이름으로 일부 비밀 파일을 제외하지만 내용에 민감한 정보가 없는지 직접 확인하세요.
+          - paragraph [ref=f3e142]: 자료 선택과 입력 준비만으로 AI 분석이나 전송이 시작되지는 않습니다. 실행 가능 여부는 브리지에서 확인합니다.
+          - paragraph [ref=f3e143]: 실행 환경에 따라 Codex의 프로젝트 지침도 모델에 전달될 수 있습니다.
+          - paragraph [ref=f3e144]: 현재 AI 분석은 별도 작업자에서 도구 호출 없이 실행됩니다. 분석 중 명령 실행은 아직 지원하지 않습니다.
+          - button "분석 실행 상태 확인" [ref=f3e145] [cursor=pointer]
+          - status [ref=f3e219]:
+            - paragraph [ref=f3e220]: "분석 상태: 분석 종료"
+            - paragraph [ref=f3e221]: 처리 1 · 대기 0 · 진행 0 · 실패 0 · 중단 0
+            - button "분석 상태와 후보 지우기" [ref=f3e222] [cursor=pointer]
+          - generic [ref=f3e223]:
+            - button "분석 구간과 후보 확인" [active] [ref=f3e224] [cursor=pointer]
+            - region "분석 구간 결과" [ref=f3e225]:
+              - heading "분석 구간 1/1" [level=4] [ref=f3e226]
+              - paragraph [ref=f3e227]: "구간 상태: 처리됨"
+              - paragraph [ref=f3e228]: 후보는 검토 전 제안이며 원문 인용이 있어도 해석의 정확성을 보장하지 않습니다.
+              - list [ref=f3e229]:
+                - listitem [ref=f3e230]:
+                  - paragraph [ref=f3e231]: 합성 요구사항 후보
+                  - text: 원문 근거
+                  - paragraph [ref=f3e232]: "docs/합성자료.md · 인용: 합성"
+                  - button "이 후보를 초안에 사용" [ref=f3e233] [cursor=pointer]
+          - generic [ref=f3e146]:
+            - button "자료 파일 선택" [ref=f3e147] [cursor=pointer]
+            - button "선택 목록 확인" [ref=f3e148] [cursor=pointer]
+          - paragraph [ref=f3e149]: 선택 1개 · 87 bytes
+          - list [ref=f3e200]:
+            - listitem [ref=f3e201]:
+              - generic [ref=f3e202]:
+                - strong [ref=f3e203]: docs/합성자료.md
+                - generic [ref=f3e204]: 87 bytes · 프로젝트 r2
+                - generic [ref=f3e205]: "SHA-256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              - generic [ref=f3e206]:
+                - button "미리보기" [ref=f3e207] [cursor=pointer]
+                - button "선택 해제" [ref=f3e208] [cursor=pointer]
+          - generic [ref=f3e151]:
+            - heading "분석 입력 준비" [level=4] [ref=f3e152]
+            - generic [ref=f3e153]: 추가 요청 (선택)
+            - textbox "추가 요청 (선택)" [ref=f3e154]:
+              - /placeholder: 분석할 때 참고할 요청을 입력하세요.
+            - paragraph [ref=f3e155]: 선택한 사본과 추가 요청을 이 연결의 메모리에 고정합니다. 준비만으로 모델 호출이나 이슈 등록은 시작되지 않습니다.
+            - button "분석 입력 준비" [ref=f3e156] [cursor=pointer]
+            - generic [ref=f3e209]:
+              - status [ref=f3e210]:
+                - paragraph [ref=f3e211]: 프로젝트 r2 기준 · 자료 1개 · 준비 시 처리 0/1 구간
+                - list [ref=f3e212]:
+                  - listitem [ref=f3e213]: "docs/합성자료.md: 1개 구간"
+                - paragraph [ref=f3e214]: 입력 준비 단계에서는 요구사항을 추출하지 않습니다.
+              - button "원본 변경 확인" [ref=f3e215] [cursor=pointer]
+              - paragraph [ref=f3e216]: 선택 당시 사본과 현재 원본을 비교합니다. 확인 이후 원본이 다시 바뀔 수 있습니다.
+              - paragraph [ref=f3e217]: 분석을 시작하면 선택한 자료와 추가 요청이 설정된 모델 제공자에게 전송됩니다. Codex에 설정된 전역 지침도 함께 전송될 수 있습니다.
+              - button "분석 시작" [disabled] [ref=f3e218]
+        - region "이슈 초안" [ref=f3e157]:
+          - heading "이슈 초안" [level=3] [ref=f3e158]
+          - paragraph [ref=f3e159]: 요구사항을 직접 입력하거나 분석 후보를 가져와 이슈와 함께 검토합니다. 초안은 이 연결의 메모리에 보관되고 보기 권한이 끝나면 사라집니다. 등록 시 출처가 있는 자료는 이 연결에서 선택된 원본과 다시 비교합니다. 원본이 바뀌었거나 제거됐다면 다시 선택하고 분석해야 합니다. 등록은 별도 버튼으로 실행합니다. 초안 한 건에는 요청 크기 제한이 있습니다.
+          - button "기존 초안 확인" [ref=f3e160] [cursor=pointer]
+          - group "요구사항과 이슈 함께 작성" [ref=f3e161]:
+            - generic [ref=f3e163]:
+              - text: 요구사항
+              - textbox "요구사항" [ref=f3e164]
+            - generic [ref=f3e165]:
+              - text: 이슈 제목
+              - textbox "이슈 제목" [ref=f3e166]
+            - generic [ref=f3e167]:
+              - text: 작업 설명
+              - textbox "작업 설명" [ref=f3e168]
+            - generic [ref=f3e169]:
+              - text: 개발 버전
+              - textbox "개발 버전" [ref=f3e170]: 1.0.0
+            - text: "숫자 세 개를 점으로 구분합니다. 예: 1.0.0"
+            - generic [ref=f3e171]:
+              - text: 완료 조건 (한 줄에 하나씩)
+              - textbox "완료 조건 (한 줄에 하나씩)" [ref=f3e172]
+            - button "초안에 추가" [disabled] [ref=f3e173]
+        - region "이슈 실행 기록" [ref=f3e174]:
+          - heading "실행 기록" [level=3] [ref=f3e175]
+          - paragraph [ref=f3e176]: 기록은 시도 ID 순서입니다. 종료나 검토 절차 종료만으로 이슈 완료가 확인된 것은 아닙니다. 결과 불명은 자동 재실행되지 않습니다. 승인 전송 기록은 실제 작업 성공을 뜻하지 않습니다.
+          - button "실행 기록 확인" [ref=f3e177] [cursor=pointer]
+        - region "프로젝트 전체 이슈 검색" [ref=f3e178]:
+          - heading "프로젝트 전체 이슈 검색" [level=3] [ref=f3e179]
+          - paragraph [ref=f3e180]: 등록된 이슈 문서를 ID 순으로 한 번에 최대 8개 확인합니다. 추가 범위는 다음 결과를 눌러 계속 검색하세요.
+          - generic [ref=f3e181]:
+            - generic [ref=f3e182]:
+              - text: 전체 문서 검색
+              - searchbox "전체 문서 검색" [ref=f3e183]
+            - generic [ref=f3e184]:
+              - text: 전체 문서 상태
+              - combobox "전체 문서 상태" [ref=f3e185]:
+                - option "전체" [selected]
+                - option "대기"
+                - option "재시도 필요"
+                - option "실패"
+                - option "검토 필요"
+            - generic [ref=f3e186]:
+              - text: 전체 문서 개발 버전
+              - textbox "전체 문서 개발 버전" [ref=f3e187]:
+                - /placeholder: "예: 1.2.0"
+            - button "전체 문서 검색" [ref=f3e188] [cursor=pointer]
+        - generic [ref=f3e189]:
+          - generic [ref=f3e190]:
+            - heading "문서" [level=3] [ref=f3e191]
+            - list [ref=f3e192]:
+              - listitem [ref=f3e193]:
+                - button "doc-synthetic 이슈 2개 · 문서 r1" [ref=f3e194] [cursor=pointer]:
+                  - strong [ref=f3e195]: doc-synthetic
+                  - generic [ref=f3e196]: 이슈 2개 · 문서 r1
+          - generic [ref=f3e197]:
+            - heading "이슈" [level=3] [ref=f3e198]
+            - paragraph [ref=f3e199]: 문서를 선택하세요.
+      - generic [ref=f3e120]:
+        - generic [ref=f3e121]:
+          - text: "01"
+          - heading "계획과 대화" [level=3] [ref=f3e122]
+          - paragraph [ref=f3e123]: 선택한 자료와 추가 요청을 바탕으로 요구사항과 이슈 후보를 정리합니다.
+        - generic [ref=f3e124]:
+          - text: "02"
+          - heading "요구사항 검증" [level=3] [ref=f3e125]
+          - paragraph [ref=f3e126]: 자료와 요구사항, 이슈의 연결 및 미확인 항목을 살펴봅니다.
+        - generic [ref=f3e127]:
+          - text: "03"
+          - heading "이슈 목록" [level=3] [ref=f3e128]
+          - paragraph [ref=f3e129]: 이슈의 상태와 버전, 선행 관계를 확인합니다.
+        - generic [ref=f3e130]:
+          - text: "04"
+          - heading "실행 기록" [level=3] [ref=f3e131]
+          - paragraph [ref=f3e132]: 실제 작업과 테스트, 승인 및 확인 결과를 기록합니다.
+      - paragraph [ref=f3e133]: 규격 Markdown 문서는 선택 후 로컬 저장소에 보관됩니다. 일반 문서 분석은 이슈 목록에서 시작할 수 있으며 이슈 실행은 준비 중입니다. 화면 전환으로 작업이 시작되지는 않습니다.
+    - generic [ref=f3e88]:
+      - generic [ref=f3e89]: Auto Codex · local-first
+      - generic [ref=f3e90]: 애니메이션은 시스템 설정과 애니메이션 토글을 따르며, 상태·이동은 실제 App Server 이벤트를 반영합니다.

@@ -2,6 +2,29 @@ import { describe, expect, it } from "vitest";
 import { IssueApi } from "./api";
 
 describe("issue project transport", () => {
+  it("correlates explicit draft save and restore without sending a path", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw)));
+    const draft = { projectRevision: 1, revision: 1, document: { format: "auto-codex-issues", formatVersion: 1, documentId: "doc", revision: 1, sources: [], categories: [], requirements: [], issues: [] }, reviews: [], history: [] };
+    const save = api.request("draftPersist", { draftRevision: 1 });
+    expect(sent[0]).toMatchObject({ type: "issues.draft.persist", draftRevision: 1 });
+    expect(Object.keys(sent[0]).sort()).toEqual(["clientRequestId", "draftRevision", "type", "v"]);
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[0].clientRequestId, action: "draftPersist", ok: true, bound: true, draft });
+    expect((await save).draft?.revision).toBe(1);
+    const restore = api.request("draftRestore");
+    expect(sent[1].type).toBe("issues.draft.restore");
+    api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent[1].clientRequestId, action: "draftRestore", ok: true, bound: true, draft });
+    expect((await restore).draft?.document.documentId).toBe("doc"); api.disconnect();
+  });
+  it("rejects malformed or future draft review history", async () => {
+    const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw)));
+    const review = { requirementId: "req", issueId: "issue", decision: "confirmed", reason: "확인" };
+    const draft = { projectRevision: 1, revision: 2, document: { format: "auto-codex-issues", formatVersion: 1, documentId: "doc", revision: 1, sources: [], categories: [], requirements: [], issues: [] }, reviews: [], history: [{ revision: 1, review }] };
+    const reply = (value: unknown) => api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "draftRead", ok: true, bound: true, draft: value });
+    const valid = api.request("draftRead"); reply(draft); expect((await valid).draft?.history).toHaveLength(1);
+    const malformed = api.request("draftRead"); reply({ ...draft, history: [{ revision: 1, review: null }] }); await expect(malformed).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    const future = api.request("draftRead"); reply({ ...draft, history: [{ revision: 3, review }] }); await expect(future).rejects.toMatchObject({ code: "INVALID_RESPONSE" });
+    api.disconnect();
+  });
   it("validates execution history and correlates its cursor and revision", async () => {
     const api = new IssueApi(), sent: Record<string, unknown>[] = []; api.connect(raw => sent.push(JSON.parse(raw)));
     const reply = (page: unknown, revision = 2) => api.receive({ type: "issues.project.result", v: 1, clientRequestId: sent.at(-1)!.clientRequestId, action: "view", ok: true, bound: true, view: { kind: "executionHistory", revision, page } });

@@ -10,6 +10,9 @@ import { AnalysisDraft } from '../build-server/server/issues/analysis-draft.js';
 import { parseSegmentRequirements } from '../build-server/server/issues/analysis-output.js';
 import { requireCompatibleAnalysisRequirements, requireNoConfiguredAnalysisHooks, requireNoListedAnalysisHooks } from '../build-server/server/issues/analysis-tool-policy.js';
 import { resolveCodexLaunch } from '../build-server/server/codex-app-server.js';
+import { buildSemanticValidationRequest, captureSemanticInput, parseSemanticFindings } from '../build-server/server/issues/semantic-validation.js';
+import { buildPlanningProposalRequest, parsePlanningProposals } from '../build-server/server/issues/planning-proposal.js';
+import { PlanningDraft } from '../build-server/server/issues/planning-draft.js';
 
 // Direct invocation sends synthetic text. Worker mode receives only bridge-owned
 // source text and returns model output over the private parent process pipe.
@@ -31,9 +34,19 @@ if (workerMode) {
       if (!first) { if (line === '{"cancel":true}') cancelled.abort(); return; }
       first = false;
       try {
-        if (Buffer.byteLength(line, 'utf8') > 65536) throw new Error('Input too large');
+        if (Buffer.byteLength(line, 'utf8') > 131072) throw new Error('Input too large');
         const value = JSON.parse(line);
-        if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).sort().join(',') !== 'instruction,model,text' || typeof value.text !== 'string' || !value.text || value.text.length > 8192 || value.text.includes('\0') || typeof value.instruction !== 'string' || value.instruction.length > 1024 || value.instruction.includes('\0') || typeof value.model !== 'string' || !value.model || value.model.length > 200 || /[\x00-\x1f\x7f]/.test(value.model)) throw new Error('Invalid input');
+        if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.model !== 'string' || !value.model || value.model.length > 200 || /[\x00-\x1f\x7f]/.test(value.model)) throw new Error('Invalid input');
+        const keys = Object.keys(value).sort().join(',');
+        if (keys === 'instruction,model,text') {
+          if (typeof value.text !== 'string' || !value.text || value.text.length > 8192 || value.text.includes('\0') || typeof value.instruction !== 'string' || value.instruction.length > 1024 || value.instruction.includes('\0')) throw new Error('Invalid input');
+        } else if (keys === 'document,kind,model,text' && value.kind === 'semantic') {
+          if (typeof value.text !== 'string' || !value.text || value.text.length > 8192 || value.text.includes('\0')) throw new Error('Invalid input');
+          const segment = { snapshotId: 'synthetic', projectRevision: 1, sourceId: 'synthetic', sourcePath: 'synthetic.txt', sourceSha256: 'a'.repeat(64), segmentId: 'synthetic', offset: 0, text: value.text };
+          captureSemanticInput({ projectRevision: 1, draftRevision: 1, document: value.document, segment });
+        } else if (keys === 'document,kind,model,request' && value.kind === 'proposal') {
+          const snapshot = new PlanningDraft(value.document, 1).read(); buildPlanningProposalRequest(snapshot, value.request);
+        } else throw new Error('Invalid input');
         resolve(value);
       } catch { reject(new Error('Invalid worker input')); }
     });
@@ -147,14 +160,16 @@ try {
     phase = 'recheck-config-compare'; assert.equal(fingerprint(response), fingerprint(freshConfig), 'Configuration changed');
     if (cancelled.signal.aborted) throw new Error('Analysis cancelled');
   }
-  const segment = { snapshotId: 'synthetic', projectRevision: 1, sourceId: 'synthetic', sourcePath: 'synthetic.txt', sourceSha256: 'a'.repeat(64), segmentId: 'synthetic', offset: 0, text: workerMode ? input.text : 'The synthetic app must show a status message.', instruction: workerMode ? input.instruction : '' };
+  const segment = { snapshotId: 'synthetic', projectRevision: 1, sourceId: 'synthetic', sourcePath: 'synthetic.txt', sourceSha256: 'a'.repeat(64), segmentId: 'synthetic', offset: 0, text: workerMode ? input.kind === 'proposal' ? 'proposal' : input.text : 'The synthetic app must show a status message.', instruction: workerMode && input.kind !== 'semantic' && input.kind !== 'proposal' ? input.instruction : '' };
+  const semantic = workerMode && input.kind === 'semantic' ? captureSemanticInput({ projectRevision: 1, draftRevision: 1, document: input.document, segment }) : null;
+  const proposal = workerMode && input.kind === 'proposal' ? new PlanningDraft(input.document, 1).read() : null;
   const draft = new AnalysisDraft(segment.snapshotId, 1, 1, async () => segment);
   let admission = false;
-  transport = new AnalysisTransport({ request: send, respondError: (id, code, message) => child.stdin.write(`${JSON.stringify({ id, error: { code, message } })}\n`), stopAndWait }, { cwd: workspace, model: model.model, config: deny, disabledPluginIds: [], canRun: () => true, acquire: () => { if (admission) return null; admission = true; return () => { admission = false; }; }, timeoutMs: 120000 });
+  transport = new AnalysisTransport({ request: send, respondError: (id, code, message) => child.stdin.write(`${JSON.stringify({ id, error: { code, message } })}\n`), stopAndWait }, { cwd: workspace, model: model.model, config: deny, disabledPluginIds: [], canRun: () => true, acquire: () => { if (admission) return null; admission = true; return () => { admission = false; }; }, timeoutMs: 120000, ...(semantic ? { buildRequest: () => buildSemanticValidationRequest(semantic) } : proposal ? { buildRequest: () => buildPlanningProposalRequest(proposal, input.request) } : {}) });
   phase = 'model-call';
   if (workerMode) {
     const output = await transport.run(segment, cancelled.signal);
-    parseSegmentRequirements(output, segment);
+    if (semantic) parseSemanticFindings(output, semantic); else if (proposal) parsePlanningProposals(output, proposal); else parseSegmentRequirements(output, segment);
     assert.equal(admission, false, 'The analysis run remained admitted');
     result = { output };
   } else {

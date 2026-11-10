@@ -25,6 +25,13 @@
 .pixel-studio-viewport { overflow: auto; max-height: 620px; background: #303b35; cursor: grab; overscroll-behavior: contain; }
 .pixel-studio-viewport:active { cursor: grabbing; }
 .pixel-studio-viewport canvas { display: block; max-width: none; image-rendering: pixelated; touch-action: none; }
+.pixel-studio-map { position: relative; }
+.pixel-studio-agents { position: absolute; inset: 0; pointer-events: none; }
+.pixel-studio-agent { position: absolute; image-rendering: pixelated; }
+.pixel-studio-agent span { position: absolute; inset: 0; background-repeat: no-repeat; }
+.pixel-studio-agent i { position: absolute; left: 34px; bottom: 35px; width: 8px; height: 8px; }
+.pixel-studio-agent i.working { background: #578e6a; }
+.pixel-studio-agent i.waiting { background: #d07731; }
 .pixel-studio-roster { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; padding: 12px; background: #f8f5e9; }
 .pixel-studio-roster button { display: grid; text-align: left; min-width: 0; }
 .pixel-studio-roster span { font-size: 11px; color: #5a6f60; }

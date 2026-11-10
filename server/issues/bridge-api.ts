@@ -8,19 +8,23 @@ import { IssueSourceSessions, SourceSessionError } from "./source-session.js";
 import { AnalysisDraft } from "./analysis-draft.js";
 import { AnalysisBatch } from "./analysis-batch.js";
 import { AnalysisExecution } from "./analysis-execution.js";
+import { SemanticExecution } from "./semantic-execution.js";
+import type { SemanticInput } from "./semantic-validation.js";
+import { PlanningProposalExecution } from "./planning-proposal-execution.js";
+import { PlanningProposalError } from "./planning-proposal.js";
 import { PlanningDraft, PlanningDraftError } from "./planning-draft.js";
 import { validCandidateIds, validCandidateOptions, validIssueFilters, validProjectIssueCursor, validProjectIssueFilters, type IssueViewQuery, type IssueViewResult } from "../../shared/issues/view.js";
 import type { AnalysisFreshness, AnalysisSegmentPage, AnalysisSnapshotRequest, AnalysisSnapshotSummary, AnalysisSourceChunk, AnalysisSourceList } from "../../shared/issues/sources.js";
 import { performance } from "node:perf_hooks";
 import path from "node:path";
 
-type Action = "status" | "bind" | "import" | "export" | "authorizeView" | "view" | "releaseView" | "sourceAdd" | "sourceList" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck" | "analysisStatus" | "analysisStart" | "analysisInterrupt" | "analysisClear" | "analysisSegment" | "analysisRetry" | "draftCreate" | "draftRead" | "draftReplace" | "draftReview" | "draftRegister";
-export type IssueProjectReply = { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: true; bound: boolean; cancelled?: true; issueCount?: number; alreadyImported?: boolean; cleanupWarning?: boolean; view?: IssueViewResult; authorized?: boolean; authorizedForMs?: number; sources?: AnalysisSourceList; chunk?: AnalysisSourceChunk; snapshot?: AnalysisSnapshotSummary; freshness?: AnalysisFreshness; analysisStatus?: "unavailable" | ReturnType<AnalysisExecution["status"]>; analysisSegment?: AnalysisSegmentPage; draft?: ReturnType<PlanningDraft["read"]> } | { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: false; error: { code: string; message: string } };
-type Context = { status(): Promise<{ project: { id: string; revision: number } | null }>; bind(): Promise<{ project: { id: string; revision: number }; alreadyBound: boolean }>; importDocument(bytes: Uint8Array, mayStart: () => boolean, expected: { id: string; revision: number }): Promise<{ issueCount: number; alreadyImported: boolean }>; exportDocument(documentId: string, revision: number, mayStart: () => boolean, expectedProjectId: string): Promise<Uint8Array>; view(query: IssueViewQuery, mayStart: () => boolean, expectedProjectId: string): Promise<IssueViewResult> };
-type Options = { selection(): IssueProjectSelection; context(): Context; pick(signal?: AbortSignal): Promise<string | null>; pickView(signal?: AbortSignal): Promise<string | null>; pickDocument(signal?: AbortSignal): Promise<string | null>; pickExport(projectPath: string, signal?: AbortSignal): Promise<string | null>; pickSource(projectPath: string, signal?: AbortSignal): Promise<string | null>; readSource(projectPath: string, target: string, signal?: AbortSignal): Promise<{ relativePath: string; bytes: number; sha256: string; text: string }>; readDocument(path: string, signal?: AbortSignal): Promise<Uint8Array>; writeExport(projectPath: string, target: string, bytes: Uint8Array, beforeCommit: () => Promise<void>, signal?: AbortSignal): Promise<{ cleanupWarning: boolean }>; tryAcquireWrite(): (() => void) | null; canonical(path: string): Promise<string>; busy(): boolean; now?(): number; analysisAvailable?(): boolean; createAnalysisExecution?: (createBatch: (admitted: () => boolean) => Promise<AnalysisBatch>, owner: AbortSignal) => AnalysisExecution | null };
+type Action = "status" | "bind" | "import" | "export" | "authorizeView" | "view" | "releaseView" | "sourceAdd" | "sourceList" | "sourceRead" | "sourceRemove" | "snapshotPrepare" | "snapshotCheck" | "analysisStatus" | "analysisStart" | "analysisInterrupt" | "analysisClear" | "analysisSegment" | "analysisRetry" | "draftCreate" | "draftRead" | "draftReplace" | "draftReview" | "draftRegister" | "draftPersist" | "draftRestore" | "draftInspectSaved" | "draftRebase" | "draftCopy" | "semanticStart" | "semanticStatus" | "semanticInterrupt" | "semanticClear" | "semanticSave" | "semanticReview" | "planStart" | "planStatus" | "planInterrupt" | "planClear" | "planApply";
+export type IssueProjectReply = { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: true; bound: boolean; cancelled?: true; issueCount?: number; alreadyImported?: boolean; cleanupWarning?: boolean; view?: IssueViewResult; authorized?: boolean; authorizedForMs?: number; sources?: AnalysisSourceList; chunk?: AnalysisSourceChunk; snapshot?: AnalysisSnapshotSummary; freshness?: AnalysisFreshness; analysisStatus?: "unavailable" | ReturnType<AnalysisExecution["status"]>; analysisSegment?: AnalysisSegmentPage; draft?: ReturnType<PlanningDraft["read"]>; savedStale?: boolean; semanticStatus?: ReturnType<SemanticExecution["status"]>; planStatus?: ReturnType<PlanningProposalExecution["status"]> } | { type: "issues.project.result"; v: 1; clientRequestId: string; action: Action; ok: false; error: { code: string; message: string } };
+type Context = { status(): Promise<{ project: { id: string; revision: number } | null }>; bind(): Promise<{ project: { id: string; revision: number }; alreadyBound: boolean }>; readPlanningDraft?(expected: { id: string; revision: number }, mayStart: () => boolean): Promise<{ generation: number; stale: boolean; snapshot: ReturnType<PlanningDraft["read"]> } | null>; savePlanningDraft?(expected: { id: string; revision: number }, generation: number, snapshot: ReturnType<PlanningDraft["read"]>, mayStart: () => boolean): Promise<number>; importDocument(bytes: Uint8Array, mayStart: () => boolean, expected: { id: string; revision: number }): Promise<{ issueCount: number; alreadyImported: boolean }>; exportDocument(documentId: string, revision: number, mayStart: () => boolean, expectedProjectId: string): Promise<Uint8Array>; view(query: IssueViewQuery, mayStart: () => boolean, expectedProjectId: string): Promise<IssueViewResult> };
+type Options = { selection(): IssueProjectSelection; context(): Context; pick(signal?: AbortSignal): Promise<string | null>; pickView(signal?: AbortSignal): Promise<string | null>; pickDocument(signal?: AbortSignal): Promise<string | null>; pickExport(projectPath: string, signal?: AbortSignal): Promise<string | null>; pickSource(projectPath: string, signal?: AbortSignal): Promise<string | null>; readSource(projectPath: string, target: string, signal?: AbortSignal): Promise<{ relativePath: string; bytes: number; sha256: string; text: string }>; readDocument(path: string, signal?: AbortSignal): Promise<Uint8Array>; writeExport(projectPath: string, target: string, bytes: Uint8Array, beforeCommit: () => Promise<void>, signal?: AbortSignal): Promise<{ cleanupWarning: boolean }>; tryAcquireWrite(): (() => void) | null; canonical(path: string): Promise<string>; busy(): boolean; now?(): number; analysisAvailable?(): boolean; createAnalysisExecution?: (createBatch: (admitted: () => boolean) => Promise<AnalysisBatch>, owner: AbortSignal) => AnalysisExecution | null; createSemanticExecution?: (load: (admitted: () => boolean) => Promise<SemanticInput>, owner: AbortSignal) => SemanticExecution | null; createPlanningProposal?: (load: (admitted: () => boolean) => Promise<ReturnType<PlanningDraft["read"]>>, owner: AbortSignal) => PlanningProposalExecution | null };
 type AnalysisLease = { invalidated: boolean; batch?: AnalysisBatch; timer: ReturnType<typeof setTimeout>; onAbort: () => void };
 const equalPath = (a: string, b: string) => process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
-const safeError = (error: unknown) => error instanceof PlanningDraftError ? { code: error.code, message: "초안 또는 버전을 확인하세요." } : error instanceof IssueProjectContextError || error instanceof IssueWorkerClientError || error instanceof SelectedDocumentError || error instanceof IssueExportError || error instanceof AnalysisSourceError || error instanceof SourceSessionError
+const safeError = (error: unknown) => error instanceof PlanningProposalError ? { code: error.code, message: error.code === "STALE_INPUT" ? "초안이 변경되어 이전 제안을 적용할 수 없습니다." : "계획 제안 또는 입력을 확인하세요." } : error instanceof PlanningDraftError ? { code: error.code, message: "초안 또는 버전을 확인하세요." } : error instanceof IssueProjectContextError || error instanceof IssueWorkerClientError || error instanceof SelectedDocumentError || error instanceof IssueExportError || error instanceof AnalysisSourceError || error instanceof SourceSessionError
   ? { code: error.code, message: error.message }
   : { code: "STORAGE_FAILED", message: "이슈 프로젝트를 확인하지 못했습니다. 폴더와 저장소 상태를 확인하세요." };
 const id = (value: unknown): value is string => typeof value === "string" && value.length <= 128 && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value);
@@ -67,17 +71,25 @@ export class IssueBridgeApi {
   private readonly analysisRevisions = new Map<AbortSignal, number>();
   private readonly analysisProjectIds = new Map<AbortSignal, string>();
   private readonly analysisSnapshotIds = new Map<AbortSignal, string>();
+  private readonly semanticExecutions = new Map<AbortSignal, { execution: SemanticExecution; load: (admitted: () => boolean) => Promise<SemanticInput>; segmentIndex: number; saved: boolean }>();
+  private readonly planningProposals = new Map<AbortSignal, { execution: PlanningProposalExecution; load: (admitted: () => boolean) => Promise<ReturnType<PlanningDraft["read"]>> }>();
   private readonly drafts = new WeakMap<AbortSignal, { projectId: string; draft: PlanningDraft }>();
+  private readonly persistedGenerations = new WeakMap<AbortSignal, number>();
+  private readonly inspectedDrafts = new WeakMap<AbortSignal, { projectId: string; projectRevision: number; generation: number }>();
   private readonly registeringDrafts = new WeakSet<AbortSignal>();
   private readonly snapshotProjects = new WeakMap<AbortSignal, { snapshotId: string; projectId: string }>();
   constructor(private readonly options: Options) {}
   private now(): number { return this.options.now?.() ?? performance.now(); }
-  clearSources(): void { for (const signal of new Set([...this.analysisLeases.keys(), ...this.analysisExecutions.keys()])) this.revokeAnalysis(signal); this.sources.clearAll(); }
+  clearSources(): void { for (const signal of new Set([...this.analysisLeases.keys(), ...this.analysisExecutions.keys(), ...this.semanticExecutions.keys(), ...this.planningProposals.keys()])) this.revokeAnalysis(signal); this.sources.clearAll(); }
   private finishAnalysis(signal: AbortSignal, lease: AnalysisLease): void {
     if (this.analysisLeases.get(signal) !== lease) return;
     clearTimeout(lease.timer); signal.removeEventListener("abort", lease.onAbort); this.analysisLeases.delete(signal);
   }
   private revokeAnalysis(signal: AbortSignal): void {
+    const proposal = this.planningProposals.get(signal);
+    if (proposal) { proposal.execution.interrupt(); if (proposal.execution.clear()) this.planningProposals.delete(signal); }
+    const semantic = this.semanticExecutions.get(signal);
+    if (semantic) { semantic.execution.interrupt(); if (semantic.execution.clear()) this.semanticExecutions.delete(signal); }
     const execution = this.analysisExecutions.get(signal);
     if (execution) { execution.interrupt(); if (execution.clear()) { this.analysisExecutions.delete(signal); this.analysisRevisions.delete(signal); this.analysisProjectIds.delete(signal); this.analysisSnapshotIds.delete(signal); } }
     const lease = this.analysisLeases.get(signal);
@@ -86,7 +98,7 @@ export class IssueBridgeApi {
     lease.batch?.dispose();
   }
   private revokeView(signal: AbortSignal): void {
-    this.views.delete(signal); this.drafts.delete(signal); this.revokeAnalysis(signal); this.sources.clear(signal); this.snapshotProjects.delete(signal);
+    this.views.delete(signal); this.drafts.delete(signal); this.persistedGenerations.delete(signal); this.inspectedDrafts.delete(signal); this.revokeAnalysis(signal); this.sources.clear(signal); this.snapshotProjects.delete(signal);
   }
   private activeView(signal: AbortSignal | undefined, connected: () => boolean) {
     if (!signal || signal.aborted || !connected()) { if (signal) this.revokeView(signal); return null; }
@@ -161,14 +173,160 @@ export class IssueBridgeApi {
       if (message.type === "issues.draft.replace") action = "draftReplace";
       if (message.type === "issues.draft.review") action = "draftReview";
       if (message.type === "issues.draft.register") action = "draftRegister";
+      if (message.type === "issues.draft.persist") action = "draftPersist";
+      if (message.type === "issues.draft.restore") action = "draftRestore";
+      if (message.type === "issues.draft.inspectSaved") action = "draftInspectSaved";
+      if (message.type === "issues.draft.rebase") action = "draftRebase";
+      if (message.type === "issues.draft.copy") action = "draftCopy";
+      if (message.type === "issues.semantic.start") action = "semanticStart";
+      if (message.type === "issues.semantic.status") action = "semanticStatus";
+      if (message.type === "issues.semantic.interrupt") action = "semanticInterrupt";
+      if (message.type === "issues.semantic.clear") action = "semanticClear";
+      if (message.type === "issues.semantic.save") action = "semanticSave";
+      if (message.type === "issues.semantic.review") action = "semanticReview";
+      if (message.type === "issues.plan.start") action = "planStart";
+      if (message.type === "issues.plan.status") action = "planStatus";
+      if (message.type === "issues.plan.interrupt") action = "planInterrupt";
+      if (message.type === "issues.plan.clear") action = "planClear";
+      if (message.type === "issues.plan.apply") action = "planApply";
       if (typeof message.clientRequestId === "string" && /^[0-9a-f-]{36}$/i.test(message.clientRequestId)) clientRequestId = message.clientRequestId;
-      if (!uiOrigin || !clientRequestId || message.v !== 1 || !["issues.project.status", "issues.project.bind", "issues.document.import", "issues.document.export", "issues.view.authorize", "issues.view.query", "issues.view.release", "issues.sources.add", "issues.sources.list", "issues.sources.read", "issues.sources.remove", "issues.analysis.prepare", "issues.analysis.check", "issues.analysis.status", "issues.analysis.start", "issues.analysis.interrupt", "issues.analysis.clear", "issues.analysis.segment", "issues.analysis.retry", "issues.draft.create", "issues.draft.read", "issues.draft.replace", "issues.draft.review", "issues.draft.register"].includes(String(message.type)) || Object.keys(message).some(key => !["type", "v", "clientRequestId", ...(action === "view" ? ["query"] : []), ...(["draftCreate", "draftReplace"].includes(action) ? ["document"] : []), ...(action === "draftReview" ? ["review"] : []), ...(["draftReplace", "draftReview", "draftRegister"].includes(action) ? ["draftRevision"] : []), ...(action === "draftCreate" ? ["expectedRevision"] : []), ...(action === "export" ? ["documentId", "expectedRevision"] : []), ...(["sourceRead", "sourceRemove"].includes(action) ? ["sourceId"] : []), ...(action === "sourceRead" || action === "analysisSegment" ? ["offset"] : []), ...(["analysisSegment", "analysisRetry"].includes(action) ? ["index"] : []), ...(action === "snapshotPrepare" ? ["expectedRevision", "expectedSources", "instruction"] : []), ...(["snapshotCheck", "analysisStart"].includes(action) ? ["snapshotId", "expectedRevision"] : [])].includes(key))) throw new Error("invalid");
+      if (!uiOrigin || !clientRequestId || message.v !== 1 || !["issues.project.status", "issues.project.bind", "issues.document.import", "issues.document.export", "issues.view.authorize", "issues.view.query", "issues.view.release", "issues.sources.add", "issues.sources.list", "issues.sources.read", "issues.sources.remove", "issues.analysis.prepare", "issues.analysis.check", "issues.analysis.status", "issues.analysis.start", "issues.analysis.interrupt", "issues.analysis.clear", "issues.analysis.segment", "issues.analysis.retry", "issues.draft.create", "issues.draft.read", "issues.draft.replace", "issues.draft.review", "issues.draft.register", "issues.draft.persist", "issues.draft.restore", "issues.draft.inspectSaved", "issues.draft.rebase", "issues.draft.copy", "issues.semantic.start", "issues.semantic.status", "issues.semantic.interrupt", "issues.semantic.clear", "issues.semantic.save", "issues.semantic.review", "issues.plan.start", "issues.plan.status", "issues.plan.interrupt", "issues.plan.clear", "issues.plan.apply"].includes(String(message.type)) || Object.keys(message).some(key => !["type", "v", "clientRequestId", ...(action === "view" ? ["query"] : []), ...(["draftCreate", "draftReplace"].includes(action) ? ["document"] : []), ...(action === "draftReview" ? ["review"] : []), ...(["draftReplace", "draftReview", "draftRegister", "draftPersist", "semanticSave", "semanticReview", "planStart", "planApply"].includes(action) ? ["draftRevision"] : []), ...(action === "semanticReview" ? ["findingId", "decision", "reason"] : []), ...(action === "planStart" ? ["request"] : []), ...(action === "planApply" ? ["proposalId"] : []), ...(action === "draftCreate" ? ["expectedRevision"] : []), ...(action === "export" ? ["documentId", "expectedRevision"] : []), ...(["sourceRead", "sourceRemove"].includes(action) ? ["sourceId"] : []), ...(action === "sourceRead" || action === "analysisSegment" ? ["offset"] : []), ...(["analysisSegment", "analysisRetry"].includes(action) ? ["index"] : []), ...(action === "snapshotPrepare" ? ["expectedRevision", "expectedSources", "instruction"] : []), ...(["snapshotCheck", "analysisStart", "semanticStart"].includes(action) ? ["snapshotId", "expectedRevision"] : []), ...(action === "semanticStart" ? ["index", "draftRevision"] : [])].includes(key))) throw new Error("invalid");
       if (action === "export" && (!id(message.documentId) || !Number.isSafeInteger(message.expectedRevision) || Number(message.expectedRevision) < 1)) throw new Error("invalid");
       if ((action === "sourceRead" || action === "sourceRemove") && (!id(message.sourceId) || !String(message.sourceId).startsWith("source_") || action === "sourceRead" && (!Number.isSafeInteger(message.offset) || Number(message.offset) < 0))) throw new Error("invalid");
-      if ((action === "snapshotCheck" || action === "analysisStart") && (typeof message.snapshotId !== "string" || !/^snapshot_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(message.snapshotId) || !Number.isSafeInteger(message.expectedRevision) || Number(message.expectedRevision) < 1)) throw new Error("invalid");
+      if ((action === "snapshotCheck" || action === "analysisStart" || action === "semanticStart") && (typeof message.snapshotId !== "string" || !/^snapshot_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(message.snapshotId) || !Number.isSafeInteger(message.expectedRevision) || Number(message.expectedRevision) < 1)) throw new Error("invalid");
       if ((action === "analysisSegment" || action === "analysisRetry") && (!Number.isSafeInteger(message.index) || Number(message.index) < 0 || Number(message.index) >= 2048 || action === "analysisSegment" && (!Number.isSafeInteger(message.offset) || Number(message.offset) < 0 || Number(message.offset) > 512))) throw new Error("invalid");
       if (signal?.aborted || !connected()) throw new IssueProjectContextError("STALE_SELECTION", "연결이 끊겨 이슈 요청을 취소했습니다.");
       if (action === "status") return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: Boolean((await this.options.context().status()).project) };
+      if (["planStart", "planStatus", "planInterrupt", "planClear", "planApply"].includes(action)) {
+        const grant = this.activeView(signal, connected);
+        if (!signal || !grant) throw new IssueExportError("VIEW_AUTH_REQUIRED", "계획 제안을 보려면 프로젝트를 다시 확인하세요.");
+        const project = await this.options.context().status();
+        if (this.activeView(signal, connected) !== grant || !project.project || project.project.id !== grant.projectId) throw new IssueExportError("VIEW_AUTH_REQUIRED", "프로젝트 또는 보기 권한이 변경되었습니다.");
+        let owned = this.planningProposals.get(signal);
+        if (action === "planStart") {
+          if (owned || !this.options.createPlanningProposal) throw new AnalysisSourceError("BUSY", "이전 제안을 정리하거나 실행 가능 상태를 확인하세요.");
+          if (!Number.isSafeInteger(message.draftRevision) || Number(message.draftRevision) < 1 || typeof message.request !== "string" || !message.request.trim() || message.request.length > 1024 || Buffer.byteLength(message.request, "utf8") > 4096 || message.request.includes("\0")) throw new PlanningDraftError("INVALID_INPUT");
+          const entry = this.drafts.get(signal), projectId = project.project.id, revision = project.project.revision, draftRevision = Number(message.draftRevision);
+          if (!entry || entry.projectId !== projectId || entry.draft.projectRevision !== revision || entry.draft.read().revision !== draftRevision) throw new PlanningDraftError("VERSION_CONFLICT");
+          if (!entry.draft.hasConversationCapacity(2)) throw new PlanningDraftError("LIMIT_EXCEEDED");
+          const load = async (admitted: () => boolean) => {
+            const valid = () => admitted() && this.activeView(signal, connected) === grant && this.drafts.get(signal) === entry && entry.draft.read().revision === draftRevision;
+            if (!valid()) throw new AnalysisSourceError("STALE_INPUT", "초안 또는 보기 권한이 변경되었습니다.");
+            const current = await this.options.context().status();
+            if (!valid() || !current.project || current.project.id !== projectId || current.project.revision !== revision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 초안이 변경되었습니다.");
+            return entry.draft.read();
+          };
+          const execution = this.options.createPlanningProposal(load, signal);
+          if (!execution) throw new AnalysisSourceError("BUSY", "안전한 계획 제안 실행을 확인할 수 없습니다.");
+          owned = { execution, load }; this.planningProposals.set(signal, owned);
+          const pending = execution.start(message.request);
+          if (execution.status().state === "idle") { this.planningProposals.delete(signal); await pending.catch(() => {}); throw new AnalysisSourceError("BUSY", "계획 제안을 시작할 수 없습니다."); }
+          try { entry.draft.addConversation(draftRevision, "user", message.request); }
+          catch (error) { execution.interrupt(); void pending.finally(() => { if (execution.clear()) this.planningProposals.delete(signal); }).catch(() => {}); throw error; }
+          const selected = owned;
+          void pending.finally(() => {
+            const status = selected.execution.status();
+            if (status.result && this.activeView(signal, connected) === grant && this.drafts.get(signal) === entry && entry.draft.read().revision === draftRevision) {
+              const message = status.result.proposals.length ? status.result.proposals.map(item => `${item.targetId} · ${item.field}\n제안: ${item.after}\n근거: ${item.reason}\n불확실성: ${item.uncertainty}`).join("\n\n") : "변경 제안이 없습니다. 초안이 완전하다는 뜻은 아닙니다.";
+              try { entry.draft.addConversation(draftRevision, "assistant", message); } catch { selected.execution.failRecording(); }
+            }
+            if (!this.activeView(signal, connected) && selected.execution.clear()) this.planningProposals.delete(signal);
+          }).catch(() => {});
+        } else if (action === "planInterrupt") {
+          if (!owned?.execution.interrupt()) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "NOT_RUNNING", message: "중단할 제안이 없습니다." } };
+        } else if (action === "planClear") {
+          if (!owned?.execution.clear()) throw new AnalysisSourceError("BUSY", "제안 작업이 완전히 끝난 뒤 정리하세요.");
+          this.planningProposals.delete(signal); owned = undefined;
+        } else if (action === "planApply") {
+          if (!owned || owned.execution.busy || this.options.busy() || !Number.isSafeInteger(message.draftRevision) || Number(message.draftRevision) < 1 || !id(message.proposalId)) throw new PlanningDraftError("INVALID_INPUT");
+          const entry = this.drafts.get(signal); if (!entry || entry.projectId !== project.project.id || entry.draft.projectRevision !== project.project.revision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 초안이 변경되었습니다.");
+          await owned.load(() => !this.options.busy());
+          if (this.activeView(signal, connected) !== grant || this.drafts.get(signal) !== entry || this.planningProposals.get(signal) !== owned || this.options.busy()) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 제안이 변경되었습니다.");
+          owned.execution.apply(entry.draft, Number(message.draftRevision), message.proposalId);
+          this.planningProposals.delete(signal);
+          return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, draft: entry.draft.read() };
+        } else if (owned?.execution.status().result) {
+          if (this.options.busy()) throw new AnalysisSourceError("BUSY", "다른 작업이 끝난 뒤 제안을 확인하세요.");
+          try { await owned.load(() => !this.options.busy()); } catch { owned.execution.clear(); this.planningProposals.delete(signal); throw new AnalysisSourceError("STALE_INPUT", "초안이 변경되어 제안을 표시하지 않습니다."); }
+          if (this.planningProposals.get(signal) !== owned) throw new AnalysisSourceError("STALE_INPUT", "제안이 변경되었습니다.");
+        }
+        return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, planStatus: owned?.execution.status() ?? { state: "idle", result: null } };
+      }
+      if (action === "semanticSave" || action === "semanticReview") {
+        const grant = this.activeView(signal, connected);
+        if (!signal || !grant) throw new IssueExportError("VIEW_AUTH_REQUIRED", "검증을 기록하려면 프로젝트를 다시 확인하세요.");
+        if (!Number.isSafeInteger(message.draftRevision) || Number(message.draftRevision) < 1) throw new PlanningDraftError("INVALID_INPUT");
+        const project = await this.options.context().status(), entry = this.drafts.get(signal);
+        if (this.activeView(signal, connected) !== grant || !project.project || project.project.id !== grant.projectId || !entry || entry.projectId !== project.project.id || entry.draft.projectRevision !== project.project.revision || entry.draft.read().revision !== message.draftRevision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 초안이 변경되었습니다.");
+        if (this.options.busy() || this.registeringDrafts.has(signal)) throw new AnalysisSourceError("BUSY", "진행 중인 작업이 끝난 뒤 기록하세요.");
+        if (action === "semanticReview") {
+          if (!id(message.findingId) || !(message.decision === "resolved" || message.decision === "deferred") || typeof message.reason !== "string" || !message.reason.trim() || message.reason.length > 2000 || message.reason.includes("\0")) throw new PlanningDraftError("INVALID_INPUT");
+          const source = entry.draft.semanticSource(Number(message.draftRevision), message.findingId);
+          const selected = this.sources.list(signal, grant.generation, grant.path).items.find(item => item.relativePath === source.sourcePath && item.sha256 === source.sourceSha256 && item.projectRevision === project.project!.revision);
+          if (!selected) throw new AnalysisSourceError("STALE_INPUT", "검증 원본을 다시 선택하고 내용을 확인하세요.");
+          let actual: Awaited<ReturnType<Options["readSource"]>>;
+          try { actual = await this.options.readSource(grant.path, path.resolve(grant.path, ...selected.relativePath.split("/")), signal); } catch { throw new AnalysisSourceError("STALE_INPUT", "검증 원본을 확인할 수 없습니다."); }
+          const current = await this.options.context().status();
+          const stillSelected = this.sources.list(signal, grant.generation, grant.path).items.some(item => item.id === selected.id && item.relativePath === selected.relativePath && item.sha256 === selected.sha256 && item.bytes === selected.bytes && item.projectRevision === selected.projectRevision);
+          if (this.activeView(signal, connected) !== grant || this.drafts.get(signal) !== entry || entry.draft.read().revision !== message.draftRevision || !current.project || current.project.id !== project.project.id || current.project.revision !== project.project.revision || this.options.busy() || this.registeringDrafts.has(signal) || !stillSelected || actual.relativePath !== selected.relativePath || actual.sha256 !== selected.sha256 || actual.bytes !== selected.bytes) throw new AnalysisSourceError("STALE_INPUT", "자료 또는 초안이 변경되어 검토를 기록하지 않았습니다.");
+          entry.draft.reviewSemantic(Number(message.draftRevision), message.findingId, message.decision, message.reason);
+        } else {
+          const owned = this.semanticExecutions.get(signal), result = owned?.execution.status().result;
+          if (!owned || !result || owned.saved || owned.execution.busy) throw new AnalysisSourceError("BUSY", "기록할 현재 검증 결과가 없습니다.");
+          await owned.load(() => !this.options.busy());
+          if (this.activeView(signal, connected) !== grant || this.drafts.get(signal) !== entry || this.semanticExecutions.get(signal) !== owned || owned.saved || this.options.busy()) throw new AnalysisSourceError("STALE_INPUT", "자료 또는 초안이 변경되어 결과를 기록하지 않았습니다.");
+          entry.draft.addSemanticResult(Number(message.draftRevision), owned.segmentIndex, result); owned.saved = true;
+        }
+        return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, draft: entry.draft.read() };
+      }
+      if (["semanticStart", "semanticStatus", "semanticInterrupt", "semanticClear"].includes(action)) {
+        const grant = this.activeView(signal, connected);
+        if (!signal || !grant) throw new IssueExportError("VIEW_AUTH_REQUIRED", "의미 검증을 보려면 프로젝트를 다시 확인하세요.");
+        const project = await this.options.context().status();
+        if (this.activeView(signal, connected) !== grant || !project.project || project.project.id !== grant.projectId) throw new IssueExportError("VIEW_AUTH_REQUIRED", "프로젝트 또는 보기 권한이 변경되었습니다.");
+        let owned = this.semanticExecutions.get(signal);
+        if (action === "semanticStart") {
+          if (owned || !this.options.createSemanticExecution) throw new AnalysisSourceError("BUSY", "이전 검증을 정리하거나 실행 가능 상태를 확인하세요.");
+          if (!Number.isSafeInteger(message.index) || Number(message.index) < 0 || Number(message.index) >= 2048 || !Number.isSafeInteger(message.draftRevision) || Number(message.draftRevision) < 1 || project.project.revision !== Number(message.expectedRevision)) throw new PlanningDraftError("INVALID_INPUT");
+          const entry = this.drafts.get(signal), snapshotId = String(message.snapshotId), revision = project.project.revision, projectId = project.project.id, index = Number(message.index), draftRevision = Number(message.draftRevision);
+          if (!entry || entry.projectId !== projectId || entry.draft.projectRevision !== revision || entry.draft.read().revision !== draftRevision) throw new PlanningDraftError("VERSION_CONFLICT");
+          const prepared = this.snapshotProjects.get(signal);
+          if (!prepared || prepared.projectId !== projectId || prepared.snapshotId !== snapshotId) throw new AnalysisSourceError("STALE_INPUT", "분석 입력을 다시 준비하세요.");
+          this.sources.analysisSegment(signal, grant.generation, grant.path, revision, snapshotId, index);
+          const load = async (admitted: () => boolean): Promise<SemanticInput> => {
+            const valid = () => admitted() && this.activeView(signal, connected) === grant && this.drafts.get(signal) === entry && entry.draft.read().revision === draftRevision;
+            if (!valid()) throw new AnalysisSourceError("STALE_INPUT", "초안 또는 보기 권한이 변경되었습니다.");
+            const files = this.sources.snapshotFiles(signal, grant.generation, grant.path, revision, snapshotId);
+            for (const file of files) {
+              let actual: Awaited<ReturnType<Options["readSource"]>>;
+              try { actual = await this.options.readSource(grant.path, path.resolve(grant.path, ...file.relativePath.split("/")), signal); } catch { throw new AnalysisSourceError("STALE_INPUT", "자료 원본을 확인할 수 없습니다."); }
+              if (!valid() || actual.relativePath !== file.relativePath || actual.bytes !== file.bytes || actual.sha256 !== file.sha256) throw new AnalysisSourceError("STALE_INPUT", "자료 또는 초안이 변경되었습니다.");
+              this.sources.snapshotFiles(signal, grant.generation, grant.path, revision, snapshotId);
+            }
+            const current = await this.options.context().status();
+            if (!valid() || !current.project || current.project.id !== projectId || current.project.revision !== revision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 초안이 변경되었습니다.");
+            return { projectRevision: revision, draftRevision, document: entry.draft.read().document, segment: this.sources.analysisSegment(signal, grant.generation, grant.path, revision, snapshotId, index) };
+          };
+          const execution = this.options.createSemanticExecution(load, signal);
+          if (!execution) throw new AnalysisSourceError("BUSY", "안전한 의미 검증 실행을 확인할 수 없습니다.");
+          owned = { execution, load, segmentIndex: index, saved: false }; this.semanticExecutions.set(signal, owned);
+          const pending = execution.start();
+          if (execution.status().state === "idle") { this.semanticExecutions.delete(signal); await pending.catch(() => {}); throw new AnalysisSourceError("BUSY", "의미 검증을 시작할 수 없습니다."); }
+          const selected = owned;
+          void pending.finally(() => { if (!this.activeView(signal, connected) && selected.execution.clear()) this.semanticExecutions.delete(signal); }).catch(() => {});
+        } else if (action === "semanticInterrupt") {
+          if (!owned?.execution.interrupt()) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "NOT_RUNNING", message: "중단할 검증이 없습니다." } };
+        } else if (action === "semanticClear") {
+          if (!owned?.execution.clear()) throw new AnalysisSourceError("BUSY", "검증이 완전히 끝난 뒤 정리하세요.");
+          this.semanticExecutions.delete(signal); owned = undefined;
+        } else if (owned?.execution.status().result) {
+          if (this.options.busy()) throw new AnalysisSourceError("BUSY", "다른 작업이 끝난 뒤 결과를 확인하세요.");
+          try { await owned.load(() => !this.options.busy()); }
+          catch { owned.execution.clear(); this.semanticExecutions.delete(signal); throw new AnalysisSourceError("STALE_INPUT", "자료 또는 초안이 변경되어 검증 결과를 표시하지 않습니다."); }
+          if (this.semanticExecutions.get(signal) !== owned) throw new AnalysisSourceError("STALE_INPUT", "검증 결과가 변경되었습니다.");
+        }
+        return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, semanticStatus: owned?.execution.status() ?? { state: "idle", result: null } };
+      }
       if (["analysisStatus", "analysisStart", "analysisInterrupt", "analysisClear", "analysisSegment", "analysisRetry"].includes(action)) {
         const grant = this.activeView(signal, connected);
         if (!grant || !signal) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "이슈 보기 권한을 다시 확인하세요." } };
@@ -228,7 +386,7 @@ export class IssueBridgeApi {
         }
         return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, analysisStatus: execution?.status() ?? (this.options.analysisAvailable?.() ? { state: "idle", progress: null } : "unavailable") };
       }
-      if (["draftCreate", "draftRead", "draftReplace", "draftReview", "draftRegister"].includes(action)) {
+      if (["draftCreate", "draftRead", "draftReplace", "draftReview", "draftRegister", "draftPersist", "draftRestore", "draftInspectSaved", "draftRebase", "draftCopy"].includes(action)) {
         const grant = this.activeView(signal, connected);
         if (!signal || !grant) throw new IssueExportError("VIEW_AUTH_REQUIRED", "초안을 보려면 프로젝트를 다시 확인하세요.");
         const context = this.options.context(), project = await context.status();
@@ -236,13 +394,52 @@ export class IssueBridgeApi {
           this.revokeView(signal); throw new IssueExportError("VIEW_AUTH_REQUIRED", "프로젝트 또는 보기 권한이 변경되었습니다.");
         }
         const allowed = () => this.activeView(signal, connected) === grant && !this.options.busy();
+        if ((this.semanticExecutions.get(signal)?.execution.busy || this.planningProposals.get(signal)?.execution.busy) && action !== "draftRead") throw new AnalysisSourceError("BUSY", "분석 또는 제안 작업이 끝난 뒤 초안을 변경하세요.");
         if (this.registeringDrafts.has(signal)) throw new AnalysisSourceError("BUSY", "초안 등록이 끝날 때까지 기다리세요.");
-        if (["draftReplace", "draftReview", "draftRegister"].includes(action) && (!Number.isSafeInteger(message.draftRevision) || Number(message.draftRevision) < 1)) throw new PlanningDraftError("INVALID_INPUT");
+        if (["draftReplace", "draftReview", "draftRegister", "draftPersist"].includes(action) && (!Number.isSafeInteger(message.draftRevision) || Number(message.draftRevision) < 1)) throw new PlanningDraftError("INVALID_INPUT");
         let entry = this.drafts.get(signal);
         if (entry && (entry.projectId !== project.project.id || entry.draft.projectRevision !== project.project.revision)) {
-          this.drafts.delete(signal); throw new PlanningDraftError("VERSION_CONFLICT");
+          // Keep unsaved work in memory. A revision conflict must not silently
+          // destroy it; the stale draft cannot be changed or registered here.
+          if (action === "draftRead" && entry.projectId === project.project.id) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, draft: entry.draft.read() };
+          if (action === "draftRebase" && entry.projectId === project.project.id && allowed()) {
+            const recovered = PlanningDraft.rebase(entry.draft.read(), project.project.revision);
+            this.drafts.set(signal, { projectId: entry.projectId, draft: recovered });
+            return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, draft: recovered.read() };
+          }
+          throw new PlanningDraftError("VERSION_CONFLICT");
         }
-        if (action === "draftCreate") {
+        if (action === "draftInspectSaved" || action === "draftRebase" || action === "draftCopy") {
+          if (entry) throw new AnalysisSourceError("BUSY", "현재 초안을 먼저 정리하세요. 저장된 초안으로 덮어쓰지 않습니다.");
+          if (!context.readPlanningDraft || !allowed()) throw new AnalysisSourceError("BUSY", "저장된 초안을 지금 확인할 수 없습니다.");
+          const inspected = this.inspectedDrafts.get(signal);
+          if ((action === "draftRebase" || action === "draftCopy") && (!inspected || inspected.projectId !== project.project.id || inspected.projectRevision !== project.project.revision)) throw new AnalysisSourceError("STALE_INPUT", "저장된 초안을 먼저 다시 확인하세요.");
+          this.registeringDrafts.add(signal);
+          try {
+            const saved = await context.readPlanningDraft(project.project, allowed);
+            if (!allowed() || this.drafts.has(signal)) throw new IssueExportError("STALE_SELECTION", "보기 권한 또는 초안이 변경되었습니다.");
+            if (!saved) throw new PlanningDraftError("NOT_FOUND");
+            if (action === "draftInspectSaved") {
+              this.inspectedDrafts.set(signal, { projectId: project.project.id, projectRevision: project.project.revision, generation: saved.generation });
+              return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, draft: saved.snapshot, savedStale: saved.stale };
+            }
+            if ((action === "draftRebase" && !saved.stale) || !inspected || inspected.generation !== saved.generation) throw new AnalysisSourceError("STALE_INPUT", "저장된 초안이 변경되었습니다. 다시 확인하세요.");
+            entry = { projectId: project.project.id, draft: action === "draftCopy" ? PlanningDraft.copyAsNew(saved.snapshot, project.project.revision) : PlanningDraft.rebase(saved.snapshot, project.project.revision) };
+            this.persistedGenerations.set(signal, saved.generation); this.inspectedDrafts.delete(signal); this.drafts.set(signal, entry);
+          } finally { this.registeringDrafts.delete(signal); }
+        } else if (action === "draftRestore") {
+          if (entry) throw new AnalysisSourceError("BUSY", "현재 초안을 먼저 정리하세요. 저장된 초안으로 덮어쓰지 않습니다.");
+          if (!context.readPlanningDraft || !allowed()) throw new AnalysisSourceError("BUSY", "저장된 초안을 지금 불러올 수 없습니다.");
+          this.registeringDrafts.add(signal);
+          try {
+            const saved = await context.readPlanningDraft(project.project, allowed);
+            if (!allowed() || this.drafts.has(signal)) throw new IssueExportError("STALE_SELECTION", "보기 권한 또는 초안이 변경되었습니다.");
+            if (!saved) throw new PlanningDraftError("NOT_FOUND");
+            if (saved.stale) throw new AnalysisSourceError("STALE_INPUT", "저장된 초안 이후 프로젝트가 변경되었습니다. 기존 초안은 보존되었으며 자동으로 적용하지 않습니다.");
+            entry = { projectId: project.project.id, draft: PlanningDraft.restore(saved.snapshot) };
+            this.persistedGenerations.set(signal, saved.generation); this.drafts.set(signal, entry);
+          } finally { this.registeringDrafts.delete(signal); }
+        } else if (action === "draftCreate") {
           if (entry) throw new AnalysisSourceError("BUSY", "기존 초안이 있습니다. 보기 권한을 종료하면 삭제됩니다.");
           if (message.expectedRevision !== project.project.revision) throw new PlanningDraftError("VERSION_CONFLICT");
           entry = { projectId: project.project.id, draft: new PlanningDraft(message.document, project.project.revision) };
@@ -251,6 +448,19 @@ export class IssueBridgeApi {
           if (!entry) throw new PlanningDraftError("NOT_FOUND");
           if (action === "draftReplace") entry.draft.replace(Number(message.draftRevision), message.document);
           if (action === "draftReview") entry.draft.review(Number(message.draftRevision), message.review);
+          if (action === "draftPersist") {
+            if (!context.savePlanningDraft || !allowed()) throw new AnalysisSourceError("BUSY", "초안을 지금 저장할 수 없습니다.");
+            const snapshot = entry.draft.read();
+            if (snapshot.revision !== message.draftRevision) throw new PlanningDraftError("VERSION_CONFLICT");
+            const release = this.options.tryAcquireWrite();
+            if (!release) throw new AnalysisSourceError("BUSY", "다른 작업이 끝난 뒤 저장하세요.");
+            this.registeringDrafts.add(signal);
+            try {
+              const generation = await context.savePlanningDraft(project.project, this.persistedGenerations.get(signal) ?? 0, snapshot, allowed);
+              if (!allowed() || this.drafts.get(signal) !== entry) throw new IssueExportError("OUTCOME_UNKNOWN", "초안 저장 결과를 확인할 수 없습니다. 다시 조회하세요.");
+              this.persistedGenerations.set(signal, generation);
+            } finally { this.registeringDrafts.delete(signal); release(); }
+          }
           if (action === "draftRegister") {
             if (!allowed()) throw new AnalysisSourceError("BUSY", "다른 작업이 끝난 뒤 등록하세요.");
             if (this.pickerOpen) throw new AnalysisSourceError("BUSY", "다른 선택이 끝난 뒤 등록하세요.");
@@ -267,6 +477,25 @@ export class IssueBridgeApi {
             if (!release) throw new AnalysisSourceError("BUSY", "다른 작업이 끝난 뒤 등록하세요.");
             this.registeringDrafts.add(signal);
             try {
+              // Only files explicitly selected in this connection may be reopened.
+              // The draft comes from the renderer and cannot authorize a path.
+              const draftSources = entry.draft.read().document.sources;
+              const draftProjectRevision = entry.draft.projectRevision;
+              const selected = this.sources.list(signal, grant.generation, grant.path).items;
+              for (const source of draftSources) {
+                // Source IDs are connection-scoped and change after restoring a
+                // draft. The server-owned selection, path and hash authorize the
+                // recheck; the stored ID itself grants no file access.
+                const item = selected.find(value => value.relativePath === source.name && `sha256:${value.sha256}` === source.contentHash && value.projectRevision === draftProjectRevision);
+                if (!item) throw new AnalysisSourceError("STALE_INPUT", "초안의 원본 자료를 다시 선택하고 분석해야 합니다.");
+                let original: Awaited<ReturnType<typeof this.options.readSource>>;
+                try { original = await this.options.readSource(grant.path, path.resolve(grant.path, ...item.relativePath.split("/")), signal); }
+                catch { throw new AnalysisSourceError("STALE_INPUT", "초안의 원본 자료를 확인할 수 없습니다. 다시 선택하고 분석하세요."); }
+                const stillSelected = this.sources.list(signal, grant.generation, grant.path).items.some(value => value.id === item.id && value.relativePath === item.relativePath && value.sha256 === item.sha256 && value.bytes === item.bytes && value.projectRevision === item.projectRevision);
+                if (!allowed() || this.drafts.get(signal) !== entry || !stillSelected || original.relativePath !== item.relativePath || original.bytes !== item.bytes || original.sha256 !== item.sha256) throw new AnalysisSourceError("STALE_INPUT", "초안의 원본 자료 또는 작업 상태가 변경되었습니다. 다시 선택하고 분석하세요.");
+              }
+              const current = await context.status();
+              if (!allowed() || this.drafts.get(signal) !== entry || !current.project || current.project.id !== entry.projectId || current.project.revision !== project.project.revision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 초안이 변경되어 등록하지 않았습니다.");
               const result = await context.importDocument(bytes, allowed, { id: entry.projectId, revision: project.project.revision });
               if (!allowed()) throw new IssueExportError("OUTCOME_UNKNOWN", "등록 결과를 확인하세요.");
               this.drafts.delete(signal);
@@ -277,6 +506,8 @@ export class IssueBridgeApi {
         return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, draft: entry.draft.read() };
       }
       if (action === "releaseView") { if (signal) this.revokeView(signal); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, authorized: false }; }
+      if (signal && this.semanticExecutions.get(signal)?.execution.busy && (action === "sourceAdd" || action === "sourceRemove" || action === "snapshotPrepare")) throw new AnalysisSourceError("BUSY", "의미 검증이 끝난 뒤 자료를 변경하세요.");
+      if (signal && this.registeringDrafts.has(signal) && (action === "sourceAdd" || action === "sourceRemove" || action === "snapshotPrepare")) throw new AnalysisSourceError("BUSY", "초안 등록이 끝난 뒤 자료를 변경하세요.");
       if (signal && this.analysisLeases.has(signal) && (action === "sourceAdd" || action === "sourceRemove" || action === "snapshotPrepare")) {
         if (!this.activeView(signal, connected)) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "자료를 보려면 현재 프로젝트 폴더를 다시 확인하세요." } };
         return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "BUSY", message: "분석이 완전히 끝난 뒤 자료를 변경하세요." } };
@@ -289,6 +520,7 @@ export class IssueBridgeApi {
         try { project = await this.options.context().status(); } catch (error) { if (this.views.get(signal) === grant) this.revokeView(signal); throw error; }
         if (!project.project || this.activeView(signal, connected) !== grant) { if (this.views.get(signal) === grant) this.revokeView(signal); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "프로젝트 또는 보기 권한이 변경되었습니다." } }; }
         if (project.project.id !== grant.projectId) { this.revokeView(signal); return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "VIEW_AUTH_REQUIRED", message: "프로젝트가 변경되어 보기 권한을 다시 확인하세요." } }; }
+        if ((this.registeringDrafts.has(signal) || this.semanticExecutions.get(signal)?.execution.busy) && (action === "sourceRemove" || action === "snapshotPrepare")) throw new AnalysisSourceError("BUSY", "초안 등록 또는 의미 검증이 끝난 뒤 자료를 변경하세요.");
         if (this.analysisLeases.has(signal) && (action === "sourceRemove" || action === "snapshotPrepare")) return { type: "issues.project.result", v: 1, clientRequestId, action, ok: false, error: { code: "BUSY", message: "분석이 완전히 끝난 뒤 자료를 변경하세요." } };
         if (snapshotRequest) {
           const snapshot = this.sources.prepare(signal, grant.generation, grant.path, project.project.revision, snapshotRequest);
@@ -421,7 +653,7 @@ export class IssueBridgeApi {
           requireGrant();
           if (!after.project || after.project.id !== grant.projectId) this.revokeView(signal);
           if (!stillSelected() || this.options.busy() || !after.project || after.project.id !== projectId || after.project.revision !== projectRevision) throw new AnalysisSourceError("STALE_INPUT", "프로젝트 또는 이슈 저장소가 변경되어 자료를 선택하지 않았습니다.");
-          if (this.analysisLeases.has(signal)) throw new AnalysisSourceError("BUSY", "분석이 완전히 끝난 뒤 자료를 변경하세요.");
+          if (this.analysisLeases.has(signal) || this.registeringDrafts.has(signal) || this.semanticExecutions.get(signal)?.execution.busy) throw new AnalysisSourceError("BUSY", "분석 또는 초안 등록이 끝난 뒤 자료를 변경하세요.");
           return { type: "issues.project.result", v: 1, clientRequestId, action, ok: true, bound: true, sources: this.sources.add(signal, selected.generation, selected.projectPath!, grant.expires, projectRevision, source) };
         }
         if (action === "import") {

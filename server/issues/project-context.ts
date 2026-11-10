@@ -4,6 +4,7 @@ import type { IssueViewQuery, IssueViewResult } from "../../shared/issues/view.j
 import { freezeExecutionPolicy, type ExecutionIntentInput, type FrozenExecutionIntent } from "./execution-intent.js";
 import type { JournalRecord } from "./execution-journal.js";
 import type { ExecutionApprovalRouter } from "./execution-approval-router.js";
+import type { PlanningDraft } from "./planning-draft.js";
 
 /** Supplied by the bridge, never constructed from an individual renderer message. */
 export type IssueProjectSelection = {
@@ -32,7 +33,7 @@ export class IssueProjectContext {
     if (now.workspaceMode !== "project" || now.generation !== selection.generation || now.projectPath !== selection.projectPath) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 선택이 변경되었습니다. 이전 프로젝트에 저장된 상태를 확인하세요.");
   }
   private async request(selection: SelectedProject, message: IssueWorkerRequest, mayStart: () => boolean = () => true): Promise<IssueWorkerResult> {
-    const mutating = message.operation === "project.create" || message.operation === "document.import" || message.operation === "execution.prepare" || message.operation === "execution.transition" || message.operation === "execution.approval" || message.operation === "execution.invalidateApprovals" || message.operation === "execution.reconcile";
+    const mutating = message.operation === "planning.save" || message.operation === "project.create" || message.operation === "document.import" || message.operation === "execution.prepare" || message.operation === "execution.transition" || message.operation === "execution.approval" || message.operation === "execution.invalidateApprovals" || message.operation === "execution.reconcile";
     this.verify(selection);
     try {
       const result = await this.worker.request(message, () => { const now = this.currentSelection(); return now.workspaceMode === "project" && now.projectPath === selection.projectPath && now.generation === selection.generation && mayStart(); });
@@ -123,6 +124,23 @@ export class IssueProjectContext {
   async status(): Promise<{ project: { id: string; revision: number } | null }> {
     const selected = this.capture();
     return { project: await this.lookup(selected) };
+  }
+
+  /** The bridge owns the view grant and must recheck it after these operations. */
+  async readPlanningDraft(expected: { id: string; revision: number }, mayStart: () => boolean) {
+    const selected = this.capture(), project = await this.lookup(selected);
+    if (!project || project.id !== expected.id || project.revision !== expected.revision || !mayStart()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 보기 권한이 변경되었습니다.");
+    const result = await this.request(selected, { operation: "planning.read", projectId: project.id, expectedRevision: project.revision }, mayStart);
+    if (!mayStart()) throw new IssueProjectContextError("STALE_SELECTION", "보기 권한이 변경되었습니다.");
+    if (result.kind !== "planning.read") throw new IssueProjectContextError("WORKER_UNAVAILABLE", "저장된 초안을 확인할 수 없습니다.");
+    return result.draft;
+  }
+  async savePlanningDraft(expected: { id: string; revision: number }, generation: number, snapshot: ReturnType<PlanningDraft["read"]>, mayStart: () => boolean) {
+    const fixed = structuredClone(snapshot), selected = this.capture(), project = await this.lookup(selected);
+    if (!project || project.id !== expected.id || project.revision !== expected.revision || !mayStart()) throw new IssueProjectContextError("STALE_SELECTION", "프로젝트 또는 보기 권한이 변경되었습니다.");
+    const result = await this.request(selected, { operation: "planning.save", projectId: project.id, expectedRevision: project.revision, expectedGeneration: generation, snapshot: fixed }, mayStart);
+    if (!mayStart() || result.kind !== "planning.save") throw new IssueWorkerClientError("OUTCOME_UNKNOWN", "초안 저장 결과를 확인하지 못했습니다. 다시 조회하세요.");
+    return result.generation;
   }
 
   /** The bridge must authenticate an explicit binding action before calling this method. */

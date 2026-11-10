@@ -386,7 +386,12 @@ try {
   assert.equal((await realpath(scratch)).toLowerCase(), path.resolve(scratch).toLowerCase());
   assert.equal(path.dirname(await realpath(scratch)).toLowerCase(), (await realpath(parent)).toLowerCase());
   assert.ok(path.basename(scratch).startsWith('issue-tool-probe-'));
-  if (childStopped && !helperTerminationUnconfirmed) await rm(scratch, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
+  if (childStopped && !helperTerminationUnconfirmed) {
+    // Revalidate the actual target at deletion time, not only at creation.
+    const info = await lstat(scratch), actual = await realpath(scratch), actualParent = await realpath(parent);
+    if (!info.isDirectory() || info.isSymbolicLink() || actual.toLowerCase() !== path.resolve(scratch).toLowerCase() || path.dirname(actual).toLowerCase() !== actualParent.toLowerCase() || !path.basename(actual).startsWith('issue-tool-probe-')) throw new Error('Synthetic scratch cleanup target changed.');
+    await rm(actual, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
+  }
   else throw new Error(`Synthetic CLI termination was not confirmed at ${phase} (${terminationResult}; helper-unconfirmed: ${helperTerminationUnconfirmed}); signals: ${[...signals].join(',') || 'none'}. Its isolated scratch directory was preserved.`);
  } catch (error) { cleanupFailure = classifyProbeFailure(error); }
 }

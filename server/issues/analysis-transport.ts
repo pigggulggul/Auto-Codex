@@ -6,7 +6,7 @@ import type { SegmentEvidence } from "./analysis-output.js";
 type Input = SegmentEvidence & { instruction: string };
 type Server = { request<T = unknown>(method: string, params: unknown, timeoutMs?: number): Promise<T>; respondError(id: string | number, code: number, message: string): void; stopAndWait(): Promise<void> };
 export type AnalysisCommandApprovalHandler = { request(request: ProtocolServerRequest): boolean; cancel(threadId: string): void };
-type Options = { cwd: string | (() => Promise<string>); model: string; config: Record<string, boolean | string>; disabledPluginIds: string[]; canRun(): boolean; acquire(): (() => void) | null; timeoutMs?: number; commandApprovals?: AnalysisCommandApprovalHandler; commandEnvironmentId?: string };
+type Options = { cwd: string | (() => Promise<string>); model: string; config: Record<string, boolean | string>; disabledPluginIds: string[]; canRun(): boolean; acquire(): (() => void) | null; timeoutMs?: number; commandApprovals?: AnalysisCommandApprovalHandler; commandEnvironmentId?: string; buildRequest?: (input: Input) => { input: { type: "text"; text: string; text_elements: never[] }[]; outputSchema: object } };
 type Active = { capture: AnalysisTurnCapture | null; threadId: string | null; turnId: string | null; wake: () => void; cancel: () => void; denied: boolean; cancelled: boolean; approvalCleanupFailed: boolean };
 
 function isCommandApproval(request: ProtocolServerRequest, expectedEnvironmentId?: string): boolean {
@@ -86,7 +86,7 @@ export class AnalysisTransport {
       return result.value;
     };
     try {
-      check(); const request = buildSegmentAnalysisRequest(input);
+      check(); const request = this.options.buildRequest ? this.options.buildRequest(input) : buildSegmentAnalysisRequest(input);
       const cwd = typeof this.options.cwd === "string" ? this.options.cwd : await awaitRequest(this.options.cwd()); check();
       const environmentId = this.options.commandApprovals ? this.options.commandEnvironmentId : undefined;
       if (environmentId !== undefined && (typeof environmentId !== "string" || !environmentId || environmentId.length > 1024 || /[\x00-\x1f\x7f]/.test(environmentId))) throw new Error("Invalid analysis environment");

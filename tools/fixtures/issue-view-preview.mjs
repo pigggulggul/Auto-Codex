@@ -3,11 +3,14 @@ import { WebSocketServer } from 'ws';
 // Disposable UI-only fixture. It simulates the native confirmation; it is not a security test.
 const server = new WebSocketServer({ host: '127.0.0.1', port: 4781 });
 const simulateAnalysis = process.argv.includes('--simulate-analysis');
+const durationMs = process.argv.includes('--extended') ? 180_000 : 45_000;
+let savedDraft = null;
 server.on('error', () => { console.error('Synthetic preview could not bind to 127.0.0.1:4781.'); process.exitCode = 1; });
-server.on('listening', () => console.log('Synthetic issue view preview is ready for 45 seconds.'));
+server.on('listening', () => console.log(`Synthetic issue view preview is ready for ${durationMs / 1000} seconds.`));
 server.on('connection', socket => {
   let selectedSource = false;
   let analysisStarted = false;
+  let draft = null;
   const sourceId = 'source_12345678-1234-4123-8123-123456789abc';
   const sourceText = '합성 예시 자료입니다.\n이 텍스트는 미리보기 화면 검사용입니다.';
   const sources = () => ({ items: selectedSource ? [{ id: sourceId, relativePath: 'docs/합성자료.md', bytes: Buffer.byteLength(sourceText), sha256: 'a'.repeat(64), projectRevision: 2 }] : [], totalBytes: selectedSource ? Buffer.byteLength(sourceText) : 0 });
@@ -15,6 +18,11 @@ server.on('connection', socket => {
   socket.on('message', raw => {
     let message; try { message = JSON.parse(String(raw)); } catch { return; }
     const base = { type: 'issues.project.result', v: 1, clientRequestId: message.clientRequestId, ok: true, bound: true };
+    if (message.type === 'issues.draft.create') { draft = { projectRevision: 2, revision: 1, document: message.document, reviews: [], history: [] }; return socket.send(JSON.stringify({ ...base, action: 'draftCreate', draft })); }
+    if (message.type === 'issues.draft.read' && draft) return socket.send(JSON.stringify({ ...base, action: 'draftRead', draft }));
+    if (message.type === 'issues.draft.replace' && draft && message.draftRevision === draft.revision) { draft = { ...draft, revision: draft.revision + 1, document: message.document, reviews: [] }; return socket.send(JSON.stringify({ ...base, action: 'draftReplace', draft })); }
+    if (message.type === 'issues.draft.persist' && draft && message.draftRevision === draft.revision) { savedDraft = structuredClone(draft); return socket.send(JSON.stringify({ ...base, action: 'draftPersist', draft })); }
+    if (message.type === 'issues.draft.restore' && !draft && savedDraft) { draft = structuredClone(savedDraft); return socket.send(JSON.stringify({ ...base, action: 'draftRestore', draft })); }
     if (message.type === 'issues.project.status') return socket.send(JSON.stringify({ ...base, action: 'status' }));
     if (message.type === 'issues.view.authorize') return socket.send(JSON.stringify({ ...base, action: 'authorizeView', authorized: true, authorizedForMs: 900000 }));
     if (message.type === 'issues.view.release') return socket.send(JSON.stringify({ ...base, action: 'releaseView', authorized: false }));
@@ -52,4 +60,4 @@ server.on('connection', socket => {
     if (view) socket.send(JSON.stringify({ ...base, action: 'view', view }));
   });
 });
-setTimeout(() => { for (const client of server.clients) client.close(); server.close(); }, 45_000);
+setTimeout(() => { for (const client of server.clients) client.close(); server.close(); }, durationMs);

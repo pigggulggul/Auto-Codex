@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { AgentRole, PetState, RunSnapshot } from '../../shared/protocol';
 import { PET_PRESENTATIONS } from '../lib/petCatalog';
 import { taskSkillLabel } from '../lib/taskSkill';
@@ -68,7 +68,48 @@ function readAppearances(): Partial<Record<AgentRole, Appearance>> {
   } catch { return {}; }
 }
 
-export function PixelStudio({ run, bridgeConnected, appServerReady, soloState, activeRole, modelLabel, animationEnabled, onToggleAnimation, onOpenResults }: Props) {
+type Rect = { x: number; y: number; width: number; height: number };
+export type DrawState = { map: OfficeMap; editing: boolean; hover: { col: number; row: number } | null; hoverValid: boolean; tool: StudioTool; tileStyle: number; objectPath: string };
+const intersects = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+const objectRect = (obj: OfficeObject): Rect => ({ x: obj.col * SIZE + (obj.offsetX ?? 0), y: obj.row * SIZE + (obj.offsetY ?? 0), ...objectSize(obj) });
+const AgentSprite = memo(function AgentSprite({ col, row, status, body, eyes, outfit, hair, accessory }: { col: number; row: number; status: string } & Appearance) {
+  return <div className="pixel-studio-agent" style={{ left: col * SIZE, top: (row + 1) * SIZE - CHARACTER_HEIGHT, width: SIZE, height: CHARACTER_HEIGHT }}>
+    {[body, eyes, outfit, hair, accessory].filter(Boolean).map((url, index) => <span key={index} style={{ backgroundImage: `url("${url}")`, backgroundPosition: `-${CHARACTER_FRONT_COLUMN * SIZE}px -${CHARACTER_IDLE_ROW}px` }} />)}
+    {(status === 'working' || status === 'waitingApproval') && <i className={status === 'waitingApproval' ? 'waiting' : 'working'} />}
+  </div>;
+});
+function hoverRect(s: DrawState): Rect | null {
+  if (!s.hover) return null;
+  let cols = 1, rows = 1;
+  if (s.editing && s.tool === 'object') ({ cols, rows } = objectSize({ asset: s.objectPath }));
+  else if (s.editing && (s.tool === 'floor' || s.tool === 'wall' || s.tool === 'door' || s.tool === 'path')) {
+    const parts = placementFor(s.tool, s.tileStyle); cols = Math.max(...parts.map(p => p.col)) + 1; rows = Math.max(...parts.map(p => p.row)) + 1;
+  }
+  return { x: s.hover.col * SIZE, y: s.hover.row * SIZE, width: cols * SIZE, height: rows * SIZE };
+}
+export function changedRegions(old: DrawState | null, next: DrawState): Rect[] {
+  const { map } = next;
+  if (!old || old.map.width !== map.width || old.map.height !== map.height) return [{ x: 0, y: 0, width: map.width * SIZE, height: map.height * SIZE }];
+  const regions: Rect[] = [];
+  if (old.map !== map) {
+    for (let i = 0; i < map.cells.length; i++) if (old.map.cells[i] !== map.cells[i] || (old.map.styles?.[i] ?? 0) !== (map.styles?.[i] ?? 0)) {
+      const col = i % map.width, row = Math.floor(i / map.width), x = Math.max(0, col - 1), y = Math.max(0, row - 1);
+      regions.push({ x: x * SIZE, y: y * SIZE, width: (Math.min(map.width, col + 2) - x) * SIZE, height: (Math.min(map.height, row + 2) - y) * SIZE });
+    }
+    const before = new Map(old.map.objects.map(o => [o.id, o])), after = new Map(map.objects.map(o => [o.id, o]));
+    for (const id of new Set([...before.keys(), ...after.keys()])) {
+      const a = before.get(id), b = after.get(id);
+      if (JSON.stringify(a) !== JSON.stringify(b)) { if (a) regions.push(objectRect(a)); if (b) regions.push(objectRect(b)); }
+    }
+    if (old.map.objects.filter(o => after.has(o.id)).map(o => o.id).join('\0') !== map.objects.filter(o => before.has(o.id)).map(o => o.id).join('\0')) for (const o of [...old.map.objects, ...map.objects]) regions.push(objectRect(o));
+  }
+  if (old.editing !== next.editing || old.hover?.col !== next.hover?.col || old.hover?.row !== next.hover?.row || old.hoverValid !== next.hoverValid || old.tool !== next.tool || old.tileStyle !== next.tileStyle || old.objectPath !== next.objectPath) {
+    const a = hoverRect(old), b = hoverRect(next); if (a) regions.push(a); if (b) regions.push(b);
+  }
+  return regions;
+}
+
+export const PixelStudio = memo(function PixelStudio({ run, bridgeConnected, appServerReady, soloState, activeRole, modelLabel, animationEnabled, onToggleAnimation, onOpenResults }: Props) {
   const [saved, setSaved] = useState<OfficeMap>(readMap);
   const [draft, setDraft] = useState<OfficeMap>(saved);
   const [editing, setEditing] = useState(false);
@@ -87,6 +128,9 @@ export function PixelStudio({ run, bridgeConnected, appServerReady, soloState, a
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const images = useRef(new Map<string, HTMLImageElement>());
+  const previousDraw = useRef<DrawState | null>(null);
+  const redraw = useRef<(rect: Rect) => void>(() => {});
+  const imageRegions = useRef(new Map<string, Map<string, Rect>>());
   const drag = useRef<{ x: number; y: number; left: number; top: number; moved: boolean } | null>(null);
   const [hover, setHover] = useState<{ col: number; row: number } | null>(null);
   const agents = useMemo(() => ROLE_ORDER.map(role => {
@@ -94,7 +138,8 @@ export function PixelStudio({ run, bridgeConnected, appServerReady, soloState, a
     const soloActive = role === activeRole && !run && !['idle', 'connecting', 'success', 'error'].includes(soloState);
     return { role, activity: live?.activity ?? (role === activeRole && !run ? soloState : 'idle'), status: live?.status ?? (soloActive ? 'working' : 'idle'), task: run?.tasks.find(task => task.id === live?.currentTaskId) };
   }), [run, activeRole, soloState]);
-  const error = validateOffice(draft);
+  const error = useMemo(() => validateOffice(draft), [draft]);
+  const savedError = useMemo(() => validateOffice(saved), [saved]);
   const preset = OFFICE_PRESETS.find(item => item.id === presetId)!;
   const appearance = selectedRole ? appearances[selectedRole] || defaultAppearance(selectedRole) : null;
 
@@ -127,22 +172,28 @@ export function PixelStudio({ run, bridgeConnected, appServerReady, soloState, a
   }, [editing, hover, tool, draft, objectPath, blocks, objectKind, tileStyle]);
   useEffect(() => {
     const canvas = canvasRef.current, ctx = canvas?.getContext('2d'); if (!canvas || !ctx) return;
-    let frame = 0, disposed = false;
-    const image = (url: string) => {
+    const image = (url: string, bounds: Rect) => {
       let result = images.current.get(url);
-      if (!result) { result = new Image(); result.onerror = () => setStatus(`이미지를 불러오지 못했습니다: ${assetName(url)}`); result.src = url; images.current.set(url, result); }
-      return result.complete && result.naturalWidth > 0 ? result : null;
+      if (!result) {
+        result = new Image();
+        result.onload = () => { const regions = imageRegions.current.get(url); imageRegions.current.delete(url); if (regions) for (const region of regions.values()) redraw.current(region); };
+        result.onerror = () => { imageRegions.current.delete(url); setStatus(`이미지를 불러오지 못했습니다: ${assetName(url)}`); };
+        images.current.set(url, result); result.src = url;
+      }
+      if (result.complete && result.naturalWidth > 0) return result;
+      let regions = imageRegions.current.get(url); if (!regions) { regions = new Map(); imageRegions.current.set(url, regions); }
+      regions.set(JSON.stringify(bounds), bounds); return null;
     };
-    const draw = (time: number) => {
-      if (disposed) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.imageSmoothingEnabled = false;
+    const draw = (rect: Rect) => {
+      ctx.save(); ctx.beginPath(); ctx.rect(rect.x, rect.y, rect.width, rect.height); ctx.clip();
+      ctx.clearRect(rect.x, rect.y, rect.width, rect.height); ctx.imageSmoothingEnabled = false;
       const paintTile = (art: ReturnType<typeof artFor>, x: number, y: number) => {
-        const sheet = image(art.sheet); if (!sheet) return;
+        const sheet = image(art.sheet, { x, y, width: SIZE, height: SIZE }); if (!sheet) return;
         const width = Math.min(art.width,SIZE), height = Math.min(art.height,SIZE);
         ctx.drawImage(sheet, art.x, art.y, width, height, x, y, width, height);
       };
       const wallAt = (col: number, row: number) => col >= 0 && row >= 0 && col < map.width && row < map.height && ['wall','door'].includes(map.cells[indexAt(map,col,row)]);
-      for (let row = 0; row < map.height; row++) for (let col = 0; col < map.width; col++) {
+      for (let row = Math.max(0, Math.floor(rect.y / SIZE)); row < Math.min(map.height, Math.ceil((rect.y + rect.height) / SIZE)); row++) for (let col = Math.max(0, Math.floor(rect.x / SIZE)); col < Math.min(map.width, Math.ceil((rect.x + rect.width) / SIZE)); col++) {
         const index = indexAt(map, col, row), cell = map.cells[index], style = map.styles?.[index] ?? 0, x = col * SIZE, y = row * SIZE;
         if (cell === 'empty') { ctx.fillStyle = '#323844'; ctx.fillRect(x, y, SIZE, SIZE); continue; }
         const selectedArt = cell === 'floor' || cell === 'wall' || cell === 'path' || cell === 'door' ? artFor(cell,style) : null;
@@ -164,22 +215,13 @@ export function PixelStudio({ run, bridgeConnected, appServerReady, soloState, a
         if (cell === 'door') paintTile(artFor('door', style), x, y);
       }
       for (const obj of map.objects) {
-        // GIFs are animated by the browser; use the first PNG frame when motion is disabled.
-        const source = obj.animated && (!animationEnabled || reduced) ? obj.asset.replace('/gif/', '/spritesheets/').replace(/\.gif$/, '.png') : obj.asset;
-        const pic = image(source); if (!pic) continue;
-        const animatedStill = obj.animated && (!animationEnabled || reduced);
+        const source = obj.animated ? obj.asset.replace('/gif/', '/spritesheets/').replace(/\.gif$/, '.png') : obj.asset;
         const { width, height } = objectSize(obj);
+        const bounds = objectRect(obj); if (!intersects(rect, bounds)) continue;
+        const pic = image(source, bounds); if (!pic) continue;
+        const animatedStill = obj.animated;
         const sw = animatedStill ? width : pic.naturalWidth, sh = animatedStill || obj.clipHeight !== undefined ? height : pic.naturalHeight;
         ctx.drawImage(pic, 0, 0, sw, sh, obj.col * SIZE + (obj.offsetX ?? 0), obj.row * SIZE + (obj.offsetY ?? 0), width, height);
-      }
-      for (const agent of agents) {
-        const place = stationsForMap(map)[agent.role], look = appearances[agent.role] || defaultAppearance(agent.role);
-        // Each authored cell is 48×96; front-facing idle occupies columns 18–23.
-        const tick = !animationEnabled || reduced ? 0 : Math.floor(time / 350) % 6;
-        for (const url of [look.body, look.eyes, look.outfit, look.hair, look.accessory].filter(Boolean)) {
-          const pic = image(url); if (pic) ctx.drawImage(pic, (CHARACTER_FRONT_COLUMN + tick) * SIZE, CHARACTER_IDLE_ROW, SIZE, CHARACTER_HEIGHT, place.col * SIZE, (place.row + 1) * SIZE - CHARACTER_HEIGHT, SIZE, CHARACTER_HEIGHT);
-        }
-        if (agent.status === 'working' || agent.status === 'waitingApproval') { ctx.fillStyle = agent.status === 'waitingApproval' ? '#d07731' : '#578e6a'; ctx.fillRect(place.col * SIZE + 34, place.row * SIZE + 5, 8, 8); }
       }
       if (editing && hover) {
         const parts = tool === 'floor' || tool === 'wall' || tool === 'door' || tool === 'path' ? placementFor(tool,tileStyle) : [{col:0,row:0,style:0}];
@@ -187,11 +229,15 @@ export function PixelStudio({ run, bridgeConnected, appServerReady, soloState, a
         ctx.fillStyle = hoverValid ? 'rgba(33,170,90,.5)' : 'rgba(220,47,47,.55)'; ctx.fillRect(hover.col * SIZE, hover.row * SIZE, size.cols * SIZE, size.rows * SIZE);
       }
       if (hover) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.strokeRect(hover.col * SIZE + 1, hover.row * SIZE + 1, SIZE - 2, SIZE - 2); }
-      frame = requestAnimationFrame(draw);
+      ctx.restore();
     };
-    frame = requestAnimationFrame(draw);
-    return () => { disposed = true; cancelAnimationFrame(frame); };
-  }, [map, agents, appearances, animationEnabled, reduced, editing, hover, hoverValid, tool, tileStyle, objectPath, blocks, objectKind]);
+    redraw.current = draw;
+    const current: DrawState = { map, editing, hover, hoverValid, tool, tileStyle, objectPath };
+    const previous = previousDraw.current; previousDraw.current = current;
+    for (const rect of changedRegions(previous, current)) draw(rect);
+  }, [map, editing, hover, hoverValid, tool, tileStyle, objectPath]);
+
+  useEffect(() => () => { redraw.current = () => {}; }, []);
 
   const point = (e: React.PointerEvent<HTMLCanvasElement>) => { const rect = e.currentTarget.getBoundingClientRect(); return { col: Math.floor((e.clientX - rect.left) / SIZE), row: Math.floor((e.clientY - rect.top) / SIZE) }; };
   const choose = (col: number, row: number) => {
@@ -205,14 +251,20 @@ export function PixelStudio({ run, bridgeConnected, appServerReady, soloState, a
   return <section className="world-shell pixel-studio">
     <div className="pixel-studio-bar"><div><strong>PIXEL AGENT OFFICE</strong><small>{appServerReady ? 'LIVE RUNTIME' : bridgeConnected ? 'BRIDGE CONNECTING' : 'OFFLINE'} · {modelLabel}</small></div><div className="pixel-studio-actions"><button type="button" onClick={onOpenResults}>결과 화면</button><button type="button" aria-pressed={animationEnabled} onClick={onToggleAnimation}>{animationEnabled ? '애니 ON' : '애니 OFF'}</button>{!editing ? <button type="button" onClick={() => { setDraft(saved); setEditing(true); setSelectedRole(null); }}>맵 편집</button> : <><button type="button" onClick={() => setDraft(expandOffice(draft))}>맵 확장</button><button type="button" onClick={save}>저장</button><button type="button" onClick={() => { setDraft(saved); setEditing(false); setStatus('편집을 취소했습니다.'); }}>취소</button></>}</div></div>
     {editing && <><details className="studio-presets"><summary>공간 프리셋</summary><div className="studio-preset-content"><img src={preset.preview} alt={`${preset.name} 원본 참고 이미지`} /><div><label>디자인 선택 <select value={presetId} onChange={e => setPresetId(e.target.value)}>{OFFICE_PRESETS.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><p>원본을 참고해 편집 가능한 타일과 오브젝트로 재구성했습니다. 원본과 배치가 다를 수 있습니다.</p><button type="button" onClick={() => { if (!window.confirm('현재 편집 중인 내용을 프리셋으로 바꾸시겠습니까? 저장된 맵은 저장하기 전까지 유지됩니다.')) return; const next = createOfficePreset(presetId); if (next) { setDraft(next); setStatus(`${preset.name} 프리셋을 불러왔습니다. 저장하면 적용됩니다.`); } }}>프리셋 불러오기</button></div></div></details><StudioPalette tool={tool} setTool={setTool} style={tileStyle} setStyle={setTileStyle} objectPath={objectPath} setObjectPath={setObjectPath} kind={objectKind} setKind={kind => { setObjectKind(kind); setObjectPath((kind === 'interior' ? manifest.interiors : manifest.animated)[0]); }} blocks={blocks} setBlocks={setBlocks} motion={animationEnabled && !reduced}/></>}
-    <p className="pixel-studio-status" role="status">{status || (editing ? error || '저장할 수 있는 맵입니다.' : validateOffice(saved) ? `저장된 맵을 편집해 배치를 확인하세요: ${validateOffice(saved)}` : '캐릭터를 선택해 외형과 실제 상태를 확인하세요. 드래그하여 맵을 이동합니다.')}{editing && error && status !== error ? ` ${error}` : ''}</p>
+    <p className="pixel-studio-status" role="status">{status || (editing ? error || '저장할 수 있는 맵입니다.' : savedError ? `저장된 맵을 편집해 배치를 확인하세요: ${savedError}` : '캐릭터를 선택해 외형과 실제 상태를 확인하세요. 드래그하여 맵을 이동합니다.')}{editing && error && status !== error ? ` ${error}` : ''}</p>
     <div ref={viewportRef} className="pixel-studio-viewport" role="region" aria-label="픽셀 사무실 맵. 드래그 또는 스크롤로 이동" tabIndex={0}>
+      <div className="pixel-studio-map" style={{ width: map.width * SIZE, height: map.height * SIZE }}>
       <canvas ref={canvasRef} width={map.width * SIZE} height={map.height * SIZE} tabIndex={0} aria-label="사무실 맵. 방향키로 위치 선택 후 Enter로 적용" onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(cursor.col, cursor.row); } else { const delta: Record<string, [number, number]> = { ArrowLeft: [-1,0], ArrowRight: [1,0], ArrowUp: [0,-1], ArrowDown: [0,1] }; if (delta[e.key]) { e.preventDefault(); const [x,y] = delta[e.key]; const next = { col: Math.max(0, Math.min(map.width - 1, cursor.col + x)), row: Math.max(0, Math.min(map.height - 1, cursor.row + y)) }; setCursor(next); setHover(next); } } }}
         onPointerDown={e => { if (e.button !== 0) return; const v = viewportRef.current!; drag.current = { x:e.clientX,y:e.clientY,left:v.scrollLeft,top:v.scrollTop,moved:false }; e.currentTarget.setPointerCapture(e.pointerId); }}
-        onPointerMove={e => { const d = drag.current; if (d) { const dx=e.clientX-d.x, dy=e.clientY-d.y; if (Math.abs(dx)+Math.abs(dy)>6) d.moved=true; if (d.moved && viewportRef.current) { viewportRef.current.scrollLeft=d.left-dx; viewportRef.current.scrollTop=d.top-dy; } } else setHover(point(e)); }}
+        onPointerMove={e => { const d = drag.current; if (d) { const dx=e.clientX-d.x, dy=e.clientY-d.y; if (Math.abs(dx)+Math.abs(dy)>6) d.moved=true; if (d.moved && viewportRef.current) { viewportRef.current.scrollLeft=d.left-dx; viewportRef.current.scrollTop=d.top-dy; } } else { const next = point(e); setHover(current => current?.col === next.col && current.row === next.row ? current : next); } }}
         onPointerLeave={() => setHover(null)} onPointerUp={e => { if (drag.current && !drag.current.moved) { const p=point(e); setCursor(p); choose(p.col,p.row); } drag.current=null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); }} onPointerCancel={() => { drag.current=null; }} />
+      <div className="pixel-studio-agents" aria-hidden="true">{agents.map(agent => {
+        const place = stationsForMap(map)[agent.role], look = appearances[agent.role] || defaultAppearance(agent.role);
+        return <AgentSprite key={agent.role} col={place.col} row={place.row} status={agent.status} {...look} />;
+      })}</div>
+      </div>
     </div>
     <div className="pixel-studio-roster">{agents.map(agent => <button type="button" key={agent.role} onClick={() => setSelectedRole(agent.role)} aria-pressed={selectedRole === agent.role}><strong>{ROLE_LABELS[agent.role]}</strong><span>{PET_PRESENTATIONS[agent.activity].label}</span></button>)}</div>
     {appearance && selectedRole && <CharacterEditor key={selectedRole} role={selectedRole} appearance={appearance} status={`${agents.find(a => a.role === selectedRole)?.status} · ${PET_PRESENTATIONS[agents.find(a => a.role === selectedRole)!.activity].label}`} task={agents.find(a => a.role === selectedRole)?.task?.title} skill={agents.find(a => a.role === selectedRole)?.task ? taskSkillLabel(agents.find(a => a.role === selectedRole)!.task!) : undefined} close={() => setSelectedRole(null)} change={changeAppearance} reset={type => changeAppearance(defaultAppearance(selectedRole,type))} />}
   </section>;
-}
+});

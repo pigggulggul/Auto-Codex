@@ -82,7 +82,7 @@ export default function App() {
     if (next === "results" || next === "work") setMainView("results");
     if (next === "pixel") setMainView("pixel");
   };
-  const openResults = () => { setMainView("results"); if (atelier) navigate("results"); };
+  const openResults = useCallback(() => { setMainView("results"); if (atelier) setPage("results"); }, [atelier]);
   const changeShell = (next: "atelier" | "legacy") => {
     setShellMode(next);
     window.localStorage.setItem(SHELL_KEY, next);
@@ -101,11 +101,11 @@ export default function App() {
     return () => query.removeEventListener("change", update);
   }, []);
 
-  const toggleAnimation = () => {
+  const toggleAnimation = useCallback(() => {
     const next = !animationEnabled;
     setMotionOverride(next);
     window.localStorage.setItem(MOTION_KEY, String(next));
-  };
+  }, [animationEnabled]);
 
   useEffect(() => {
     if (selectableModels.length === 0) return;
@@ -242,6 +242,8 @@ export default function App() {
                 />
   </aside></details>;
 
+  const atelierWorkspace = useMemo(() => <AtelierWorkspace production={{snapshot:bridge.snapshot,executionMode,skillMode,skillPath:skillPath||undefined,model:selectedModel||undefined,effort:selectedEffort||undefined,onInterrupt:bridge.interruptTurn}} aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'} entryRequest={designEntry}/>, [bridge.snapshot, bridge.interruptTurn, bridge.atelierApi, executionMode, skillMode, skillPath, selectedModel, selectedEffort, atelier, page, designEntry]);
+  const issueWorkspace = useMemo(() => <IssueWorkspace hidden={!atelier || page !== "issues"} projectPath={projectPath} workspaceMode={workspaceMode} selectionGeneration={bridge.snapshot.projectSelectionGeneration} connected={bridge.snapshot.connected} appServerReady={bridge.snapshot.appServerReady} busy={busy} isPicking={bridge.isPickingProject} onPickProject={bridge.pickProject} api={bridge.issueApi} />, [atelier, page, projectPath, workspaceMode, bridge.snapshot.projectSelectionGeneration, bridge.snapshot.connected, bridge.snapshot.appServerReady, busy, bridge.isPickingProject, bridge.pickProject, bridge.issueApi]);
   return (
     <div className={atelier ? "atelier-app" : "legacy-frame"} data-page={page}>
     <AtelierNavigation page={page} onNavigate={navigate} mobileOpen={mobileMenuOpen} onMobileClose={closeMobileMenu} hidden={!atelier} conversationSidebar={<ConversationSidebar conversations={bridge.conversations} activeConversationId={bridge.snapshot.activeConversationId} disabled={busy || !bridge.snapshot.connected || bridge.isPickingProject} isPicking={bridge.isPickingProject} onNewResearch={() => { if (bridge.setWorkspaceMode("research")) { bridge.setResearchNetworkAccess(false); bridge.newConversation(); navigate("work"); closeMobileMenu(); } }} onPickProject={() => { if (bridge.pickProject()) { navigate("work"); closeMobileMenu(); } }} onSelect={id => { if (bridge.selectConversation(id)) { navigate("work"); closeMobileMenu(); } }} onDelete={bridge.deleteConversation} />} />
@@ -284,8 +286,8 @@ export default function App() {
       )}
 
       {atelier && page==='home'&&<div className="atelier-introduction"><AtelierHome onNavigate={navigate} conversations={bridge.conversations} busy={busy} onStartDesign={entry=>{setDesignEntry({entry,nonce:Date.now()});navigate('design');}} onSelectConversation={(id) => { if (bridge.selectConversation(id)) navigate("work"); }} /></div>}
-      <AtelierWorkspace production={{snapshot:bridge.snapshot,executionMode,skillMode,skillPath:skillPath||undefined,model:selectedModel||undefined,effort:selectedEffort||undefined,onInterrupt:bridge.interruptTurn}} aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'} entryRequest={designEntry}/>
-      <IssueWorkspace hidden={!atelier || page !== "issues"} projectPath={projectPath} workspaceMode={workspaceMode} selectionGeneration={bridge.snapshot.projectSelectionGeneration} connected={bridge.snapshot.connected} appServerReady={bridge.snapshot.appServerReady} busy={busy} isPicking={bridge.isPickingProject} onPickProject={bridge.pickProject} api={bridge.issueApi} />
+      {atelierWorkspace}
+      {issueWorkspace}
 
 
       <div className="metaverse-layout" hidden={atelier && (page === "home" || page === "design" || page === "issues")}>

@@ -20,7 +20,7 @@ const text = (value: unknown, max: number) => typeof value === "string" && value
 
 /** JSON.parse silently discards duplicate keys. The JSON is already syntax-checked
  * and size-bounded; decode each object key so escaped aliases cannot bypass this. */
-function rejectDuplicateKeys(raw: string): void {
+export function rejectDuplicateKeys(raw: string): void {
   const scopes: (Set<string> | null)[] = [];
   for (let pos = 0; pos < raw.length; pos++) {
     const char = raw[pos];

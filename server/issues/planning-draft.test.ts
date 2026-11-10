@@ -12,6 +12,19 @@ function example() {
 }
 
 describe("planning draft review boundary", () => {
+  it("restores validated revision-bound history without trusting mutable input", () => {
+    const original = new PlanningDraft(example(), 4);
+    original.review(1, { requirementId: "req-1", issueId: "issue-1", decision: "deferred", reason: "검토 필요" });
+    original.replace(1, original.read().document);
+    original.review(2, { requirementId: "req-1", issueId: "issue-1", decision: "confirmed", reason: "확인" });
+    const snapshot = original.read(), restored = PlanningDraft.restore(snapshot);
+    snapshot.history[0].review.reason = "변조";
+    expect(restored.read().history[0].review.reason).toBe("검토 필요");
+    expect(restored.coverage(2)).toMatchObject({ reviewed: 1 });
+    expect(() => PlanningDraft.restore({ ...original.read(), history: [{ revision: 3, review: original.read().reviews[0] }] })).toThrow(PlanningDraftError);
+    expect(() => PlanningDraft.restore({ ...original.read(), reviews: [original.read().reviews[0], original.read().reviews[0]] })).toThrow(PlanningDraftError);
+    expect(() => PlanningDraft.restore({ ...original.read(), reviews: [{ ...original.read().reviews[0], issueId: "other" }] })).toThrow(PlanningDraftError);
+  });
   it("records a human decision for a real link without claiming completeness", () => {
     const draft = new PlanningDraft(example(), 4);
     expect(draft.coverage(1)).toMatchObject({ links: 1, reviewed: 0, unreviewed: 1, semanticCompleteness: "unverified" });
@@ -44,6 +57,33 @@ describe("planning draft review boundary", () => {
     expect(draft.read().history[0].review.reason).toBe("근거 확인 필요");
     expect(() => draft.review(1, { requirementId: "req-1", issueId: "issue-1", decision: "confirmed", reason: "확인" })).toThrowError(expect.objectContaining({ code: "VERSION_CONFLICT" }));
     expect(() => draft.exportForRegistration(2, 5)).toThrowError(expect.objectContaining({ code: "VERSION_CONFLICT" }));
+  });
+
+  it("accepts category assignments as a revision and invalidates old link reviews", () => {
+    const draft = new PlanningDraft(example(), 4);
+    draft.review(1, { requirementId: "req-1", issueId: "issue-1", decision: "confirmed", reason: "확인" });
+    const changed = draft.read().document;
+    changed.categories.push({ id: "cat", parentId: null, title: "화면", order: 0 });
+    changed.requirements[0].categoryId = "cat";
+    draft.replace(1, changed);
+    expect(draft.read()).toMatchObject({ revision: 2, document: { requirements: [{ categoryId: "cat" }], issues: [{ categoryId: null }] }, reviews: [] });
+    expect(() => draft.replace(1, changed)).toThrowError(expect.objectContaining({ code: "VERSION_CONFLICT" }));
+    expect(parseIssueDocument(draft.exportForRegistration(2, 4)).categories[0].title).toBe("화면");
+  });
+
+  it("permits explicit many-to-many links and marks previous decisions stale", () => {
+    const draft = new PlanningDraft(example(), 4);
+    draft.review(1, { requirementId: "req-1", issueId: "issue-1", decision: "confirmed", reason: "확인" });
+    const changed = draft.read().document;
+    changed.requirements.push({ id: "req-2", categoryId: null, text: "두 번째 요구사항", origin: "user" });
+    changed.issues[0].requirementIds.push("req-2");
+    draft.replace(1, changed);
+    expect(draft.coverage(2)).toMatchObject({ links: 2, reviewed: 0, unreviewed: 2 });
+    expect(draft.read().history).toHaveLength(1);
+    const missing = draft.read().document;
+    missing.issues[0].requirementIds.push("missing");
+    expect(() => draft.replace(2, missing)).toThrow(PlanningDraftError);
+    expect(draft.read().revision).toBe(2);
   });
 
   it("preserves previous decisions when a review is changed", () => {

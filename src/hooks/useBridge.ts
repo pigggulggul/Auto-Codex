@@ -232,6 +232,12 @@ export function useBridge() {
     socket.send(JSON.stringify(message));
     return true;
   }, []);
+  const pickProject = useCallback(() => {
+    if (!send({ type: "project.pick" })) return false;
+    setIsPickingProject(true);
+    return true;
+  }, [send]);
+  const interruptTurn = useCallback(() => send({ type: "turn.interrupt" }), [send]);
 
   return {
     atelierApi,
@@ -266,11 +272,7 @@ export function useBridge() {
       renameRef.current={id,timer,resolve,reject};
       if(!send({type:'conversation.rename',conversationId,title,expectedTitle,clientRequestId:id}))failRename('로컬 브리지에 연결되어 있지 않습니다.');
     }),
-    pickProject: () => {
-      if (!send({ type: "project.pick" })) return false;
-      setIsPickingProject(true);
-      return true;
-    },
+    pickProject,
     trustProject: () => {
       const sent = send({ type: "project.trust" });
       if (sent) setIsTrustingProject(true);
@@ -295,7 +297,7 @@ export function useBridge() {
       const sent = send({ type: "turn.start", prompt, skillMode, skillPath, executionMode, model, effort, readOnly });
       return sent;
     },
-    interruptTurn: () => send({ type: "turn.interrupt" }),
+    interruptTurn,
     resolveApproval: (
       approvalId: string,
       decision: "accept" | "acceptForSession" | "decline" | "cancel",

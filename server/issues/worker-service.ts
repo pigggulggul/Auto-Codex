@@ -7,6 +7,7 @@ import { freezeExecutionPolicy } from "./execution-intent.js";
 import { StoredIntentError } from "./execution-stored-intent.js";
 import { ExecutionJournalError } from "./execution-journal.js";
 import { ApprovalJournalError } from "./execution-approval-journal.js";
+import { PlanningDraft } from "./planning-draft.js";
 
 export class IssueWorkerRequestError extends Error {
   readonly code = "INVALID_INPUT";
@@ -30,6 +31,13 @@ export function validateIssueWorkerRequest(value: unknown): IssueWorkerRequest {
       return v as IssueWorkerRequest;
     case "project.read":
       keys(["operation", "projectId"]); if (!projectId(v.projectId)) return invalid(); return v as IssueWorkerRequest;
+    case "planning.read":
+      keys(["operation", "projectId", "expectedRevision"]); if (!projectId(v.projectId) || !revision(v.expectedRevision)) return invalid(); return v as IssueWorkerRequest;
+    case "planning.save":
+      keys(["operation", "projectId", "expectedRevision", "expectedGeneration", "snapshot"]);
+      if (!projectId(v.projectId) || !revision(v.expectedRevision) || !Number.isSafeInteger(v.expectedGeneration) || Number(v.expectedGeneration) < 0 || Number(v.expectedGeneration) >= Number.MAX_SAFE_INTEGER) return invalid();
+      try { if (PlanningDraft.restore(v.snapshot).projectRevision !== v.expectedRevision) return invalid(); } catch { return invalid(); }
+      return v as IssueWorkerRequest;
     case "execution.history":
       keys(["operation", "projectId", "expectedRevision", "afterId"]); if (!projectId(v.projectId) || !revision(v.expectedRevision) || !(v.afterId === null || issueId(v.afterId))) return invalid(); return v as IssueWorkerRequest;
     case "execution.invalidateApprovals":
@@ -132,6 +140,8 @@ export async function dispatchIssueWorkerRequest(store: IssueStore, input: unkno
     case "project.create": return { kind: "project", ...await store.createProject(request.selectedPath) };
     case "project.lookup": return { kind: "project.lookup", project: await store.lookupProject(request.selectedPath) };
     case "project.read": return { kind: "project", ...await store.readProject(request.projectId) };
+    case "planning.read": return { kind: "planning.read", draft: await store.readPlanningDraft(request.projectId, request.expectedRevision) };
+    case "planning.save": return { kind: "planning.save", generation: await store.savePlanningDraft(request.projectId, request.expectedRevision, request.expectedGeneration, request.snapshot) };
     case "execution.history": return { kind: "execution.history", page: await store.executionHistory(request.projectId, request.expectedRevision, request.afterId) };
     case "execution.approval": await store.executionApproval(request.binding, request.expectedRevision, request.action); return { kind: "execution.approval" };
     case "execution.invalidateApprovals": return { kind: "execution.invalidateApprovals", ...await store.invalidateUnknownApprovals(request.projectId, request.attemptId, request.expectedRevision) };

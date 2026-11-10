@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_PREVIEW_SELECTION, type IssueCandidateOptions, type IssueCandidatePreview, type IssueCandidateReason, type IssueCategoryView, type IssueDependencyView, type IssueDetail, type IssueDiagnosticReport, type IssueDocumentSummary, type IssueFindingCode, type IssueFilters, type IssueRequirementView, type IssueSummary, type IssueViewQuery, type IssueViewResult, type IssueViewStatus, type Page, type ProjectIssueCursor, type ProjectIssueFilters, type ProjectIssuePage, type RequirementDetail, type SourceTrace } from "../../../shared/issues/view";
-import { IssueApiError, type IssueApi } from "./api";
+import { IssueApiError, type DraftState, type IssueApi } from "./api";
 import { AnalysisSources } from "./AnalysisSources";
 import { PlanningEditor } from "./PlanningEditor";
 import type { AnalysisCandidate } from "../../../shared/issues/sources";
@@ -90,6 +90,9 @@ export function RequirementDetailPanel({ requirement, page, offset, history, loa
 export function IssueBrowser({ api, active, importRevision }: Props) {
   const [authorized, setAuthorized] = useState(false), [loading, setLoading] = useState(false), [error, setError] = useState("");
   const [planningCandidate, setPlanningCandidate] = useState<AnalysisCandidate | null>(null);
+  const [draftRevision, setDraftRevision] = useState<number | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const [updatedDraft, setUpdatedDraft] = useState<DraftState | null>(null);
   const [documents, setDocuments] = useState<IssueDocumentSummary[]>([]), [revision, setRevision] = useState<number | null>(null);
   const [docNext, setDocNext] = useState<string | null>(null), [docAfter, setDocAfter] = useState(""), [docHistory, setDocHistory] = useState<string[]>([]);
   const [documentId, setDocumentId] = useState<string | null>(null), [issues, setIssues] = useState<IssueSummary[]>([]), [issueNext, setIssueNext] = useState<number | null>(null), [issueOffset, setIssueOffset] = useState(0), [issueHistory, setIssueHistory] = useState<number[]>([]);
@@ -348,9 +351,9 @@ export function IssueBrowser({ api, active, importRevision }: Props) {
     {!authorized && <div className="issues-empty"><p>저장된 이슈에는 선택한 문서의 내용이 포함됩니다. 현재 프로젝트 폴더를 확인한 뒤 이 창에서 볼 수 있습니다.</p><button type="button" onClick={() => void authorize()} disabled={loading}>{loading ? "폴더 선택을 기다리는 중…" : "이슈 목록 열기"}</button></div>}
     {authorized && <>
       <p className="issues-view-note">보기 권한은 이 연결에서 최대 15분 동안 유지됩니다. 목록을 새로고침하면 선택한 문서와 상세 화면이 닫힙니다. 가져온 완료 표시는 로컬 검증 결과가 아닙니다.</p>
-      {revision !== null && <AnalysisSources api={api} revision={revision} loading={loading} setLoading={setLoading} onViewExpired={forgetView} onSelectCandidate={setPlanningCandidate} />}
-      {revision !== null && <PlanningEditor key={revision} api={api} revision={revision} loading={loading} setLoading={setLoading} onRegistered={() => void loadDocuments()} onError={failure} candidate={planningCandidate} onCandidateConsumed={() => setPlanningCandidate(null)} />}
-      {revision !== null && <ExecutionHistory key={revision} api={api} revision={revision} loading={loading} setLoading={setLoading} onError={failure} />}
+      {revision !== null && <AnalysisSources api={api} revision={revision} draftRevision={draftRevision} draftReady={draftReady} loading={loading} setLoading={setLoading} onViewExpired={forgetView} onSelectCandidate={setPlanningCandidate} onDraftUpdated={setUpdatedDraft} />}
+      {revision !== null && <PlanningEditor key={`planning:${revision}`} api={api} revision={revision} loading={loading} setLoading={setLoading} onRegistered={() => void loadDocuments()} onError={failure} candidate={planningCandidate} onCandidateConsumed={() => setPlanningCandidate(null)} onDraftRevision={setDraftRevision} onDraftReady={setDraftReady} externalDraft={updatedDraft} />}
+      {revision !== null && <ExecutionHistory key={`history:${revision}`} api={api} revision={revision} loading={loading} setLoading={setLoading} onError={failure} />}
       {loading && <p role="status">이슈 내용을 불러오는 중…</p>}
       {revision && <ProjectIssueSearch page={projectPage} filters={projectFilters} history={projectHistory} loading={loading} headingRef={projectHeading} onSearch={filters => void loadProjectIssues({ issueOffset: 0 }, [], filters)} onPrevious={() => void loadProjectIssues(projectHistory.at(-1)!, projectHistory.slice(0, -1), projectFilters)} onNext={() => { if (projectPage?.nextCursor) void loadProjectIssues(projectPage.nextCursor, [...projectHistory, projectCursor], projectFilters); }} onOpen={(doc, issue, button) => void openDetail(issue, doc, button, false, "project")} />}
       {!loading && !error && documents.length === 0 && <p className="issues-empty">등록된 이슈 문서가 없습니다. 규격 문서를 가져오면 여기에 표시됩니다.</p>}

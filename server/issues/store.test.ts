@@ -3,6 +3,7 @@ import { link, mkdir, mkdtemp, readdir, realpath, rename, rm, writeFile } from "
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { IssueStore } from "./store.js";
+import { PlanningDraft } from "./planning-draft.js";
 
 const scratch = path.resolve(".cache");
 const roots: string[] = [], stores: IssueStore[] = [];
@@ -31,6 +32,38 @@ function document(suffix: string, options: { status?: string; criteria?: string[
 }
 
 describe("issue storage", () => {
+  it("persists a validated draft across restart, rejects competing writes and marks old project revisions stale", async () => {
+    const t = await setup();
+    const draft = new PlanningDraft({ format: "auto-codex-issues", formatVersion: 1, documentId: "draft-doc", revision: 1, sources: [], categories: [], requirements: [{ id: "draft-req", categoryId: null, text: "요구", origin: "user" }], issues: [{ id: "draft-issue", categoryId: null, requirementIds: ["draft-req"], version: "1.0.0", order: 0, title: "작업", description: "설명", acceptanceCriteria: ["조건"], dependencyIds: [], status: "ready" }] }, 1);
+    draft.review(1, { requirementId: "draft-req", issueId: "draft-issue", decision: "deferred", reason: "확인 필요" });
+    expect(await t.store.savePlanningDraft(t.project.id, 1, 0, draft.read())).toBe(1);
+    await expect(t.store.savePlanningDraft(t.project.id, 1, 0, draft.read())).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+    t.store.close(); stores.splice(stores.indexOf(t.store), 1);
+    const reopened = await IssueStore.open(t.root); stores.push(reopened);
+    expect(await reopened.readPlanningDraft(t.project.id, 1)).toMatchObject({ generation: 1, stale: false, snapshot: { reviews: [{ reason: "확인 필요" }] } });
+    await reopened.importDocument(t.project.id, 1, document("other"));
+    expect(await reopened.readPlanningDraft(t.project.id, 2)).toMatchObject({ generation: 1, stale: true });
+    await expect(reopened.savePlanningDraft(t.project.id, 2, 1, draft.read())).rejects.toMatchObject({ code: "VERSION_CONFLICT" });
+  });
+  it("backs up a v4 database before installing the draft table", async () => {
+    const t = await setup(); await t.store.importDocument(t.project.id, 1, document("legacy"));
+    t.store.close(); stores.splice(stores.indexOf(t.store), 1);
+    const root = path.join(t.root, ".local-data", "issues"), filename = path.join(root, "issues.sqlite"), legacy = new DatabaseSync(filename);
+    try { legacy.exec("DROP TABLE planning_drafts; PRAGMA user_version=4;"); } finally { legacy.close(); }
+    const migrated = await IssueStore.open(t.root); stores.push(migrated);
+    expect((await migrated.readDocument(t.project.id, "doc-legacy")).document.documentId).toBe("doc-legacy");
+    const backups = (await readdir(root)).filter(name => /^issues-v4-backup-.*\.sqlite$/.test(name)); expect(backups).toHaveLength(1);
+    const backup = new DatabaseSync(path.join(root, backups[0]), { readOnly: true });
+    try { expect(backup.prepare("PRAGMA user_version").get()?.user_version).toBe(4); expect(backup.prepare("SELECT count(*) AS n FROM documents").get()?.n).toBe(1); } finally { backup.close(); }
+  });
+  it("rejects modified draft bytes without returning their contents", async () => {
+    const t = await setup(), draft = new PlanningDraft({ format: "auto-codex-issues", formatVersion: 1, documentId: "draft-doc", revision: 1, sources: [], categories: [], requirements: [], issues: [] }, 1);
+    await t.store.savePlanningDraft(t.project.id, 1, 0, draft.read());
+    const db = new DatabaseSync(path.join(t.root, ".local-data", "issues", "issues.sqlite"));
+    try { db.prepare("UPDATE planning_drafts SET json=? WHERE project_id=?").run("tampered", t.project.id); } finally { db.close(); }
+    await expect(t.store.readPlanningDraft(t.project.id, 1)).rejects.toMatchObject({ code: "STORAGE_FAILED" });
+    await expect(t.store.savePlanningDraft(t.project.id, 1, 1, draft.read())).rejects.toMatchObject({ code: "STORAGE_FAILED" });
+  });
   it("reads only the selected project's journal at the requested revision", async () => {
     const t = await setup();
     const db = new DatabaseSync(path.join(t.root, ".local-data", "issues", "issues.sqlite"));
@@ -71,7 +104,7 @@ describe("issue storage", () => {
     const t = await setup(); await t.store.importDocument(t.project.id, 1, document("a"));
     t.store.close(); stores.splice(stores.indexOf(t.store), 1);
     const root = path.join(t.root, ".local-data", "issues"), filename = path.join(root, "issues.sqlite"), legacy = new DatabaseSync(filename);
-    try { legacy.exec("DROP TABLE issue_approval_journal; DROP TABLE issue_dispatch_reconciliation; DROP TABLE issue_dispatch_journal; ALTER TABLE documents DROP COLUMN original_bytes; ALTER TABLE documents DROP COLUMN original_hash; PRAGMA user_version=1;"); } finally { legacy.close(); }
+    try { legacy.exec("DROP TABLE planning_drafts; DROP TABLE issue_approval_journal; DROP TABLE issue_dispatch_reconciliation; DROP TABLE issue_dispatch_journal; ALTER TABLE documents DROP COLUMN original_bytes; ALTER TABLE documents DROP COLUMN original_hash; PRAGMA user_version=1;"); } finally { legacy.close(); }
     const migrated = await IssueStore.open(t.root); stores.push(migrated);
     expect((await migrated.readDocument(t.project.id, "doc-a")).document.documentId).toBe("doc-a");
     expect((await migrated.readProject(t.project.id)).revision).toBe(2);
@@ -83,14 +116,14 @@ describe("issue storage", () => {
     const t = await setup(); await t.store.importDocument(t.project.id, 1, document("a"));
     t.store.close(); stores.splice(stores.indexOf(t.store), 1);
     const root = path.join(t.root, ".local-data", "issues"), filename = path.join(root, "issues.sqlite"), legacy = new DatabaseSync(filename);
-    try { legacy.exec("DROP TABLE issue_approval_journal; DROP TABLE issue_dispatch_reconciliation; DROP TABLE issue_dispatch_journal; PRAGMA user_version=2;"); } finally { legacy.close(); }
+    try { legacy.exec("DROP TABLE planning_drafts; DROP TABLE issue_approval_journal; DROP TABLE issue_dispatch_reconciliation; DROP TABLE issue_dispatch_journal; PRAGMA user_version=2;"); } finally { legacy.close(); }
     const migrated = await IssueStore.open(t.root); stores.push(migrated);
     expect((await migrated.readDocument(t.project.id, "doc-a")).document.documentId).toBe("doc-a");
     const backups = (await readdir(root)).filter(name => /^issues-v2-backup-.*\.sqlite$/.test(name)); expect(backups).toHaveLength(1);
     const copy = new DatabaseSync(path.join(root, backups[0]), { readOnly: true });
     try { expect(copy.prepare("PRAGMA user_version").get()?.user_version).toBe(2); expect(copy.prepare("SELECT count(*) AS n FROM documents").get()?.n).toBe(1); } finally { copy.close(); }
     const current = new DatabaseSync(filename, { readOnly: true });
-    try { expect(current.prepare("PRAGMA user_version").get()?.user_version).toBe(4); expect(current.prepare("SELECT count(*) AS n FROM issue_dispatch_journal").get()?.n).toBe(0); } finally { current.close(); }
+    try { expect(current.prepare("PRAGMA user_version").get()?.user_version).toBe(5); expect(current.prepare("SELECT count(*) AS n FROM issue_dispatch_journal").get()?.n).toBe(0); } finally { current.close(); }
   });
   it("rolls back a v2 migration if the journal schema collides", async () => {
     const t = await setup(); t.store.close(); stores.splice(stores.indexOf(t.store), 1);
@@ -106,7 +139,7 @@ describe("issue storage", () => {
     const root = path.join(t.root, ".local-data", "issues"), filename = path.join(root, "issues.sqlite"), legacy = new DatabaseSync(filename);
     try {
       legacy.prepare("INSERT INTO issue_dispatch_journal(attempt_id,project_id,idempotency_key,issue_id,project_revision,request_digest,phase) VALUES(?,?,?,?,?,?,?)").run("attempt-a", t.project.id, "key-a", "issue-a", 1, "a".repeat(64), "prepared");
-      legacy.exec("DROP TABLE issue_approval_journal; PRAGMA user_version=3;");
+      legacy.exec("DROP TABLE planning_drafts; DROP TABLE issue_approval_journal; PRAGMA user_version=3;");
     } finally { legacy.close(); }
     const migrated = await IssueStore.open(t.root); stores.push(migrated);
     expect((await migrated.executionHistory(t.project.id, 1)).items).toMatchObject([{ attemptId: "attempt-a", phase: "prepared" }]);
@@ -114,7 +147,7 @@ describe("issue storage", () => {
     const backup = new DatabaseSync(path.join(root, backups[0]), { readOnly: true });
     try { expect(backup.prepare("PRAGMA user_version").get()?.user_version).toBe(3); expect(backup.prepare("SELECT count(*) AS n FROM issue_dispatch_journal").get()?.n).toBe(1); } finally { backup.close(); }
     const db = new DatabaseSync(filename, { readOnly: true });
-    try { expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(4); expect(db.prepare("SELECT count(*) AS n FROM issue_approval_journal").get()?.n).toBe(0); } finally { db.close(); }
+    try { expect(db.prepare("PRAGMA user_version").get()?.user_version).toBe(5); expect(db.prepare("SELECT count(*) AS n FROM issue_approval_journal").get()?.n).toBe(0); } finally { db.close(); }
   });
   it("preserves the old version and backup when a malformed v1 database cannot migrate", async () => {
     const t = await setup(); t.store.close(); stores.splice(stores.indexOf(t.store), 1);

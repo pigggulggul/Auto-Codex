@@ -55,6 +55,7 @@ import { AtelierClient } from "./atelier/client.js";
 import { IssueWorkerClient } from "./issues/worker-client.js";
 import { IssueProjectContext } from "./issues/project-context.js";
 import { IssueBridgeApi } from "./issues/bridge-api.js";
+import { ISSUE_PLANNING_MODEL_PATHS_VERIFIED } from "../shared/issues/feature-gates.js";
 import { pickAnalysisSource, pickIssueDocument, pickIssueExportPath } from "./issues/document-picker.js";
 import { readSelectedIssueDocument } from "./issues/selected-document.js";
 import { readAnalysisSource } from "./issues/analysis-source.js";
@@ -64,7 +65,7 @@ import { AnalysisRouter } from "./issues/analysis-router.js";
 import { AnalysisApprovalOwners } from "./issues/analysis-approval-owners.js";
 import { ExecutionApprovalRouter } from "./issues/execution-approval-router.js";
 import { createAnalysisRuntimeFactory, type VerifiedAnalysisPolicy } from "./issues/analysis-runtime-factory.js";
-import { createIsolatedAnalysisFactory } from "./issues/analysis-isolated-factory.js";
+import { createIsolatedAnalysisFactory, createIsolatedSemanticFactory, createIsolatedPlanningProposalFactory } from "./issues/analysis-isolated-factory.js";
 import {AtelierProposalRuntime} from "./atelier/proposal-runtime.js";
 import {AtelierExecutionRuntime} from "./atelier/execution-runtime.js";
 import {check as atelierCheck} from "./atelier/errors.js";
@@ -228,7 +229,7 @@ function persistConversations(): void {
       historyError = "대화 기록을 저장하지 못했습니다. 로컬 저장 공간과 권한을 확인하세요.";
       broadcastError(historyError);
     });
-  }, 200);
+  }, 2000);
 }
 
 function saveConversations(): Promise<void> {
@@ -1686,6 +1687,16 @@ const createIssueIsolatedExecution = createIsolatedAnalysisFactory({
   model: () => defaultModel(models)?.model ?? null, validateProject,
   acquire: () => issueAnalysisAdmission.tryAcquire(() => issueWriteAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
 });
+const createIssueSemanticExecution = createIsolatedSemanticFactory({
+  root: ROOT, selection: issueSelection, ready: () => appServerReady,
+  model: () => defaultModel(models)?.model ?? null, validateProject,
+  acquire: () => issueAnalysisAdmission.tryAcquire(() => issueWriteAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
+});
+const createIssuePlanningProposal = createIsolatedPlanningProposalFactory({
+  root: ROOT, selection: issueSelection, ready: () => appServerReady,
+  model: () => defaultModel(models)?.model ?? null, validateProject,
+  acquire: () => issueAnalysisAdmission.tryAcquire(() => issueWriteAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0),
+});
 const issueApi = new IssueBridgeApi({
   selection: issueSelection,
   context: () => {
@@ -1708,6 +1719,8 @@ const issueApi = new IssueBridgeApi({
   busy: () => issueAnalysisAdmission.busy || queuedTurnStarts > 0 || queuedClientOperations > 0 || executionRuntime.busy || proposalRuntime.busy || !!turnId || runIsActive() || pendingApprovals.size > 0,
   analysisAvailable: () => process.platform === "win32" && appServerReady && Boolean(defaultModel(models)) && workspaceMode === "project" && Boolean(projectPath),
   createAnalysisExecution: (createBatch, owner) => createIssueAnalysisExecution(createBatch, owner) ?? createIssueIsolatedExecution(createBatch, owner),
+  createSemanticExecution: ISSUE_PLANNING_MODEL_PATHS_VERIFIED ? createIssueSemanticExecution : undefined,
+  createPlanningProposal: ISSUE_PLANNING_MODEL_PATHS_VERIFIED ? createIssuePlanningProposal : undefined,
 });
 clearIssueSources = () => issueApi.clearSources();
 httpServer.on("upgrade", (request, socket, head) => {
@@ -1755,11 +1768,11 @@ wsServer.on("connection", (socket, request) => {
     let type = "";
     try { const input: unknown = JSON.parse(raw); if (input && typeof input === "object" && "type" in input && typeof input.type === "string") type = input.type; } catch { /* Existing parser reports malformed legacy input. */ }
     if (type.startsWith("issues.")) {
-      if (type === "issues.analysis.interrupt") {
+      if (type === "issues.analysis.interrupt" || type === "issues.semantic.interrupt" || type === "issues.plan.interrupt") {
         priorityTokens = Math.min(10, priorityTokens + (Date.now() - priorityAt) / 100); priorityAt = Date.now();
         if (priorityTokens < 1) {
           let clientRequestId = ""; try { const input = JSON.parse(raw) as { clientRequestId?: unknown }; if (typeof input.clientRequestId === "string") clientRequestId = input.clientRequestId.slice(0, 64); } catch { /* Invalid message. */ }
-          socket.send(JSON.stringify({ type: "issues.project.result", v: 1, clientRequestId, action: "analysisInterrupt", ok: false, error: { code: "BUSY", message: "중단 요청 속도 한도입니다. 잠시 후 다시 시도하세요." } })); return;
+          socket.send(JSON.stringify({ type: "issues.project.result", v: 1, clientRequestId, action: type === "issues.plan.interrupt" ? "planInterrupt" : type === "issues.semantic.interrupt" ? "semanticInterrupt" : "analysisInterrupt", ok: false, error: { code: "BUSY", message: "중단 요청 속도 한도입니다. 잠시 후 다시 시도하세요." } })); return;
         }
         priorityTokens--;
         void issueApi.handle(raw, issueUiOrigin, () => socket.readyState === WebSocket.OPEN, issueAbort.signal)
@@ -1770,7 +1783,7 @@ wsServer.on("connection", (socket, request) => {
       issueTokens = Math.min(16, issueTokens + (Date.now() - issueAt) / 250); issueAt = Date.now();
       if (issueBusy || issueTokens < 1) {
         let clientRequestId = ""; try { const input = JSON.parse(raw) as {clientRequestId?:unknown}; if (typeof input.clientRequestId === "string") clientRequestId = input.clientRequestId.slice(0,64); } catch { /* Invalid message. */ }
-        const action = type === "issues.draft.create" ? "draftCreate" : type === "issues.draft.read" ? "draftRead" : type === "issues.draft.replace" ? "draftReplace" : type === "issues.draft.review" ? "draftReview" : type === "issues.draft.register" ? "draftRegister" : type === "issues.project.bind" ? "bind" : type === "issues.document.import" ? "import" : type === "issues.document.export" ? "export" : type === "issues.view.authorize" ? "authorizeView" : type === "issues.view.query" ? "view" : type === "issues.view.release" ? "releaseView" : type === "issues.sources.add" ? "sourceAdd" : type === "issues.sources.list" ? "sourceList" : type === "issues.sources.read" ? "sourceRead" : type === "issues.sources.remove" ? "sourceRemove" : type === "issues.analysis.prepare" ? "snapshotPrepare" : type === "issues.analysis.check" ? "snapshotCheck" : type === "issues.analysis.status" ? "analysisStatus" : type === "issues.analysis.start" ? "analysisStart" : type === "issues.analysis.interrupt" ? "analysisInterrupt" : type === "issues.analysis.clear" ? "analysisClear" : type === "issues.analysis.segment" ? "analysisSegment" : type === "issues.analysis.retry" ? "analysisRetry" : "status";
+        const action = type === "issues.plan.start" ? "planStart" : type === "issues.plan.status" ? "planStatus" : type === "issues.plan.clear" ? "planClear" : type === "issues.plan.apply" ? "planApply" : type === "issues.semantic.save" ? "semanticSave" : type === "issues.semantic.review" ? "semanticReview" : type === "issues.semantic.start" ? "semanticStart" : type === "issues.semantic.status" ? "semanticStatus" : type === "issues.semantic.clear" ? "semanticClear" : type === "issues.draft.persist" ? "draftPersist" : type === "issues.draft.restore" ? "draftRestore" : type === "issues.draft.inspectSaved" ? "draftInspectSaved" : type === "issues.draft.rebase" ? "draftRebase" : type === "issues.draft.copy" ? "draftCopy" : type === "issues.draft.create" ? "draftCreate" : type === "issues.draft.read" ? "draftRead" : type === "issues.draft.replace" ? "draftReplace" : type === "issues.draft.review" ? "draftReview" : type === "issues.draft.register" ? "draftRegister" : type === "issues.project.bind" ? "bind" : type === "issues.document.import" ? "import" : type === "issues.document.export" ? "export" : type === "issues.view.authorize" ? "authorizeView" : type === "issues.view.query" ? "view" : type === "issues.view.release" ? "releaseView" : type === "issues.sources.add" ? "sourceAdd" : type === "issues.sources.list" ? "sourceList" : type === "issues.sources.read" ? "sourceRead" : type === "issues.sources.remove" ? "sourceRemove" : type === "issues.analysis.prepare" ? "snapshotPrepare" : type === "issues.analysis.check" ? "snapshotCheck" : type === "issues.analysis.status" ? "analysisStatus" : type === "issues.analysis.start" ? "analysisStart" : type === "issues.analysis.interrupt" ? "analysisInterrupt" : type === "issues.analysis.clear" ? "analysisClear" : type === "issues.analysis.segment" ? "analysisSegment" : type === "issues.analysis.retry" ? "analysisRetry" : "status";
         socket.send(JSON.stringify({type:"issues.project.result",v:1,clientRequestId,action,ok:false,error:{code:"BUSY",message:"이전 이슈 요청을 기다린 뒤 다시 시도하세요."}})); return;
       }
       issueTokens--; issueBusy = true;

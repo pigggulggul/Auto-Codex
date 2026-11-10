@@ -39,6 +39,85 @@ function setup() {
 }
 
 describe("issue binding bridge boundary", () => {
+  it("persists only an owned current draft and restores it after a new view grant", async () => {
+    const t = setup(), owner = new AbortController(), other = new AbortController();
+    let stored: { generation: number; stale: boolean; snapshot: ReturnType<import("./planning-draft.js").PlanningDraft["read"]> } | null = null;
+    const context = t.options.context;
+    const api = new IssueBridgeApi({ ...t.options, context: () => ({ ...context(), readPlanningDraft: async (_expected, allowed) => { if (!allowed()) throw new Error(); return stored; }, savePlanningDraft: async (_expected, generation, snapshot, allowed) => { if (!allowed() || generation !== (stored?.generation ?? 0)) throw new IssueWorkerClientError("VERSION_CONFLICT", "conflict"); stored = { generation: generation + 1, stale: false, snapshot: structuredClone(snapshot) }; return generation + 1; } }) });
+    const ask = (signal: AbortSignal, type: string, extra: Record<string, unknown> = {}) => api.handle(wire(type, extra), true, t.connected, signal);
+    const doc = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-1", revision: 1, sources: [], categories: [], requirements: [], issues: [] };
+    await ask(owner.signal, "issues.project.bind"); await ask(owner.signal, "issues.view.authorize");
+    await ask(owner.signal, "issues.draft.create", { expectedRevision: 1, document: doc });
+    expect(await ask(other.signal, "issues.draft.persist", { draftRevision: 1 })).toMatchObject({ ok: false, error: { code: "VIEW_AUTH_REQUIRED" } });
+    expect(await ask(owner.signal, "issues.draft.persist", { draftRevision: 2 })).toMatchObject({ ok: false, error: { code: "VERSION_CONFLICT" } });
+    expect(await ask(owner.signal, "issues.draft.persist", { draftRevision: 1 })).toMatchObject({ ok: true });
+    await ask(owner.signal, "issues.view.release"); await ask(owner.signal, "issues.view.authorize");
+    expect(await ask(owner.signal, "issues.draft.restore")).toMatchObject({ ok: true, draft: { revision: 1, document: { documentId: "doc-1" } } });
+    expect(await ask(owner.signal, "issues.draft.persist", { draftRevision: 1 })).toMatchObject({ ok: true });
+    owner.abort(); other.abort();
+  });
+  it("rechecks selected draft sources before registration and rejects changed or unselected files", async () => {
+    const t = setup(), owner = new AbortController(); let imports = 0, changed = false;
+    const base = t.options.context;
+    t.options.context = () => ({ ...base(), importDocument: async () => { imports++; return { issueCount: 1, alreadyImported: false }; } });
+    t.options.readSource = async () => ({ relativePath: "plan.md", bytes: 9, sha256: (changed ? "b" : "a").repeat(64), text: "synthetic" });
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, owner.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add");
+    if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const source = selected.sources.items[0];
+    const document = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-1", revision: 1, sources: [{ id: source.id, name: source.relativePath, contentHash: `sha256:${source.sha256}` }], categories: [], requirements: [], issues: [] };
+    expect(await ask("issues.draft.create", { expectedRevision: 1, document })).toMatchObject({ ok: true });
+    changed = true;
+    expect(await ask("issues.draft.register", { draftRevision: 1 })).toMatchObject({ ok: false, error: { code: "STALE_INPUT" } });
+    expect(imports).toBe(0);
+    changed = false;
+    await ask("issues.sources.remove", { sourceId: source.id });
+    expect(await ask("issues.draft.register", { draftRevision: 1 })).toMatchObject({ ok: false, error: { code: "STALE_INPUT" } });
+    expect(imports).toBe(0);
+    const reselected = await ask("issues.sources.add");
+    if (!reselected.ok || !reselected.sources) throw new Error("missing reselected source");
+    const next = reselected.sources.items[0];
+    document.sources = [{ id: next.id, name: next.relativePath, contentHash: `sha256:${next.sha256}` }];
+    expect(await ask("issues.draft.replace", { draftRevision: 1, document })).toMatchObject({ ok: true });
+    expect(await ask("issues.draft.register", { draftRevision: 2 })).toMatchObject({ ok: true, issueCount: 1 });
+    expect(imports).toBe(1);
+    owner.abort();
+  });
+  it("prevents removing a source while its draft registration is checking it", async () => {
+    const t = setup(), owner = new AbortController(), entered = deferred<void>(), finish = deferred<void>();
+    const originalRead = t.options.readSource;
+    let checking = false;
+    t.options.readSource = async (project, file) => { if (checking) { entered.resolve(); await finish.promise; } return originalRead(project, file); };
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, owner.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const selected = await ask("issues.sources.add");
+    if (!selected.ok || !selected.sources) throw new Error("missing source");
+    const source = selected.sources.items[0];
+    const document = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-1", revision: 1, sources: [{ id: source.id, name: source.relativePath, contentHash: `sha256:${source.sha256}` }], categories: [], requirements: [], issues: [] };
+    await ask("issues.draft.create", { expectedRevision: 1, document });
+    checking = true;
+    const registration = ask("issues.draft.register", { draftRevision: 1 });
+    await entered.promise;
+    expect(await ask("issues.sources.remove", { sourceId: source.id })).toMatchObject({ ok: false, error: { code: "BUSY" } });
+    finish.resolve();
+    expect(await registration).toMatchObject({ ok: true });
+    owner.abort();
+  });
+  it("rechecks a reselected source using its authorized path and hash after its connection ID changes", async () => {
+    const t = setup(), owner = new AbortController();
+    const ask = (type: string, extra: Record<string, unknown> = {}) => t.api.handle(wire(type, extra), true, t.connected, owner.signal);
+    await ask("issues.project.bind"); await ask("issues.view.authorize");
+    const first = await ask("issues.sources.add"); if (!first.ok || !first.sources) throw new Error("missing source");
+    const source = first.sources.items[0];
+    const document = { format: "auto-codex-issues", formatVersion: 1, documentId: "doc-1", revision: 1, sources: [{ id: source.id, name: source.relativePath, contentHash: `sha256:${source.sha256}` }], categories: [], requirements: [], issues: [] };
+    await ask("issues.draft.create", { expectedRevision: 1, document });
+    await ask("issues.sources.remove", { sourceId: source.id });
+    const again = await ask("issues.sources.add"); if (!again.ok || !again.sources) throw new Error("missing source");
+    expect(again.sources.items[0].id).not.toBe(source.id);
+    expect(await ask("issues.draft.register", { draftRevision: 1 })).toMatchObject({ ok: true });
+    owner.abort();
+  });
   it("keeps drafts scoped to a view and refuses stale registration", async () => {
     const t = setup(), owner = new AbortController(), other = new AbortController();
     const ask = (type: string, extra: Record<string, unknown> = {}, signal = owner.signal) => t.api.handle(wire(type, extra), true, t.connected, signal);

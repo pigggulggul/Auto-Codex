@@ -7,6 +7,9 @@ import { EXECUTION_JOURNAL_SCHEMA, ExecutionJournal, ExecutionJournalError, type
 import { EXECUTION_APPROVAL_SCHEMA, ExecutionApprovalJournal, type ApprovalBinding, type ApprovalDecision, type ApprovalKind } from "./execution-approval-journal.js";
 import { prepareStoredIssueIntent } from "./execution-stored-intent.js";
 import type { ExecutionIntentInput, FrozenExecutionIntent } from "./execution-intent.js";
+import { PlanningDraft } from "./planning-draft.js";
+
+const PLANNING_SCHEMA = `CREATE TABLE planning_drafts(project_id TEXT PRIMARY KEY, generation INTEGER NOT NULL CHECK(generation >= 1), project_revision INTEGER NOT NULL CHECK(project_revision >= 1), json TEXT NOT NULL, content_hash TEXT NOT NULL, FOREIGN KEY(project_id) REFERENCES projects(id));`;
 
 export type IssueStoreCode = "STORAGE_FAILED" | "UNSUPPORTED_VERSION" | "PATH_INVALID" | "PROJECT_CHANGED" | "BINDING_EXISTS" | "NOT_FOUND" | "VERSION_CONFLICT" | "DOCUMENT_CONFLICT" | "ID_CONFLICT" | "LIMIT_EXCEEDED";
 export const MAX_STORED_DOCUMENT_BYTES = 256 * 1024 * 1024;
@@ -74,7 +77,7 @@ export class IssueStore {
     const db = new DatabaseSync(path.join(paths.root, "issues.sqlite"));
     try {
       const version = Number(db.prepare("PRAGMA user_version").get()?.user_version);
-      if (![0, 1, 2, 3, 4].includes(version)) fail("UNSUPPORTED_VERSION", "지원하지 않는 이슈 저장소는 변경하지 않습니다.");
+      if (![0, 1, 2, 3, 4, 5].includes(version)) fail("UNSUPPORTED_VERSION", "지원하지 않는 이슈 저장소는 변경하지 않습니다.");
       if (version === 0) {
         if (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().length) fail("UNSUPPORTED_VERSION", "알 수 없는 이슈 저장소는 변경하지 않습니다.");
         db.exec(`BEGIN IMMEDIATE;
@@ -84,7 +87,8 @@ export class IssueStore {
           CREATE TABLE imported_issues(project_id TEXT NOT NULL, issue_id TEXT NOT NULL, document_id TEXT NOT NULL, imported_status TEXT NOT NULL CHECK(imported_status IN ('ready','retryable','failed','needs_review','completed')), local_status TEXT NOT NULL CHECK(local_status IN ('ready','retryable','failed','needs_review')), PRIMARY KEY(project_id,issue_id), FOREIGN KEY(project_id,document_id) REFERENCES documents(project_id,id));
           CREATE INDEX imported_issues_document ON imported_issues(project_id,document_id);
           ${EXECUTION_JOURNAL_SCHEMA}
-          PRAGMA user_version=4; COMMIT;`);
+          ${PLANNING_SCHEMA}
+          PRAGMA user_version=5; COMMIT;`);
       }
       if (version === 1) {
         // A consistent SQLite copy is kept before changing an existing database.
@@ -104,7 +108,7 @@ export class IssueStore {
         try {
           const current = Number(db.prepare("PRAGMA user_version").get()?.user_version);
           if (current === 1) db.exec(`ALTER TABLE documents ADD COLUMN original_bytes BLOB; ALTER TABLE documents ADD COLUMN original_hash TEXT; ${EXECUTION_JOURNAL_SCHEMA} PRAGMA user_version=4;`);
-          else if (current !== 4) fail("UNSUPPORTED_VERSION", "이슈 저장소 버전이 변경되었습니다.");
+          else if (current !== 4 && current !== 5) fail("UNSUPPORTED_VERSION", "이슈 저장소 버전이 변경되었습니다.");
           db.exec("COMMIT");
         } catch (error) { db.exec("ROLLBACK"); throw error; }
       }
@@ -125,7 +129,28 @@ export class IssueStore {
         try {
           const current = Number(db.prepare("PRAGMA user_version").get()?.user_version);
           if (current === version) db.exec(`${version === 2 ? EXECUTION_JOURNAL_SCHEMA : EXECUTION_APPROVAL_SCHEMA} PRAGMA user_version=4;`);
-          else if (current !== 4) fail("UNSUPPORTED_VERSION", "이슈 저장소 버전이 변경되었습니다.");
+          else if (current !== 4 && current !== 5) fail("UNSUPPORTED_VERSION", "이슈 저장소 버전이 변경되었습니다.");
+          db.exec("COMMIT");
+        } catch (error) { db.exec("ROLLBACK"); throw error; }
+      }
+      if (Number(db.prepare("PRAGMA user_version").get()?.user_version) === 4) {
+        await paths.verify();
+        const basename = `issues-v4-backup-${randomUUID()}`, pending = path.join(paths.root, `${basename}.pending`), backup = path.join(paths.root, `${basename}.sqlite`);
+        const handle = await open(pending, "wx", 0o600); await handle.close();
+        const before = await lstat(pending);
+        if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1 || !samePath(await realpath(pending), pending)) fail("STORAGE_FAILED", "백업 파일 경로가 안전하지 않습니다.");
+        db.prepare("VACUUM INTO ?").run(pending);
+        const after = await lstat(pending);
+        if (!after.isFile() || after.isSymbolicLink() || after.nlink !== 1 || !samePath(await realpath(pending), pending)) fail("STORAGE_FAILED", "백업 파일 경로가 변경되었습니다.");
+        await paths.verify();
+        try { await lstat(backup); fail("STORAGE_FAILED", "백업 파일 이름이 이미 존재합니다."); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+        await rename(pending, backup);
+        await paths.verify();
+        db.exec("BEGIN IMMEDIATE");
+        try {
+          const current = Number(db.prepare("PRAGMA user_version").get()?.user_version);
+          if (current === 4) db.exec(`${PLANNING_SCHEMA} PRAGMA user_version=5;`);
+          else if (current !== 5) fail("UNSUPPORTED_VERSION", "이슈 저장소 버전이 변경되었습니다.");
           db.exec("COMMIT");
         } catch (error) { db.exec("ROLLBACK"); throw error; }
       }
@@ -135,6 +160,46 @@ export class IssueStore {
     } catch (error) { db.close(); throw error; }
   }
   close(): void { this.db.close(); }
+  /** Internal storage primitive; callers must hold a current project view grant. */
+  async readPlanningDraft(projectId: string, expectedProjectRevision: number): Promise<{ generation: number; stale: boolean; snapshot: ReturnType<PlanningDraft["read"]> } | null> {
+    const project = await this.checkedProject(projectId);
+    if (project.revision !== expectedProjectRevision) fail("VERSION_CONFLICT", "프로젝트가 변경되었습니다. 다시 확인하세요.");
+    const row = this.db.prepare("SELECT generation,project_revision,json,content_hash FROM planning_drafts WHERE project_id=?").get(projectId);
+    if (!row) return null;
+    if (!Number.isSafeInteger(row.generation) || Number(row.generation) < 1 || !Number.isSafeInteger(row.project_revision) || Number(row.project_revision) < 1 || typeof row.json !== "string" || typeof row.content_hash !== "string" || Buffer.byteLength(row.json, "utf8") > 4 * 1024 * 1024 || createHash("sha256").update(row.json).digest("hex") !== row.content_hash) return fail("STORAGE_FAILED", "저장된 초안을 확인할 수 없습니다.");
+    let draft: PlanningDraft;
+    try { draft = PlanningDraft.restore(JSON.parse(row.json)); } catch { return fail("STORAGE_FAILED", "저장된 초안을 확인할 수 없습니다."); }
+    if (draft.projectRevision !== Number(row.project_revision)) return fail("STORAGE_FAILED", "저장된 초안의 프로젝트 revision이 다릅니다.");
+    if (this.project(projectId).revision !== expectedProjectRevision) fail("VERSION_CONFLICT", "프로젝트가 변경되었습니다. 다시 확인하세요.");
+    return { generation: Number(row.generation), stale: draft.projectRevision !== expectedProjectRevision, snapshot: draft.read() };
+  }
+
+  /** Atomic compare-and-swap. A changed project or competing writer cannot overwrite a draft. */
+  async savePlanningDraft(projectId: string, expectedProjectRevision: number, expectedGeneration: number, value: unknown): Promise<number> {
+    if (!Number.isSafeInteger(expectedProjectRevision) || expectedProjectRevision < 1 || !Number.isSafeInteger(expectedGeneration) || expectedGeneration < 0 || expectedGeneration >= Number.MAX_SAFE_INTEGER) return fail("VERSION_CONFLICT", "초안 버전이 올바르지 않습니다.");
+    let draft: PlanningDraft;
+    try { draft = PlanningDraft.restore(value); } catch { return fail("STORAGE_FAILED", "초안 형식을 확인할 수 없습니다."); }
+    if (draft.projectRevision !== expectedProjectRevision) return fail("VERSION_CONFLICT", "초안의 프로젝트 revision이 다릅니다.");
+    const json = JSON.stringify(draft.read()), hash = createHash("sha256").update(json).digest("hex");
+    await this.checkedProject(projectId);
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      if (this.project(projectId).revision !== expectedProjectRevision) fail("VERSION_CONFLICT", "프로젝트가 변경되었습니다. 다시 확인하세요.");
+      const existing = this.db.prepare("SELECT generation,project_revision,json,content_hash FROM planning_drafts WHERE project_id=?").get(projectId);
+      if (Number(existing?.generation ?? 0) !== expectedGeneration) fail("VERSION_CONFLICT", "다른 창에서 초안이 변경되었습니다. 다시 확인하세요.");
+      if (existing) {
+        const storedJson = existing.json;
+        if (typeof storedJson !== "string" || typeof existing.content_hash !== "string" || createHash("sha256").update(storedJson).digest("hex") !== existing.content_hash) return fail("STORAGE_FAILED", "기존 초안을 확인할 수 없습니다.");
+        try { if (PlanningDraft.restore(JSON.parse(storedJson)).projectRevision !== Number(existing.project_revision)) throw new Error(); } catch { fail("STORAGE_FAILED", "기존 초안을 확인할 수 없습니다."); }
+      }
+      const used = Number(this.db.prepare("SELECT (SELECT COALESCE(SUM(length(CAST(json AS BLOB))),0) FROM planning_drafts WHERE project_id<>?) + (SELECT COALESCE(SUM(length(CAST(json AS BLOB)) + COALESCE(length(original_bytes),0)),0) FROM documents) AS bytes").get(projectId)?.bytes);
+      if (!Number.isSafeInteger(used) || used + Buffer.byteLength(json, "utf8") > this.maxStoredBytes) fail("LIMIT_EXCEEDED", "초안 저장량 제한에 도달했습니다.");
+      const generation = expectedGeneration + 1;
+      this.db.prepare("INSERT INTO planning_drafts(project_id,generation,project_revision,json,content_hash) VALUES(?,?,?,?,?) ON CONFLICT(project_id) DO UPDATE SET generation=excluded.generation,project_revision=excluded.project_revision,json=excluded.json,content_hash=excluded.content_hash").run(projectId, generation, expectedProjectRevision, json, hash);
+      this.db.exec("COMMIT");
+      return generation;
+    } catch (error) { this.db.exec("ROLLBACK"); throw error; }
+  }
   private project(id: string): ProjectRow {
     const row = this.db.prepare("SELECT id,path,device,inode,birth,revision FROM projects WHERE id=?").get(id);
     if (!row) return fail("NOT_FOUND", "이슈 프로젝트가 없습니다.");
@@ -297,7 +362,7 @@ export class IssueStore {
       const ids = [document.documentId, ...document.sources.map(x => x.id), ...document.categories.map(x => x.id), ...document.requirements.map(x => x.id), ...document.issues.map(x => x.id)];
       const findId = this.db.prepare("SELECT entity_id FROM entity_ids WHERE project_id=? AND entity_id=?");
       for (const entityId of ids) if (findId.get(projectId, entityId)) fail("ID_CONFLICT", "다른 문서와 식별자가 충돌합니다.");
-      const total = Number(this.db.prepare("SELECT COALESCE(SUM(length(CAST(json AS BLOB)) + COALESCE(length(original_bytes),0)),0) AS bytes FROM documents").get()?.bytes);
+      const total = Number(this.db.prepare("SELECT (SELECT COALESCE(SUM(length(CAST(json AS BLOB)) + COALESCE(length(original_bytes),0)),0) FROM documents) + (SELECT COALESCE(SUM(length(CAST(json AS BLOB))),0) FROM planning_drafts) AS bytes").get()?.bytes);
       if (!Number.isSafeInteger(total) || total + Buffer.byteLength(serialized) + original.byteLength > this.maxStoredBytes) fail("LIMIT_EXCEEDED", "이슈 문서 저장량 제한에 도달했습니다. 기존 문서를 보존했습니다.");
       this.db.prepare("INSERT INTO documents(project_id,id,document_revision,content_hash,json,original_bytes,original_hash) VALUES(?,?,?,?,?,?,?)").run(projectId, document.documentId, document.revision, hash, serialized, original, originalHash);
       const insertId = this.db.prepare("INSERT INTO entity_ids(project_id,entity_id,document_id) VALUES(?,?,?)");

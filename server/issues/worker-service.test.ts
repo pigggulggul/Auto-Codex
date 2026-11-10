@@ -8,6 +8,7 @@ import { dispatchIssueWorkerRequest, safeIssueWorkerError, validateIssueWorkerRe
 import { ExecutionApprovalRelay } from "./execution-approval-relay.js";
 import { ExecutionJournalError } from "./execution-journal.js";
 import { StoredIntentError } from "./execution-stored-intent.js";
+import { PlanningDraft } from "./planning-draft.js";
 
 const scratch = path.resolve(".cache"), roots: string[] = [], stores: IssueStore[] = [];
 afterEach(async () => {
@@ -22,6 +23,16 @@ async function setup() {
 const project = "project_12345678-1234-4123-8123-123456789abc";
 
 describe("issue worker internal contract", () => {
+  it("validates and isolates persisted draft requests by project", async () => {
+    const { store, workspace, root } = await setup(), other = path.join(root, "other"); await mkdir(other);
+    const first = await store.createProject(workspace), second = await store.createProject(other);
+    const draft = new PlanningDraft({ format: "auto-codex-issues", formatVersion: 1, documentId: "draft", revision: 1, sources: [], categories: [], requirements: [], issues: [] }, 1).read();
+    expect(await dispatchIssueWorkerRequest(store, { operation: "planning.save", projectId: first.id, expectedRevision: 1, expectedGeneration: 0, snapshot: draft })).toMatchObject({ kind: "planning.save", generation: 1 });
+    expect(await dispatchIssueWorkerRequest(store, { operation: "planning.read", projectId: second.id, expectedRevision: 1 })).toEqual({ kind: "planning.read", draft: null });
+    expect(await dispatchIssueWorkerRequest(store, { operation: "planning.read", projectId: first.id, expectedRevision: 1 })).toMatchObject({ draft: { generation: 1, stale: false } });
+    expect(() => validateIssueWorkerRequest({ operation: "planning.save", projectId: first.id, expectedRevision: 1, expectedGeneration: 1, snapshot: draft, extra: true })).toThrow();
+    expect(() => validateIssueWorkerRequest({ operation: "planning.save", projectId: first.id, expectedRevision: 2, expectedGeneration: 1, snapshot: draft })).toThrow();
+  });
   it("blocks a different project while any prior execution is unresolved", async () => {
     const { store, workspace, root } = await setup(), other = path.join(root, "other"); await mkdir(other);
     const first = await dispatchIssueWorkerRequest(store, { operation: "project.create", selectedPath: workspace });

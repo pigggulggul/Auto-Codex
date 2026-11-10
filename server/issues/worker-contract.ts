@@ -1,4 +1,5 @@
 import type { IssueDocument } from "./document.js";
+import type { PlanningDraft } from "./planning-draft.js";
 import type { IssueStoreCode } from "./store.js";
 import type { JournalHistoryPage } from "./execution-journal.js";
 import type { ApprovalBinding, ApprovalKind, ApprovalDecision } from "./execution-approval-journal.js";
@@ -11,6 +12,8 @@ export type IssueWorkerRequest =
   | { operation: "project.create"; selectedPath: string }
   | { operation: "project.lookup"; selectedPath: string }
   | { operation: "project.read"; projectId: string }
+  | { operation: "planning.read"; projectId: string; expectedRevision: number }
+  | { operation: "planning.save"; projectId: string; expectedRevision: number; expectedGeneration: number; snapshot: ReturnType<PlanningDraft["read"]> }
   | { operation: "execution.history"; projectId: string; expectedRevision: number; afterId: string | null }
   | { operation: "execution.approval"; binding: ApprovalBinding; expectedRevision: number; action: { type: "request"; kind: ApprovalKind } | { type: "respond"; decision: ApprovalDecision } | { type: "finish"; result: "sent" | "outcome_unknown" } }
   | { operation: "execution.invalidateApprovals"; projectId: string; attemptId: string; expectedRevision: number }
@@ -34,6 +37,8 @@ export type IssueWorkerRequest =
 export type IssueWorkerResult =
   | { kind: "project"; id: string; revision: number }
   | { kind: "project.lookup"; project: { id: string; revision: number } | null }
+  | { kind: "planning.read"; draft: { generation: number; stale: boolean; snapshot: ReturnType<PlanningDraft["read"]> } | null }
+  | { kind: "planning.save"; generation: number }
   | { kind: "execution.history"; page: JournalHistoryPage }
   | { kind: "execution.approval" }
   | { kind: "execution.invalidateApprovals"; expired: number; unknown: number }

@@ -1,6 +1,10 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import path from "node:path";
 import type { SegmentEvidence } from "./analysis-output.js";
+import { captureSemanticInput, type SemanticInput } from "./semantic-validation.js";
+import type { IssueDocument } from "./document.js";
+import { PlanningDraft } from "./planning-draft.js";
+import { buildPlanningProposalRequest } from "./planning-proposal.js";
 
 type Input = SegmentEvidence & { instruction: string };
 type Options = { root: string; model: string; permitted(): boolean; validateProject(): Promise<void>; spawnWorker?: () => ChildProcessWithoutNullStreams; timeoutMs?: number; cancelTimeoutMs?: number };
@@ -13,6 +17,19 @@ export class IsolatedAnalysisTransport {
   get busy(): boolean { return this.active || this.stuck; }
 
   async run(input: Input, signal: AbortSignal): Promise<string> {
+    return this.execute(input, signal);
+  }
+  async runSemantic(input: SemanticInput, signal: AbortSignal): Promise<string> {
+    const captured = captureSemanticInput(input);
+    return this.execute({ ...captured.segment, instruction: "" }, signal, captured.document);
+  }
+  async runProposal(snapshot: ReturnType<PlanningDraft["read"]>, request: string, signal: AbortSignal): Promise<string> {
+    const captured = PlanningDraft.restore(snapshot).read();
+    buildPlanningProposalRequest(captured, request);
+    const input = { snapshotId: "proposal", projectRevision: captured.projectRevision, sourceId: "proposal", sourcePath: "proposal.txt", sourceSha256: "0".repeat(64), segmentId: "proposal", offset: 0, text: "proposal", instruction: "" };
+    return this.execute(input, signal, undefined, { document: captured.document, request });
+  }
+  private async execute(input: Input, signal: AbortSignal, semanticDocument?: IssueDocument, proposal?: { document: IssueDocument; request: string }): Promise<string> {
     if (this.busy || signal.aborted || !this.options.permitted()) throw new Error("Analysis unavailable");
     this.active = true;
     let childStarted = false;
@@ -63,7 +80,7 @@ export class IsolatedAnalysisTransport {
           else if (record.ok === false) finish(true);
           else finish(false);
         });
-        try { child.stdin.write(`${JSON.stringify({ text: input.text, instruction: input.instruction, model: this.options.model })}\n`); }
+        try { child.stdin.write(`${JSON.stringify(proposal ? { kind: "proposal", document: proposal.document, request: proposal.request, model: this.options.model } : semanticDocument ? { kind: "semantic", text: input.text, document: semanticDocument, model: this.options.model } : { text: input.text, instruction: input.instruction, model: this.options.model })}\n`); }
         catch { cancel(); }
         if (signal.aborted) cancel();
       });
