@@ -58,8 +58,7 @@ export function ResultView({ compactConversation = false, conversationTitle, con
       <div className="large-result-content">
         {messages.filter((message, index) => message.role === "user" || index < messages.length - 1).map((message) => (
           <article className={`large-result-card conversation-message ${message.role}`} key={message.id}>
-            <header><span>{message.role === "user" ? "↗" : "✦"}</span><div><strong>{message.role === "user" ? "내 요청" : "Codex 답변"}</strong><small>{new Date(message.timestamp).toLocaleString("ko-KR")}{message.status === "interrupted" ? " · 중단됨" : message.status === "failed" ? " · 실패" : ""}</small></div></header>
-            <ResultText title={message.role === "user" ? "내 요청" : "Codex 답변"} text={message.text || "응답이 기록되기 전에 종료되었습니다."} />
+            {message.role === "user" ? <details className="conversation-request"><summary><span>내 요청</span><span className="conversation-request-preview">{message.text || "내용 없음"}</span><span aria-hidden="true">⌄</span></summary><ResultText title="내 요청" text={message.text || "응답이 기록되기 전에 종료되었습니다."} /></details> : <><header><span>✦</span><div><strong>Codex 답변</strong><small>{new Date(message.timestamp).toLocaleString("ko-KR")}{message.status === "interrupted" ? " · 중단됨" : message.status === "failed" ? " · 실패" : ""}</small></div></header><ResultText title="Codex 답변" text={message.text || "응답이 기록되기 전에 종료되었습니다."} /></>}
             {message.run && <details className="conversation-task-history"><summary>이 요청의 작업 내역 · {message.run.tasks.length}개 · {message.run.status}</summary>
               {message.run.tasks.map((task) => <section key={task.id}><h3>{task.title} · {task.status}</h3><p>스킬 배정: {taskSkillLabel(task)}{task.skillRationale ? ` · ${task.skillRationale}` : ""}</p><ResultText title={task.title} text={message.taskOutputs?.[task.id] || task.resultSummary || task.error || "기록된 결과 없음"} /></section>)}
             </details>}

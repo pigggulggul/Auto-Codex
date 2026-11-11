@@ -20,7 +20,7 @@ export const PAGE_INFO: Record<AtelierPage, { title: string; english: string; de
 
 const MAIN_PAGES = [
   ["work", "prompt", "Codex 대화"], ["design", "brief", "아뜰리에 디자인"], ["issues", "flow", "이슈 처리"],
-  ["results", "prompt", "대화 결과 · 픽셀 화면"], ["operations", "flow", "실행 활동"],
+  ["pixel", "image", "픽셀 화면"],
 ] as const;
 
 export function AtelierIcon({ name }: { name: string }) {
@@ -59,16 +59,15 @@ export function AtelierNavigation({ page, onNavigate, mobileOpen, onMobileClose,
 
   const navigate = (next: AtelierPage) => { onNavigate(next); onMobileClose(); };
   const content = <>
-    <button type="button" className="atelier-wordmark" onClick={() => navigate("home")} aria-label="Auto Codex 나의 작업실">auto codex<span>.</span></button>
-    <p className="atelier-nav-label">작업 공간</p>
+    <div className="atelier-icon-rail"><button type="button" className="atelier-wordmark" onClick={() => navigate("work")} aria-label="Auto Codex 대화">ac<span>.</span></button>
     <nav aria-label="작업실 탐색">
-      {MAIN_PAGES.map(([id, icon, label]) => <button key={id} type="button" className={`atelier-nav-item ${(page === id || id === "results" && page === "pixel") ? "is-current" : ""}`} aria-current={(page === id || id === "results" && page === "pixel") ? "page" : undefined} onClick={() => navigate(id)}><AtelierIcon name={icon} />{label}</button>)}
+      {MAIN_PAGES.map(([id, icon, label]) => <button key={id} type="button" aria-label={label} title={label} className={`atelier-nav-item ${(page === id || id === "pixel" && page === "results") ? "is-current" : ""}`} aria-current={(page === id || id === "pixel" && page === "results") ? "page" : undefined} onClick={() => navigate(id)}><AtelierIcon name={icon} /><span className="atelier-nav-text">{label}</span></button>)}
     </nav>
-    {conversationSidebar}
+    </div><div className="atelier-chat-pane"><strong className="atelier-chat-title">Codex</strong>{conversationSidebar}
     <div className="atelier-nav-bottom">
       <p className="atelier-local-note">LOCAL WORKSPACE<br />저장과 실행 연결은 로컬 브리지가 관리합니다.</p>
       <a className="atelier-attribution" href="https://streamlinehq.com" target="_blank" rel="noreferrer">Free icons from Streamline ↗</a>
-    </div>
+    </div></div>
   </>;
 
   return <>

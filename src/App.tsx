@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AtelierNavigation, PAGE_INFO, type AtelierPage } from "./components/layout/AtelierNavigation";
-import { AtelierHome } from "./components/layout/AtelierPages";
 import { ConversationSidebar } from "./components/layout/ConversationSidebar";
 import {AtelierWorkspace} from './features/atelier/Workspace';
 import {IssueWorkspace} from './features/issues/Workspace';
-import type {Entry} from '../shared/atelier/types';
 import { ApprovalDialog } from "./components/ApprovalDialog";
 import { ModelPicker } from "./components/ModelPicker";
-import { OperationsPanel } from "./components/OperationsPanel";
 import { PixelStudio } from "./components/PixelStudio";
 import { ProjectPanel } from "./components/ProjectPanel";
 import { ConversationPicker } from "./components/ConversationPicker";
@@ -34,15 +31,14 @@ export default function App() {
   const bridge = useBridge();
   const selectableModels=useMemo(()=>preferredModelCatalog(bridge.models),[bridge.models]);
   const [shellMode, setShellMode] = useState<"atelier" | "legacy">("atelier");
-  const [page, setPage] = useState<AtelierPage>("home");
-  const [designEntry,setDesignEntry]=useState<{entry:Entry;nonce:number}|null>(null);
+  const [page, setPage] = useState<AtelierPage>("work");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pageHeading = useRef<HTMLHeadingElement>(null);
   const atelier = shellMode === "atelier";
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
   const [prompt, setPrompt] = useState("");
   const [leftPanel, setLeftPanel] = useState<LeftPanel>("workspace");
-  const [mainView, setMainView] = useState<MainView>("pixel");
+  const [mainView, setMainView] = useState<MainView>("results");
   const [skillMode, setSkillMode] = useState<"auto" | "manual">("auto");
   const [skillPath, setSkillPath] = useState("");
   const [executionMode, setExecutionMode] = useState<ExecutionMode>("team");
@@ -67,6 +63,12 @@ export default function App() {
   const teamBusy = Boolean(activeRun && ["planning", "running", "verifying"].includes(activeRun.status));
   const busy = teamBusy || Boolean(bridge.snapshot.turnId) || bridge.turnStatus === "inProgress";
   const ready = bridge.snapshot.connected && bridge.snapshot.appServerReady && (workspaceMode === "research" || Boolean(projectPath));
+  const initializedConversation = useRef(false);
+  useEffect(() => {
+    if (!bridge.snapshot.connected || initializedConversation.current) return;
+    initializedConversation.current = true;
+    if (!busy && (bridge.snapshot.conversations.find(item => item.id === bridge.snapshot.activeConversationId)?.messageCount ?? 0) > 0) bridge.newConversation();
+  }, [bridge.snapshot, busy, bridge.newConversation]);
   const connectionLabel = !bridge.snapshot.connected
     ? "bridge offline"
     : bridge.snapshot.appServerReady
@@ -242,16 +244,16 @@ export default function App() {
                 />
   </aside></details>;
 
-  const atelierWorkspace = useMemo(() => <AtelierWorkspace production={{snapshot:bridge.snapshot,executionMode,skillMode,skillPath:skillPath||undefined,model:selectedModel||undefined,effort:selectedEffort||undefined,onInterrupt:bridge.interruptTurn}} aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'} entryRequest={designEntry}/>, [bridge.snapshot, bridge.interruptTurn, bridge.atelierApi, executionMode, skillMode, skillPath, selectedModel, selectedEffort, atelier, page, designEntry]);
+  const atelierWorkspace = useMemo(() => <AtelierWorkspace production={{snapshot:bridge.snapshot,executionMode,skillMode,skillPath:skillPath||undefined,model:selectedModel||undefined,effort:selectedEffort||undefined,onInterrupt:bridge.interruptTurn}} aiReady={bridge.snapshot.appServerReady} model={selectedModel||undefined} effort={selectedEffort||undefined} onInterrupt={bridge.interruptTurn} api={bridge.atelierApi} connected={bridge.snapshot.connected} hidden={!atelier||page!=='design'}/>, [bridge.snapshot, bridge.interruptTurn, bridge.atelierApi, executionMode, skillMode, skillPath, selectedModel, selectedEffort, atelier, page]);
   const issueWorkspace = useMemo(() => <IssueWorkspace hidden={!atelier || page !== "issues"} projectPath={projectPath} workspaceMode={workspaceMode} selectionGeneration={bridge.snapshot.projectSelectionGeneration} connected={bridge.snapshot.connected} appServerReady={bridge.snapshot.appServerReady} busy={busy} isPicking={bridge.isPickingProject} onPickProject={bridge.pickProject} api={bridge.issueApi} />, [atelier, page, projectPath, workspaceMode, bridge.snapshot.projectSelectionGeneration, bridge.snapshot.connected, bridge.snapshot.appServerReady, busy, bridge.isPickingProject, bridge.pickProject, bridge.issueApi]);
   return (
     <div className={atelier ? "atelier-app" : "legacy-frame"} data-page={page}>
     <AtelierNavigation page={page} onNavigate={navigate} mobileOpen={mobileMenuOpen} onMobileClose={closeMobileMenu} hidden={!atelier} conversationSidebar={<ConversationSidebar conversations={bridge.conversations} activeConversationId={bridge.snapshot.activeConversationId} disabled={busy || !bridge.snapshot.connected || bridge.isPickingProject} isPicking={bridge.isPickingProject} onNewResearch={() => { if (bridge.setWorkspaceMode("research")) { bridge.setResearchNetworkAccess(false); bridge.newConversation(); navigate("work"); closeMobileMenu(); } }} onPickProject={() => { if (bridge.pickProject()) { navigate("work"); closeMobileMenu(); } }} onSelect={id => { if (bridge.selectConversation(id)) { navigate("work"); closeMobileMenu(); } }} onDelete={bridge.deleteConversation} />} />
     <main id="workspace-main" className={`app-shell ${atelier ? "atelier-main" : "metaverse-app"} ${animationEnabled ? "motion-enabled" : "motion-disabled"}`}>
-      <a className="atelier-skip-link" href="#workspace-heading" hidden={!atelier}>작업 내용으로 건너뛰기</a>
+      <a className="atelier-skip-link" href="#workspace-main" hidden={!atelier}>작업 내용으로 건너뛰기</a>
       <header className="topbar">
         {atelier && <button type="button" className="atelier-menu-toggle" aria-label="작업실 메뉴 열기" aria-haspopup="dialog" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)}>☰ 메뉴</button>}
-        <a className="brand" href="/" aria-label="Auto Codex 홈" onClick={(event) => { event.preventDefault(); if (atelier) navigate("home"); else { setLeftPanel("workspace"); setMainView("pixel"); } }}>
+        <a className="brand" href="/" aria-label="Auto Codex 홈" onClick={(event) => { event.preventDefault(); if (atelier) navigate("work"); else { setLeftPanel("workspace"); setMainView("pixel"); } }}>
           <span className="brand-mark">AC</span>
           <span><strong>{atelier ? "나의 작업실" : "AUTO CODEX WORLD"}</strong><small>{atelier ? PAGE_INFO[page].title : "local pixel agent studio"}</small></span>
         </a>
@@ -270,7 +272,7 @@ export default function App() {
       </header>
       {!atelier && <div className="atelier-return-bar"><span>기존 Auto-Codex 화면</span><button type="button" onClick={() => { changeShell("atelier"); navigate("issues"); }}>이슈 처리</button><button type="button" onClick={() => changeShell("atelier")}>Atelier 화면으로 돌아가기 →</button></div>}
 
-      {atelier && <div className="atelier-workspace-heading"><div><p className="atelier-kicker">AUTO CODEX / LOCAL WORKSPACE</p><h1 id="workspace-heading" tabIndex={-1} ref={pageHeading}>{PAGE_INFO[page].title}</h1><p>{PAGE_INFO[page].description}</p></div><span className={`atelier-run-indicator ${busy ? "is-active" : ""}`} role="status">{bridge.approvals.length ? `승인 대기 ${bridge.approvals.length}건` : busy ? "작업 진행 중" : "진행 작업 없음"}</span></div>}
+      {atelier && page !== "work" && <div className="atelier-workspace-heading"><div><p className="atelier-kicker">AUTO CODEX / LOCAL WORKSPACE</p><h1 id="workspace-heading" tabIndex={-1} ref={pageHeading}>{PAGE_INFO[page].title}</h1><p>{PAGE_INFO[page].description}</p></div><span className={`atelier-run-indicator ${busy ? "is-active" : ""}`} role="status">{bridge.approvals.length ? `승인 대기 ${bridge.approvals.length}건` : busy ? "작업 진행 중" : "진행 작업 없음"}</span></div>}
 
       {bridge.lastError && (
         <div className="error-banner" role="alert">
@@ -285,7 +287,6 @@ export default function App() {
         </div>
       )}
 
-      {atelier && page==='home'&&<div className="atelier-introduction"><AtelierHome onNavigate={navigate} conversations={bridge.conversations} busy={busy} onStartDesign={entry=>{setDesignEntry({entry,nonce:Date.now()});navigate('design');}} onSelectConversation={(id) => { if (bridge.selectConversation(id)) navigate("work"); }} /></div>}
       {atelierWorkspace}
       {issueWorkspace}
 
@@ -304,17 +305,7 @@ export default function App() {
               <strong>Workspace</strong>
               <small>프로젝트 설정</small>
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={leftPanel === "operations"}
-              className={leftPanel === "operations" ? "active" : ""}
-              onClick={() => setLeftPanel("operations")}
-            >
-              <span aria-hidden="true">◉</span>
-              <strong>Codex 활동 센터</strong>
-              <small>LIVE OPERATIONS</small>
-            </button>
+
           </nav>
 
             <aside id="work-settings" className="control-card" hidden={!showControls} aria-label="프로젝트와 실행 설정">
@@ -364,16 +355,7 @@ export default function App() {
                 />
               {(!atelier || page !== "work") && promptControls}
             </aside>
-          <div className="atelier-operations-slot" hidden={!showOperations}>
-            <OperationsPanel
-              activities={bridge.activities}
-              run={activeRun}
-              assistantText={bridge.assistantText}
-              taskOutputs={bridge.taskOutputs}
-              streaming={busy}
-              onOpenResults={openResults}
-            />
-          </div>
+
         </div>
 
         <div className="world-column" hidden={!showWorld}>

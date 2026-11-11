@@ -28,3 +28,23 @@
 .design-step-intro { padding:20px 24px; background:#f8f8fa; border-color:#d8d9dd; }
 .design-step-intro h2 { margin:6px 0; font-size:22px; }
 .design-step-intro p { margin:6px 0 12px; }
+
+/* Survey-like guided answers: clear question hierarchy, generous input targets and calm surfaces. */
+.design-workspace { padding-top:12px; }
+.design-toolbar { padding:22px; border:0; border-radius:16px; background:#fff; box-shadow:0 4px 20px #6258790a; }
+.design-toolbar h2 { font-family:inherit; font-size:22px; font-weight:700; }
+.design-toolbar p { margin:4px 0; color:#686574; }
+.design-workspace button, .design-workspace input, .design-workspace textarea, .design-workspace select { border-color:#dad7e4; border-radius:9px; }
+.design-workspace input, .design-workspace textarea, .design-workspace select { padding:12px 14px; }
+.design-workspace button:hover:not(:disabled) { border-color:#df88a1; background:#fff4f7; }
+.design-entry-grid button { min-height:140px; padding:22px; border:0; box-shadow:0 4px 18px #665b800d; }
+.design-entry-grid button:nth-child(4n+1) { background:#e8efff; }
+.design-entry-grid button:nth-child(4n+2) { background:#ffede8; }
+.design-entry-grid button:nth-child(4n+3) { background:#e5f5eb; }
+.design-entry-grid button:nth-child(4n+4) { background:#f7e8f6; }
+.design-tabs { background:#e7e5f0; border:0; border-radius:12px; }
+.design-workspace .design-question { border:1px solid #e5e1ed; border-left:5px solid #ed7799; border-radius:16px; box-shadow:0 6px 22px #5d547b0b; }
+.design-step-intro, .design-callout, .design-empty { background:#fff; border:0; border-radius:16px; }
+.design-workspace .design-choices { background:#f8f7fb; border-color:#e5e1ed; }
+.design-workspace .design-choices label { padding:8px; border-radius:8px; }
+.design-workspace .design-choices label:has(input:checked) { background:#ffe8ef; }
